@@ -1,0 +1,24 @@
+{
+  "name": "lumenbro-new",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@turnkey/api-key-stamper": "^0.4.7",
+    "@turnkey/http": "^3.5.0",
+    "@turnkey/sdk-server": "^4.2.2",
+    "axios": "^1.10.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3"
+  }
+}

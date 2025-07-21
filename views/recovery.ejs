@@ -1,0 +1,77 @@
+"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <title>Wallet Recovery</title>
+        <script src="/static/turnkey.min.js"></script>
+    </head>
+    <body>
+        <h1>Wallet Recovery</h1>
+        <p>If you've lost access to your passkey/device, use this to recover. Click to send a recovery email, then paste the bundle from the email below to enroll a new passkey.</p>
+        <button id="init-recovery-btn">Init Recovery Email</button>
+        <textarea id="bundle" placeholder="Paste bundle from email"></textarea>
+        <button id="inject-bundle-btn">Inject Bundle & Enroll New Passkey</button>
+        <div id="iframe-container" style="width: 500px; height: 600px;"></div>
+        <p>On success, your new passkey will be active—check Telegram for details. For normal login, <a href="/login?orgId={{ org_id }}&email={{ email }}">click here</a>.</p>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {  // Wait for DOM load
+                let recoveryUserId = null;  // Global to store userId
+                let tk;
+                try {
+                    tk = new Turnkey({ apiPublicKey: "{{ TURNKEY_API_PUBLIC_KEY }}", apiPrivateKey: "{{ TURNKEY_API_PRIVATE_KEY }}", baseUrl: "https://api.turnkey.com" });
+                } catch (error) {
+                    console.error("Failed to initialize Turnkey SDK:", error);
+                    alert("SDK load failed: " + error.message);
+                    return;
+                }
+
+                document.getElementById('init-recovery-btn').addEventListener('click', async () => {
+                    const response = await fetch('/init-recovery?orgId={{ org_id }}&email={{ email }}');
+                    const text = await response.text();
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        alert("Server error: " + text);
+                        return;
+                    }
+                    if (data.success) {
+                        recoveryUserId = data.userId;
+                        alert('Recovery initiated, check email.');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+
+                document.getElementById('inject-bundle-btn').addEventListener('click', async () => {
+                    const bundle = document.getElementById('bundle').value.trim();
+                    if (!bundle) {
+                        alert("Paste the bundle first.");
+                        return;
+                    }
+                    if (!recoveryUserId) {
+                        alert("Run Init Recovery first to get user ID.");
+                        return;
+                    }
+                    try {
+                        // Use SDK to complete recovery
+                        const completeRecovery = await tk.completeUserEmailRecovery({
+                            organizationId: "{{ org_id }}",
+                            userId: recoveryUserId,
+                            credentialBundle: bundle
+                        });
+                        if (completeRecovery.activity.status === "ACTIVITY_STATUS_COMPLETED") {
+                            alert("New passkey enrolled successfully! Session may activate—check Telegram.");
+                        } else {
+                            alert("Error: " + JSON.stringify(completeRecovery.activity.failure));
+                        }
+                    } catch (error) {
+                        console.error("Error during bundle injection:", error);
+                        alert("Failed to inject bundle: " + error.message);
+                    }
+                });
+            });
+        </script>
+    </body>
+    </html>
+    """
