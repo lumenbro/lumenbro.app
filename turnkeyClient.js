@@ -1,9 +1,10 @@
-const { TurnkeyClient } = require('@turnkey/sdk-server');
-const { ApiKeyStamper } = require('@turnkey/api-key-stamper');
+const { Turnkey } = require('@turnkey/sdk-server');
 
-const stamper = new ApiKeyStamper({
+const turnkey = new Turnkey({
+  apiBaseUrl: 'https://api.turnkey.com',
   apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
-  apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY
+  apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+  defaultOrganizationId: process.env.TURNKEY_ORG_ID  // Optional but recommended for root org calls
 });
 
-module.exports = new TurnkeyClient({ baseUrl: 'https://api.turnkey.com' }, stamper);
+module.exports = turnkey;

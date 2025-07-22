@@ -1,7 +1,8 @@
+// Full revised login.js with postActivity and parsing
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const turnkeyClient = require('../turnkeyClient');
+const turnkey = require('../turnkeyClient'); // Updated to 'turnkey'
 const crypto = require('crypto');
 
 router.get('/login', (req, res) => {
@@ -16,11 +17,12 @@ router.post('/login-auth', async (req, res) => {
   if (!orgId || !challenge || !assertion) return res.status(400).json({ error: "Missing data" });
   try {
     const userRes = await pool.query(
-      "SELECT u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1",
+      "SELECT u.turnkey_user_id, u.telegram_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1",
       [orgId]
     );
     if (userRes.rows.length === 0) throw new Error("User not found");
     const userId = userRes.rows[0].turnkey_user_id;
+    const telegramId = userRes.rows[0].telegram_id;
 
     const ecdh = crypto.createECDH('secp256r1');
     ecdh.generateKeys();
@@ -43,8 +45,22 @@ router.post('/login-auth', async (req, res) => {
         type: "public-key"
       }
     };
-    await turnkeyClient.createReadWriteSession({ organizationId: orgId, parameters: params });
-    // TODO: Store session in DB if needed (e.g., users.turnkey_session_id)
+    const response = await turnkey.serverClient().postActivity({
+      type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+      timestampMs: String(Date.now()),
+      organizationId: orgId,
+      parameters: params
+    });
+    const resultV2 = response.activity.result.createReadWriteSessionResultV2;
+    const credentialBundle = resultV2.credentialBundle;
+    const sessionId = resultV2.apiKeyId; // Or use another field if needed for session tracking
+
+    // Store session in DB
+    await pool.query(
+      "UPDATE users SET turnkey_session_id = $1 WHERE telegram_id = $2",
+      [credentialBundle, telegramId] // Assuming credentialBundle is what to store; adjust if needed
+    );
+
     res.json({ success: true });
   } catch (e) {
     console.error(`Login auth failed: ${e.message}`);

@@ -1,8 +1,9 @@
+// Revised auth.js with correct parsing for V7
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
-const turnkeyClient = require('../turnkeyClient');
+const turnkey = require('../turnkeyClient'); // Updated to 'turnkey' as per previous fix
 const axios = require('axios');
 const crypto = require('crypto'); // Built-in, for random/challenges if needed
 
@@ -37,12 +38,18 @@ async function createTurnkeySubOrg(telegramId, email, challenge, attestation) {
       ]
     }
   };
-  const response = await turnkeyClient.createSubOrganization(params);
-  const subOrgId = response.activity.result.createSubOrganizationResult.subOrganizationId;
-  const wallet = response.activity.result.createSubOrganizationResult.wallet;
+  const response = await turnkey.serverClient().postActivity({
+    type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
+    timestampMs: String(Date.now()),
+    organizationId: process.env.TURNKEY_ORG_ID,
+    parameters: params
+  });
+  const resultV7 = response.activity.result.createSubOrganizationResultV7;
+  const subOrgId = resultV7.subOrganizationId;
+  const wallet = resultV7.wallet;
   const keyId = wallet.walletId;
   const publicKey = wallet.addresses[0];
-  const rootUserId = response.activity.result.createSubOrganizationResult.rootUserIds[0]; // Store for later use
+  const rootUserId = resultV7.rootUserIds[0]; // Assuming single root user
   if (!subOrgId || !keyId || !publicKey || !rootUserId) {
     throw new Error("Missing data in Turnkey response");
   }

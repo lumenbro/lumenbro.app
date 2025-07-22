@@ -1,101 +1,99 @@
-"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <title>Set Up Your Passkey</title>
-        </head>
-        <body>
-            <h1>Enter Your Email and Name to Create Passkey</h1>
-            <input type="email" id="email" placeholder="your@email.com" required>
-            <input type="text" id="name" placeholder="Your name" required>
-            <button id="create-btn">Create Passkey and Submit</button>
-            <p>Once complete, return to Telegram and use /start.</p>
-            <script>
-                document.getElementById('create-btn').addEventListener('click', async () => {
-                    try {
-                        const email = document.getElementById('email').value;
-                        const name = document.getElementById('name').value;
-                        if (!email || !name) {
-                            alert("Please enter email and name");
-                            return;
-                        }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Set Up Your Passkey</title>
+</head>
+<body>
+    <h1>Enter Your Email and Name to Create Passkey</h1>
+    <input type="email" id="email" placeholder="your@email.com" required>
+    <input type="text" id="name" placeholder="Your name" required>
+    <button id="create-btn">Create Passkey and Submit</button>
+    <p>Once complete, return to Telegram and use /start.</p>
+    <script>
+        document.getElementById('create-btn').addEventListener('click', async () => {
+            try {
+                const email = document.getElementById('email').value;
+                const name = document.getElementById('name').value;
+                if (!email || !name) {
+                    alert("Please enter email and name");
+                    return;
+                }
 
-                        // Base64url encode function
-                        function base64urlEncode(arr) {
-                            let str = "";
-                            const bytes = new Uint8Array(arr);
-                            for (let i = 0; i < bytes.byteLength; i++) {
-                                str += String.fromCharCode(bytes[i]);
-                            }
-                            return btoa(str).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
-                        }
-
-                        // Generate challenge and user ID
-                        const challenge = crypto.getRandomValues(new Uint8Array(32));
-                        const userId = crypto.getRandomValues(new Uint8Array(32));
-
-                        const publicKeyCredentialCreationOptions = {
-                            challenge: challenge,
-                            rp: {
-                                name: "LumenBro",
-                                id: window.location.hostname
-                            },
-                            user: {
-                                id: userId,
-                                name: email,
-                                displayName: name
-                            },
-                            pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
-                            authenticatorSelection: {
-                                authenticatorAttachment: "cross-platform",
-                                userVerification: "preferred",
-                                residentKey: "preferred"
-                            },
-                            timeout: 60000,
-                            attestation: "direct"
-                        };
-
-                        const credential = await navigator.credentials.create({
-                            publicKey: publicKeyCredentialCreationOptions
-                        });
-
-                        const encodedChallenge = base64urlEncode(challenge);
-
-                        const attestation = {
-                            credentialId: credential.id,
-                            attestationObject: base64urlEncode(credential.response.attestationObject),
-                            clientDataJson: base64urlEncode(credential.response.clientDataJSON),
-                            transports: credential.response.getTransports ? credential.response.getTransports() : []
-                        };
-
-                        const response = await fetch(window.location.href, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                email: email, 
-                                challenge: encodedChallenge, 
-                                attestation: attestation 
-                            })
-                        });
-                        const text = await response.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            alert("Server error: " + text);
-                            return;
-                        }
-                        if (data.success) {
-                            alert("Setup complete!");
-                        } else {
-                            alert("Error: " + data.error);
-                        }
-                    } catch (error) {
-                        console.error("Error creating passkey:", error);
-                        alert("Failed to create passkey: " + error.message);
+                // Base64url encode function
+                function base64urlEncode(arr) {
+                    let str = "";
+                    const bytes = new Uint8Array(arr);
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        str += String.fromCharCode(bytes[i]);
                     }
+                    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                }
+
+                // Generate challenge and user ID
+                const challenge = crypto.getRandomValues(new Uint8Array(32));
+                const userId = crypto.getRandomValues(new Uint8Array(32));
+
+                const publicKeyCredentialCreationOptions = {
+                    challenge: challenge,
+                    rp: {
+                        name: "LumenBro",
+                        id: window.location.hostname
+                    },
+                    user: {
+                        id: userId,
+                        name: email,
+                        displayName: name
+                    },
+                    pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
+                    authenticatorSelection: {
+                        authenticatorAttachment: "cross-platform",
+                        userVerification: "preferred",
+                        residentKey: "preferred"
+                    },
+                    timeout: 60000,
+                    attestation: "direct"
+                };
+
+                const credential = await navigator.credentials.create({
+                    publicKey: publicKeyCredentialCreationOptions
                 });
-            </script>
-        </body>
-        </html>
-        """
+
+                const encodedChallenge = base64urlEncode(challenge);
+
+                const attestation = {
+                    credentialId: credential.id,
+                    attestationObject: base64urlEncode(credential.response.attestationObject),
+                    clientDataJson: base64urlEncode(credential.response.clientDataJSON),
+                    transports: credential.response.getTransports ? credential.response.getTransports() : []
+                };
+
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: email, 
+                        challenge: encodedChallenge, 
+                        attestation: attestation 
+                    })
+                });
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    alert("Server error: " + text);
+                    return;
+                }
+                if (data.success) {
+                    alert("Setup complete!");
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (error) {
+                console.error("Error creating passkey:", error);
+                alert("Failed to create passkey: " + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

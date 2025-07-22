@@ -5,3 +5,5 @@ requirements.txt
 app.log
 venv
 __pycache__
+*.pem
+/static
