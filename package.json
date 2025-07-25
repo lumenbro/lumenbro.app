@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-turnkey": "webpack --config webpack.config.js"
   },
   "keywords": [],
   "author": "",
@@ -11,12 +12,27 @@
   "description": "",
   "dependencies": {
     "@turnkey/http": "^3.5.0",
+    "@turnkey/iframe-stamper": "^2.5.0",
+    "@turnkey/sdk-browser": "^5.3.3",
     "@turnkey/sdk-server": "^4.2.2",
     "axios": "^1.10.0",
+    "base64url": "^3.0.1",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "dotenv": "^17.2.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5",
+    "vm-browserify": "^1.1.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "babel-loader": "^10.0.0",
+    "webpack": "^5.100.2",
+    "webpack-cli": "^6.0.1"
   }
 }

@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const turnkey = require('../turnkeyClient'); // Updated to 'turnkey'
+const turnkeyRequest = require('../turnkeyClient'); // Correct require for request function
 const crypto = require('crypto');
 
 router.get('/login', (req, res) => {
@@ -45,12 +45,13 @@ router.post('/login-auth', async (req, res) => {
         type: "public-key"
       }
     };
-    const response = await turnkey.serverClient().postActivity({
+    const body = {
       type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
       timestampMs: String(Date.now()),
       organizationId: orgId,
       parameters: params
-    });
+    };
+    const response = await turnkeyRequest('submit/create_read_write_session_v2', 'POST', body); // Use turnkeyRequest
     const resultV2 = response.activity.result.createReadWriteSessionResultV2;
     const credentialBundle = resultV2.credentialBundle;
     const sessionId = resultV2.apiKeyId; // Or use another field if needed for session tracking

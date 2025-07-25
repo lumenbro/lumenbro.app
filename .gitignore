@@ -7,3 +7,6 @@ venv
 __pycache__
 *.pem
 /static
+*.turnkey.min.js 
+*.turnkey.min.js.LICENSE.txt
+turnkey.min.js

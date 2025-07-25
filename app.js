@@ -43,4 +43,13 @@ app.post('/turnkey-callback', async (req, res) => {
   }
 });
 
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message });
+});
+
 app.listen(port, () => console.log(`Server running on port ${port}`));
