@@ -1,25 +1,21 @@
+// turnkeyClient.js - Wrapper for Turnkey SDK server client with typed methods
 const { Turnkey } = require('@turnkey/sdk-server');
 
-const client = new Turnkey({
+const turnkey = new Turnkey({
+  apiBaseUrl: 'https://api.turnkey.com',
   apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
   apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
-  apiBaseUrl: 'https://api.turnkey.com'
-}).apiClient();
+  defaultOrganizationId: process.env.TURNKEY_ORG_ID
+});
 
-async function turnkeyRequest(activityType, data) {
-  try {
-    let response;
-    if (activityType === 'INIT_USER_EMAIL_RECOVERY') {
-      response = await client.initUserEmailRecovery(data);
-    } else {
-      throw new Error(`Unsupported activity type: ${activityType}`);
-    }
-    console.log('Turnkey response:', JSON.stringify(response, null, 2));
-    return response;
-  } catch (e) {
-    console.error('Turnkey request failed:', e.message);
-    throw e;
-  }
-}
+const client = turnkey.apiClient();
 
-module.exports = turnkeyRequest;
+module.exports = {
+  initUserEmailRecovery: async (data) => {
+    return await client.initUserEmailRecovery(data);
+  },
+  createReadWriteSession: async (data) => {
+    return await client.createReadWriteSession(data);
+  },
+  // Add more typed methods as needed, e.g., for other activities
+};

@@ -1,13 +1,31 @@
-// Revised auth.js with correct parsing for V7
+// routes/auth.js - Backend for registration, adapted for Mini App
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
-const turnkey = require('../turnkeyClient'); // Updated to 'turnkey' as per previous fix
+const turnkeyClient = require('../turnkeyClient'); // Renamed to avoid conflict
 const axios = require('axios');
-const crypto = require('crypto'); // Built-in, for random/challenges if needed
+const crypto = require('crypto');
 
-async function createTurnkeySubOrg(telegramId, email, challenge, attestation) {
+// Fetch BOT_TOKEN from env for initData validation
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+// Function to validate Telegram initData
+function validateInitData(initData) {
+  const parsed = new URLSearchParams(initData);
+  const hash = parsed.get('hash');
+  parsed.delete('hash');
+  const dataCheckString = Array.from(parsed.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+  const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+  return computedHash === hash;
+}
+
+// Updated to use API public key for root user, no authenticators
+async function createTurnkeySubOrg(telegramId, email, apiPublicKey) {
   const params = {
     subOrganizationName: `User-${telegramId}`,
     rootQuorumThreshold: 1,
@@ -15,14 +33,14 @@ async function createTurnkeySubOrg(telegramId, email, challenge, attestation) {
       {
         userName: `User-${telegramId}`,
         userEmail: email,
-        apiKeys: [],
-        authenticators: [
+        apiKeys: [
           {
-            authenticatorName: "Passkey",
-            challenge,
-            attestation
+            apiKeyName: `User-${telegramId}-APIKey`,
+            publicKey: apiPublicKey,
+            curveType: "API_KEY_CURVE_P256"
           }
         ],
+        authenticators: [],  // No passkey
         oauthProviders: []
       }
     ],
@@ -38,25 +56,21 @@ async function createTurnkeySubOrg(telegramId, email, challenge, attestation) {
       ]
     }
   };
-  const response = await turnkey.serverClient().postActivity({
-    type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
-    timestampMs: String(Date.now()),
-    organizationId: process.env.TURNKEY_ORG_ID,
-    parameters: params
-  });
-  const resultV7 = response.activity.result.createSubOrganizationResultV7;
-  const subOrgId = resultV7.subOrganizationId;
-  const wallet = resultV7.wallet;
+
+  const response = await turnkeyClient.createSubOrganization(params);
+  const subOrgId = response.subOrganizationId;
+  const wallet = response.wallet;
   const keyId = wallet.walletId;
-  const publicKey = wallet.addresses[0];
-  const rootUserId = resultV7.rootUserIds[0]; // Assuming single root user
+  const publicKey = wallet.addresses[0].address; // Adjusted for response structure
+  const rootUserId = response.rootUserIds[0]; // Assuming single root user
   if (!subOrgId || !keyId || !publicKey || !rootUserId) {
     throw new Error("Missing data in Turnkey response");
   }
   return { subOrgId, keyId, publicKey, rootUserId };
 }
 
-async function handleTurnkeyPost(telegramId, referrerId, email, challenge, attestation) {
+// Updated handle: No challenge/attestation, add apiPublicKey
+async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
   const existing = await pool.query(
     "SELECT turnkey_sub_org_id, turnkey_key_id, public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
     [telegramId]
@@ -66,7 +80,7 @@ async function handleTurnkeyPost(telegramId, referrerId, email, challenge, attes
     return { subOrgId: existing.rows[0].turnkey_sub_org_id, email };
   }
 
-  const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegramId, email, challenge, attestation);
+  const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegramId, email, apiPublicKey);
 
   const client = await pool.connect();
   try {
@@ -104,12 +118,32 @@ async function handleTurnkeyPost(telegramId, referrerId, email, challenge, attes
 
   await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     chat_id: telegramId,
-    text: "Passkey setup complete! Use /start in the bot."
+    text: "Setup complete! Use /start in the bot."
   });
 
   return { subOrgId, email };
 }
 
+// Adapted for Mini App: POST /mini-app/create-sub-org (API key only)
+router.post('/mini-app/create-sub-org', async (req, res) => {
+  const { telegram_id, initData, email, apiPublicKey, referrer_id } = req.body;
+
+  if (!validateInitData(initData)) {
+    return res.status(403).json({ error: "Invalid initData" });
+  }
+
+  let referrerId = referrer_id || null;
+
+  try {
+    const { subOrgId } = await handleTurnkeyPost(telegram_id, referrerId, email, apiPublicKey);
+    res.json({ subOrgId });
+  } catch (e) {
+    console.error(`Create sub-org failed: ${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Existing /turnkey-auth routes if needed for non-mini-app (optional: update to API keys if keeping)
 router.get('/turnkey-auth', (req, res) => {
   const token = req.query.token;
   if (!token) return res.status(400).json({ error: "Missing token" });
@@ -129,9 +163,9 @@ router.post('/turnkey-auth', async (req, res) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const telegramId = payload.telegram_id;
     const referrerId = payload.referrer_id || null;
-    const { email, challenge, attestation } = req.body;
-    if (!email || !challenge || !attestation) return res.status(400).json({ error: "Missing data" });
-    const { subOrgId } = await handleTurnkeyPost(telegramId, referrerId, email, challenge, attestation);
+    const { email, apiPublicKey } = req.body;  // Updated: apiPublicKey instead of challenge/attestation
+    if (!email || !apiPublicKey) return res.status(400).json({ error: "Missing data" });
+    const { subOrgId } = await handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey);
     res.json({ success: true, sub_org_id: subOrgId });
   } catch (e) {
     console.error(`Auth failed: ${e.message}`);

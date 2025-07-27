@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumenBro Mini App</title>
+    <link rel="stylesheet" href="/mini-app/styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/static/turnkey.min.js"></script>
+</head>
+
+<body>
+    <div id="content">
+        <h1>Welcome to LumenBro Trading Bot</h1>
+        <button onclick="window.register()">Register</button>
+        <button onclick="window.login()">Login</button>
+        <button onclick="window.recover()">Recover</button>
+    </div>
+    <script src="/mini-app/auth.js"></script>
+    <script src="/mini-app/login.js"></script>
+    <script src="/mini-app/recovery.js"></script>
+    <script>
+        const telegramApp = window.Telegram.WebApp;  // Declare once here
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        if (action === 'register') {
+            window.register();
+        } else if (action === 'login') {
+            window.login();
+        } else if (action === 'recover') {
+            window.recover();
+        }
+    </script>
+</body>
+
+</html>

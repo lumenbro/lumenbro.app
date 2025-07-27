@@ -1,74 +1,120 @@
+<!-- Full login.ejs with client-side stamping for WebAuthn -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        a { display: block; margin-top: 10px; }
+    </style>
 </head>
 <body>
     <h1>Wallet Login</h1>
     <p>Authenticate with your passkey to establish a session.</p>
-    <button onclick="loginWithPasskey()">Login with Passkey</button>
-    <p>If you need to recover access (lost device/passkey), <a href="/recovery?orgId=<%= org_id %>&email=<%= email %>">click here for recovery</a>.</p>
+    <button id="login-button">Login with Passkey</button>
+    <a href="/recovery?orgId=<%= org_id %>&email=<%= email %>">If you need to recover access (lost device/passkey), click here for recovery.</a>
+
+    <script src="/static/turnkey.min.js"></script>
     <script>
-        async function base64urlEncode(arr) {
-            let str = "";
-            const bytes = new Uint8Array(arr);
-            for (let i = 0; i < bytes.byteLength; i++) {
-                str += String.fromCharCode(bytes[i]);
-            }
-            return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        // Polyfill for crypto if needed (but browser has subtle)
+        const crypto = window.crypto;
+
+        // Helper to base64 encode ArrayBuffer/Uint8Array
+        function base64Encode(buffer) {
+            return btoa(String.fromCharCode(...new Uint8Array(buffer)));
         }
 
-        async function loginWithPasskey() {
+        // Helper to base64URL decode to Uint8Array (if needed)
+        function base64UrlDecode(str) {
+            str = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) str += '=';
+            const bytes = Uint8Array.from(atob(str), c => c.charCodeAt(0));
+            return bytes;
+        }
+
+        const loginButton = document.getElementById('login-button');
+        loginButton.addEventListener('click', async () => {
             try {
-                const challenge = crypto.getRandomValues(new Uint8Array(32));  // Server should provide challenge
-                const publicKeyCredentialGetOptions = {
-                    challenge: challenge,
+                // Fetch userId from server (assuming an endpoint /get-user-id?orgId=...)
+                const userIdRes = await fetch(`/get-user-id?orgId=<%= org_id %>`);
+                const { userId } = await userIdRes.json();
+                if (!userId) throw new Error('User ID not found');
+
+                // Generate ephemeral P-256 keypair (use Web Crypto for randomness)
+                const keyPair = await crypto.subtle.generateKey(
+                    { name: 'ECDH', namedCurve: 'P-256' },
+                    true,
+                    ['deriveKey']
+                );
+                const publicKeyBytes = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+                const targetPublicKey = Array.from(new Uint8Array(publicKeyBytes)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                // Export private as JWK and extract 'd' as hex
+                const jwkPrivate = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+                const ephemeralPrivateKey = Array.from(base64UrlDecode(jwkPrivate.d)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                // Build activity body
+                const body = {
+                    type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+                    timestampMs: String(Date.now()),
+                    organizationId: '<%= org_id %>',
+                    parameters: {
+                        targetPublicKey,
+                        userId,
+                        apiKeyName: "BotSession",
+                        expirationSeconds: "31536000",
+                        invalidateExisting: false
+                    }
+                };
+                const bodyStr = JSON.stringify(body); // Assume canonical (sorted, no space)
+
+                // Challenge = SHA-256 of bodyStr
+                const encoder = new TextEncoder();
+                const data = encoder.encode(bodyStr);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const challengeArray = new Uint8Array(hashBuffer);
+
+                const publicKeyOptions = {
+                    challenge: challengeArray,
                     rpId: window.location.hostname,
-                    userVerification: "preferred",
-                    timeout: 60000
+                    allowCredentials: [], // Discoverable
+                    userVerification: 'preferred'
                 };
 
-                const credential = await navigator.credentials.get({
-                    publicKey: publicKeyCredentialGetOptions
-                });
+                // Get assertion (prompt)
+                const assertion = await navigator.credentials.get({ publicKey: publicKeyOptions });
 
-                const encodedChallenge = base64urlEncode(challenge);
-
-                const assertion = {
-                    credentialId: credential.id,
-                    authenticatorData: base64urlEncode(credential.response.authenticatorData),
-                    clientDataJson: base64urlEncode(credential.response.clientDataJSON),
-                    signature: base64urlEncode(credential.response.signature),
-                    userHandle: base64urlEncode(credential.response.userHandle)
+                // Form stamp JSON with base64-encoded fields (ArrayBuffers to base64)
+                const stamp = {
+                    credentialId: assertion.id, // base64URL as is
+                    authenticatorData: base64Encode(assertion.response.authenticatorData),
+                    clientDataJson: base64Encode(assertion.response.clientDataJSON),
+                    signature: base64Encode(assertion.response.signature)
                 };
+                const stampStr = JSON.stringify(stamp);
 
-                const response = await fetch('/login-auth', {  // New endpoint for assertion
+                // POST to server proxy with body and stamp
+                const response = await fetch('/login-auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        orgId: '<%= org_id %>',
-                        challenge: encodedChallenge, 
-                        assertion: assertion 
-                    })
+                    body: JSON.stringify({ body: bodyStr, stamp: stampStr, ephemeralPrivateKey }) // Send ephemeral for decryption
                 });
-                const text = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    alert("Server error: " + text);
-                    return;
-                }
-                if (data.success) {
-                    alert("Login successful! Session established.");
+
+                if (response.ok) {
+                    alert('Login successful!');
                 } else {
-                    alert("Error: " + data.error);
+                    const errData = await response.json();
+                    alert('Login failed: ' + errData.error);
                 }
-            } catch (error) {
-                console.error("Error during login:", error);
-                alert("Failed to login: " + error.message);
+            } catch (e) {
+                console.error(e);
+                alert('Error: ' + e.message);
             }
-        }
+        });
     </script>
 </body>
 </html>

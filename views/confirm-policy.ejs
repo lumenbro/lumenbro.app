@@ -1,0 +1,48 @@
+<h2>Confirm Recovery</h2>
+<p>Sign with your new passkey to enable full access.</p>
+<button id="sign-policy">Sign Now</button>
+<div id="status"></div>
+
+<script src="/static/turnkey.min.js"></script> <!-- Your local bundled SDK -->
+
+<script>
+    // Assume Turnkey is global from bundle; adjust if needed (e.g., const Turnkey = window.Turnkey;)
+    const orgId = '<%= org_id %>';
+    const authId = '<%= auth_id %>';
+
+    const turnkeyClient = new Turnkey.TurnkeyClient({
+        baseUrl: 'https://api.turnkey.com',
+    }, new Turnkey.PasskeyStamper({
+        rpId: window.location.hostname, // Your RP ID for WebAuthn
+    }));
+
+    document.getElementById('sign-policy').addEventListener('click', async () => {
+        const status = document.getElementById('status');
+        status.innerText = 'Signing...';
+
+        try {
+            // Similar to login: Prompt WebAuthn for stamping/signing
+            const response = await turnkeyClient.createPolicy({
+                type: 'ACTIVITY_TYPE_CREATE_POLICY_V3',
+                timestampMs: String(Date.now()),
+                organizationId: orgId,
+                parameters: {
+                    policyName: 'Enable Recovered Passkey',
+                    effect: 'EFFECT_ALLOW',
+                    consensus: `credentials.any(credential, credential.authenticatorId == '${authId}')`,
+                    condition: "activity.type == 'ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2'",
+                    notes: 'Grants session creation for login.',
+                },
+            });
+
+            if (response.activity.status !== 'ACTIVITY_STATUS_COMPLETED') {
+                throw new Error('Policy creation failed');
+            }
+
+            status.innerText = 'Policy signed! You can now login.';
+            // Optional: Redirect to login page or notify via Telegram
+        } catch (e) {
+            status.innerText = 'Error: ' + e.message;
+        }
+    });
+</script>

@@ -1,156 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>LumenBro Account Recovery</title>
-  <script src="/static/turnkey.min.js"></script>  <!-- Your bundled SDK -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery</title>
 </head>
 <body>
-  <div id="recovery-container" style="display: none;"></div>  <!-- Hidden iframe container -->
+    <div id="recovery-iframe-container" style="display: none;"></div>
 
-  <h2>Init Recovery Email</h2>
-  <form id="init-form">
-    <label>Email</label>
-    <input type="email" id="email" value="<%= email %>" required>
-    <label>Organization ID</label>
-    <input type="text" id="orgId" value="<%= org_id %>" required>
-    <button type="submit">Init Recovery</button>
-  </form>
+    <h2>Init Recovery Email</h2>
 
-  <h2>Inject Bundle & Recover</h2>
-  <p>Check your email for the recovery code/bundle and paste it below after init.</p>
-  <form id="inject-form">
-    <label>Auth Bundle</label>
-    <textarea id="authBundle" required></textarea>
-    <button type="submit">Submit Bundle & Create New Passkey</button>
-  </form>
+    <form id="init-form">
+        <label>Email</label>
+        <input type="text" id="email" value="<%= email %>">
+        <label>Organization ID</label>
+        <input type="text" id="orgId" value="<%= org_id %>">
+        <button type="submit">Init Recovery</button>
+    </form>
 
-  <script>
-    const { IframeStamper, getWebAuthnAttestation } = window.Turnkey;
+    <h2>Inject Bundle & Recover</h2>
+    <p>Check your email for the recovery code/bundle and paste it below after init.</p>
 
-    let iframeStamper;
-    let targetPublicKey;
+    <form id="recover-form" style="display: none;">
+        <label>Auth Bundle</label>
+        <textarea id="authBundle"></textarea>
+        <button type="submit">Submit Bundle & Create New Passkey</button>
+    </form>
 
-    async function initIframe() {
-      const container = document.getElementById('recovery-container');
-      iframeStamper = new IframeStamper({
-        iframeUrl: 'https://auth.turnkey.com',
-        iframeContainer: container,
-        iframeElementId: 'turnkey-iframe'
-      });
-      targetPublicKey = await iframeStamper.init();
-      return targetPublicKey;
-    }
+    <div id="status"></div>
 
-    window.addEventListener('load', async () => {
-      try {
-        await initIframe();
-      } catch (e) {
-        alert('Iframe init failed on load: ' + e.message);
-      }
-    });
+    <script src="/static/turnkey.min.js"></script>
+    <script>
+        // Assuming turnkey.min.js exposes Turnkey and IframeStamper globally
+        const Turnkey = window.Turnkey;
+        const IframeStamper = window.IframeStamper;
 
-    document.getElementById('init-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        const email = document.getElementById('email').value;
-        const orgId = document.getElementById('orgId').value;
-        const response = await fetch('/init-recovery', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orgId, email, targetPublicKey })
+        const iframeElementId = 'recovery-iframe';
+        const iframeContainer = document.getElementById('recovery-iframe-container');
+        const iframeStamper = new IframeStamper({
+            iframeUrl: 'https://recovery.turnkey.com',
+            iframeElementId,
+            iframeContainer,
         });
-        const data = await response.json();
-        if (data.success) {
-          const userId = data.userId;
-          localStorage.setItem('turnkeyUserId', userId);
-          alert('Recovery initiated. Check your email for the code.');
-        } else {
-          alert('Error: ' + data.error);
-        }
-      } catch (e) {
-        alert('Init failed: ' + e.message);
-      }
-      return false;
-    });
 
-    document.getElementById('inject-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      console.log('Inject form submit triggered');
-      const authBundle = document.getElementById('authBundle').value;
-      const email = document.getElementById('email').value;
-      const orgId = document.getElementById('orgId').value;
-      let userId = localStorage.getItem('turnkeyUserId');
-      if (!userId) {
-        alert('User ID not found. Please re-init recovery.');
-        return false;
-      }
-      try {
-        console.log('Starting injection...');
-        await iframeStamper.injectCredentialBundle(authBundle);
-        console.log('Bundle injected, creating passkey...');
+        const turnkeyClient = new Turnkey.TurnkeyClient({
+            baseUrl: 'https://api.turnkey.com',
+        }, iframeStamper);
 
-        const challengeBytes = new Uint8Array(32);
-        window.crypto.getRandomValues(challengeBytes);
-        let challenge = btoa(String.fromCharCode(...challengeBytes));
-        challenge = challenge.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        // Init form submit
+        document.getElementById('init-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('status');
+            status.innerText = 'Initializing...';
 
-        const attestation = await getWebAuthnAttestation({
-          publicKey: {
-            rp: { name: 'LumenBro', id: window.location.hostname },
-            user: { id: new TextEncoder().encode(email).slice(0, 64), name: email, displayName: email },
-            challenge: challengeBytes,
-            pubKeyCredParams: [
-              { type: 'public-key', alg: -7 },
-              { type: 'public-key', alg: -257 }
-            ],
-            authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' }
-          }
+            try {
+                await iframeStamper.init();
+                const targetPublicKey = await iframeStamper.publicKey();
+
+                const email = document.getElementById('email').value;
+                const orgId = document.getElementById('orgId').value;
+
+                const response = await fetch('/init-recovery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orgId, email, targetPublicKey }),
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+
+                const userId = data.userId;
+                localStorage.setItem('recoveryUserId', userId);
+                localStorage.setItem('recoveryOrgId', orgId);
+                localStorage.setItem('recoveryEmail', email);
+
+                status.innerText = 'Init successful! Check your email for the bundle.';
+                document.getElementById('recover-form').style.display = 'block';
+            } catch (e) {
+                status.innerText = 'Error: ' + e.message;
+            }
         });
-        const authenticator = {
-          authenticatorName: 'Recovered Passkey',
-          challenge,
-          attestation
-        };
-        console.log('Passkey created, recovering user...');
 
-        const body = {
-          type: "ACTIVITY_TYPE_RECOVER_USER",
-          timestampMs: String(Date.now()),
-          organizationId: orgId,
-          parameters: {
-            userId,
-            authenticator
-          }
-        };
-        const bodyStr = JSON.stringify(body);
-        console.log('Recover payload:', bodyStr);
+        // Recover form submit
+        document.getElementById('recover-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('status');
+            status.innerText = 'Recovering...';
 
-        const stamp = await iframeStamper.stamp(bodyStr);
-        const headers = {
-          'Content-Type': 'application/json',
-          [stamp.stampHeaderName]: stamp.stampHeaderValue,
-          'X-Client-Version': '@turnkey/sdk-browser@5.3.3'
-        };
-        const response = await fetch('https://api.turnkey.com/public/v1/submit/recover_user', {
-          method: 'POST',
-          headers,
-          body: bodyStr
+            try {
+                const authBundle = document.getElementById('authBundle').value;
+                const email = localStorage.getItem('recoveryEmail');
+                await iframeStamper.injectEmailRecoveryBundle(authBundle);
+
+                // Create new passkey
+                const challengeBuffer = crypto.getRandomValues(new Uint8Array(32));
+                const challenge = Turnkey.base64UrlEncode(challengeBuffer);
+                const credential = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: challengeBuffer,
+                        rp: { name: 'LumenBro' },
+                        user: {
+                            id: new Uint8Array(16),
+                            name: email,
+                            displayName: email,
+                        },
+                        pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+                        authenticatorSelection: { userVerification: 'preferred' },
+                    },
+                });
+
+                const attestation = Turnkey.base64UrlEncode(new Uint8Array(credential.response.attestationObject));
+                const authenticatorName = 'Recovered Passkey';
+
+                const userId = localStorage.getItem('recoveryUserId');
+                const orgId = localStorage.getItem('recoveryOrgId');
+
+                const response = await turnkeyClient.recoverUser({
+                    type: 'ACTIVITY_TYPE_RECOVER_USER',
+                    timestampMs: String(Date.now()),
+                    organizationId: orgId,
+                    parameters: {
+                        userId,
+                        authenticator: {
+                            authenticatorName,
+                            challenge,
+                            attestation,
+                        },
+                    },
+                });
+
+                const authenticatorId = response.activity.result.recoverUserResult.authenticatorId;
+                status.innerText = 'Recovery successful! Notifying via Telegram...';
+
+                // Trigger server notification for Telegram
+                await fetch('/notify-recovery-complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orgId, email, authenticatorId }),
+                });
+
+                status.innerText = 'Telegram notification sent! Check your messages.';
+            } catch (e) {
+                status.innerText = 'Error: ' + e.message;
+            }
         });
-        const data = await response.json();
-        console.log('Recover response:', data);
-
-        if (data.activity.status === 'ACTIVITY_STATUS_COMPLETED') {
-          localStorage.removeItem('turnkeyUserId');  // Clean up after success
-          alert('Recovery complete! New passkey added.');
-        } else {
-          alert('Recovery failed: ' + JSON.stringify(data));
-        }
-      } catch (e) {
-        console.error('Injection/recovery error:', e);
-        alert('Error during injection or passkey creation: ' + e.message);
-      }
-      return false;
-    });
-  </script>
+    </script>
 </body>
 </html>
