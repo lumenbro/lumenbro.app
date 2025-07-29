@@ -4,14 +4,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-turnkey": "webpack --config webpack.config.js"
+    "build-turnkey": "esbuild turnkey-entry.js --bundle --outfile=public/turnkey.js --global-name=Turnkey --format=iife --sourcemap --loader:.js=js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@noble/curves": "^1.9.4",
     "@turnkey/crypto": "^2.4.3",
     "@turnkey/http": "^3.5.0",
     "@turnkey/iframe-stamper": "^2.5.0",
@@ -38,6 +37,7 @@
     "@babel/core": "^7.28.0",
     "@babel/preset-env": "^7.28.0",
     "babel-loader": "^10.0.0",
+    "esbuild": "^0.25.8",
     "webpack": "^5.100.2",
     "webpack-cli": "^6.0.1"
   }

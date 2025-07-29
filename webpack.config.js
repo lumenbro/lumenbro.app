@@ -4,7 +4,8 @@ module.exports = {
   entry: './turnkey-entry.js',
   output: {
     filename: 'turnkey.min.js',
-    path: path.resolve(__dirname, 'public'),
+    path: path.resolve(__dirname, 'public/bundles'),  // Updated: Output to 'public/bundles' to isolate builds
+    clean: true  // Safe now: Only cleans 'bundles' subdir
   },
   mode: 'production',
   target: 'web',
@@ -29,5 +30,9 @@ module.exports = {
       vm: require.resolve('vm-browserify'),
       stream: require.resolve('stream-browserify')
     }
-  }
+  },
+  optimization: {
+    splitChunks: false  // Disable code splitting for a single bundle file
+  },
+  cache: false  // Disable Webpack's build cache
 };

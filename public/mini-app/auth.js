@@ -1,15 +1,36 @@
 // public/mini-app/auth.js - Client-side registration (no WebAuthn)
 window.register = async function () {
     try {
-        // Get telegram_id from initData (secure)
-        const telegram_id = telegramApp.initDataUnsafe.user.id;
-        const referrer_id = params.get('referrer_id') || null;  // From query param
+        if (!window.Turnkey || !window.Turnkey.generateP256KeyPair) {
+            console.error('Turnkey bundle not loaded or generateP256KeyPair missing. Check Network tab for /static/turnkey.min.js load (200 OK). Rebuild bundle and ensure path in index.html.');
+            throw new Error('Turnkey not available');
+        }
+
+        // Get telegram_id from initData (secure) with check
+        if (!window.Telegram.WebApp || !window.Telegram.WebApp.initDataUnsafe || !window.Telegram.WebApp.initDataUnsafe.user) {
+            console.error('Telegram WebApp not initialized or user data missing. Check if loaded in Mini App context.');
+            throw new Error('Telegram data not available');
+        }
+        const telegram_id = window.Telegram.WebApp.initDataUnsafe.user.id;
+        const referrer_id = window.params.get('referrer_id') || null;  // From query param
+
+        // Check if already registered by seeing if key in cloud
+        const existingKey = await new Promise((resolve) => {
+            window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+                resolve(value ? JSON.parse(value) : null);
+            });
+        });
+        if (existingKey) {
+            console.log('Existing key found in cloud – already registered:', existingKey);
+            document.getElementById('content').innerHTML = 'Already registered! Use Login or Recover.';
+            return;  // Skip the rest
+        }
 
         // Prompt for email
         const email = prompt('Enter your email:') || 'unknown@lumenbro.com';
 
         // Generate P256 keypair for API keys (no WebAuthn)
-        const keyPair = Turnkey.generateP256KeyPair();  // Assume available in SDK
+        const keyPair = await window.Turnkey.generateP256KeyPair();
 
         // Fetch sub-org from backend (send public key for root user API key)
         const response = await fetch('/mini-app/create-sub-org', {
@@ -17,7 +38,7 @@ window.register = async function () {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 telegram_id,
-                initData: telegramApp.initData,
+                initData: window.Telegram.WebApp.initData,
                 email,
                 apiPublicKey: keyPair.publicKey,  // Send public for sub-org creation
                 referrer_id
@@ -27,12 +48,12 @@ window.register = async function () {
         const { subOrgId } = await response.json();
 
         // Create stamper and store PRIVATE key in Telegram Cloud
-        const stamper = await Turnkey.TelegramCloudStorageStamper.create();
-        await stamper.setAPIKey({ apiPublicKey: keyPair.publicKey, apiPrivateKey: keyPair.privateKey });
-
-        // Create client and register user API keys (if needed; optional post-sub-org)
-        const client = new Turnkey.TurnkeyBrowserClient({ baseUrl: "https://api.turnkey.com", stamper });
-        await client.createUserApiKeys({ organizationId: subOrgId /* add params if needed */ });
+        const stamper = await window.Turnkey.TelegramCloudStorageStamper.create({
+            cloudStorageAPIKey: {
+                apiPublicKey: keyPair.publicKey,
+                apiPrivateKey: keyPair.privateKey
+            }
+        });
 
         document.getElementById('content').innerHTML = 'Registration complete! API keys stored in Telegram Cloud.';
     } catch (error) {

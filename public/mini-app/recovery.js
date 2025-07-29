@@ -1,7 +1,5 @@
 // public/mini-app/recovery.js - Client-side recovery (new file)
-const telegramApp = window.Telegram.WebApp;
-const params = new URLSearchParams(window.location.search);
-const orgId = params.get('orgId'); // Assume passed
+// Use global params from index.html – no local orgId const
 
 async function recover() {
     try {

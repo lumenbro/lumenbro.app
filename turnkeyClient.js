@@ -11,11 +11,8 @@ const turnkey = new Turnkey({
 const client = turnkey.apiClient();
 
 module.exports = {
-  initUserEmailRecovery: async (data) => {
-    return await client.initUserEmailRecovery(data);
-  },
-  createReadWriteSession: async (data) => {
-    return await client.createReadWriteSession(data);
-  },
+  createSubOrganization: async (params) => await client.createSubOrganization(params),
+  initUserEmailRecovery: async (data) => await client.initUserEmailRecovery(data),
+  createReadWriteSession: async (data) => await client.createReadWriteSession(data),
   // Add more typed methods as needed, e.g., for other activities
 };

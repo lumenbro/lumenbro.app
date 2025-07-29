@@ -1,7 +1,7 @@
 // public/mini-app/login.js - Client-side login
-const telegramApp = window.Telegram.WebApp;
-const params = new URLSearchParams(window.location.search);
-const orgId = params.get('orgId'); // Assume passed or fetch
+// Use global params from index.html – no local const
+
+// orgId is global from index.html
 
 async function createTelegramCloudStorageStamper() {
     // Implement or import from lib if needed

@@ -12,16 +12,16 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Function to validate Telegram initData
 function validateInitData(initData) {
-  const parsed = new URLSearchParams(initData);
-  const hash = parsed.get('hash');
-  parsed.delete('hash');
-  const dataCheckString = Array.from(parsed.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
-  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-  const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  return computedHash === hash;
+    const parsed = new URLSearchParams(initData);
+    const hash = parsed.get('hash');
+    parsed.delete('hash');
+    const dataCheckString = Array.from(parsed.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n');
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+    const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    return computedHash === hash;
 }
 
 // Updated to use API public key for root user, no authenticators
@@ -58,11 +58,23 @@ async function createTurnkeySubOrg(telegramId, email, apiPublicKey) {
   };
 
   const response = await turnkeyClient.createSubOrganization(params);
-  const subOrgId = response.subOrganizationId;
-  const wallet = response.wallet;
+  console.log('Full Turnkey createSubOrganization response:', JSON.stringify(response, null, 2));  // Verbose logging for debugging
+
+  // Parse V7 response structure
+  const result = response.activity?.result?.createSubOrganizationResultV7;
+  if (!result) {
+    console.error('Invalid response structure:', response);
+    throw new Error("Invalid response structure from Turnkey");
+  }
+
+  const subOrgId = result.subOrganizationId;
+  const wallet = result.wallet;
   const keyId = wallet.walletId;
-  const publicKey = wallet.addresses[0].address; // Adjusted for response structure
-  const rootUserId = response.rootUserIds[0]; // Assuming single root user
+  const publicKey = wallet.addresses[0];  // Fixed: Direct string, no .address
+  const rootUserId = result.rootUserIds[0]; // Assuming single root user
+
+  console.log('Parsed fields: subOrgId=', subOrgId, 'keyId=', keyId, 'publicKey=', publicKey, 'rootUserId=', rootUserId);  // Detailed logging
+
   if (!subOrgId || !keyId || !publicKey || !rootUserId) {
     throw new Error("Missing data in Turnkey response");
   }
@@ -169,6 +181,24 @@ router.post('/turnkey-auth', async (req, res) => {
     res.json({ success: true, sub_org_id: subOrgId });
   } catch (e) {
     console.error(`Auth failed: ${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /mini-app/clear – Clear DB state for user
+router.post('/mini-app/clear', async (req, res) => {
+  const { telegram_id } = req.body;
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    // Clear or deactivate wallet/user data – example; customize as needed
+    await client.query("UPDATE turnkey_wallets SET is_active = FALSE WHERE telegram_id = $1", [telegram_id]);
+    await client.query("UPDATE users SET public_key = NULL, user_email = NULL, turnkey_user_id = NULL WHERE telegram_id = $1", [telegram_id]);
+    await client.query('COMMIT');
+    client.release();
+    res.json({ success: true });
+  } catch (e) {
+    console.error(`Clear failed: ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });

@@ -7,7 +7,8 @@
     <title>LumenBro Mini App</title>
     <link rel="stylesheet" href="/mini-app/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/static/turnkey.min.js"></script>
+    <script src="/static/turnkey.js"></script> <!-- Updated to esbuild output (non-min for dev) -->
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
 
 <body>
@@ -20,17 +21,46 @@
     <script src="/mini-app/auth.js"></script>
     <script src="/mini-app/login.js"></script>
     <script src="/mini-app/recovery.js"></script>
+    <script src="/mini-app/clear.js"></script>  <!-- New script for clear -->
     <script>
-        const telegramApp = window.Telegram.WebApp;  // Declare once here
-        const params = new URLSearchParams(window.location.search);
-        const action = params.get('action');
-        if (action === 'register') {
-            window.register();
-        } else if (action === 'login') {
-            window.login();
-        } else if (action === 'recover') {
-            window.recover();
-        }
+        window.addEventListener('load', function () {  // Wait for all resources (including bundle)
+            console.log('All loaded – checking Turnkey...');
+            if (!window.Turnkey) {
+                console.error('Turnkey global not set after load. Check bundle content for errors.');
+            } else {
+                console.log('Turnkey ready:', window.Turnkey);
+            }
+            const telegramApp = window.Telegram.WebApp;
+            window.params = new URLSearchParams(window.location.search);
+            window.orgId = window.params.get('orgId') || 'global-org-id';  // Set global orgId from query param
+            const action = window.params.get('action');
+            if (action === 'register') {
+                window.register();
+            } else if (action === 'login') {
+                window.login();
+            } else if (action === 'recover') {
+                window.recover();
+            }
+
+            // Debug function and button (made global)
+            window.checkCloudStorage = async function() {
+                return new Promise((resolve, reject) => {
+                    Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+                        if (error) {
+                            console.error('Cloud storage error:', error);
+                            reject(error);
+                        } else {
+                            console.log('Stored TURNKEY_API_KEY:', value ? JSON.parse(value) : 'No key stored');
+                            resolve(value ? JSON.parse(value) : null);
+                        }
+                    });
+                });
+            }
+
+            // Add buttons to trigger debug and clear
+            document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()">Check Cloud Storage</button>';
+            document.getElementById('content').innerHTML += '<button onclick="window.unregister()">Unregister (Clear)</button>';
+        });
     </script>
 </body>
 
