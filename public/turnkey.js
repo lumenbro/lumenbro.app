@@ -37247,27 +37247,62 @@ ${prettyStateOverride(stateOverride)}`;
   console.log("turnkey-entry.js starting...");
   (async () => {
     try {
-      const TurnkeyBrowserClient2 = (await Promise.resolve().then(() => (init_dist10(), dist_exports4))).TurnkeyBrowserClient;
-      const IframeStamper2 = (await Promise.resolve().then(() => (init_dist4(), dist_exports2))).IframeStamper;
-      const getWebAuthnAttestation2 = (await Promise.resolve().then(() => (init_dist3(), dist_exports))).getWebAuthnAttestation;
-      const TelegramCloudStorageStamper2 = (await Promise.resolve().then(() => (init_dist11(), dist_exports5))).TelegramCloudStorageStamper;
+      let base64urlToHex2 = function(base64url) {
+        let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const binary = atob(base64);
+        let hex = "";
+        for (let i = 0; i < binary.length; i++) {
+          hex += binary.charCodeAt(i).toString(16).padStart(2, "0");
+        }
+        return hex;
+      };
+      var base64urlToHex = base64urlToHex2;
+      const { TurnkeyBrowserClient: TurnkeyBrowserClient2 } = await Promise.resolve().then(() => (init_dist10(), dist_exports4));
+      const { IframeStamper: IframeStamper2 } = await Promise.resolve().then(() => (init_dist4(), dist_exports2));
+      const { getWebAuthnAttestation: getWebAuthnAttestation2 } = await Promise.resolve().then(() => (init_dist3(), dist_exports));
+      const { TelegramCloudStorageStamper: TelegramCloudStorageStamper2 } = await Promise.resolve().then(() => (init_dist11(), dist_exports5));
       window.Turnkey = {
         TurnkeyBrowserClient: TurnkeyBrowserClient2,
         IframeStamper: IframeStamper2,
         getWebAuthnAttestation: getWebAuthnAttestation2,
         TelegramCloudStorageStamper: TelegramCloudStorageStamper2,
-        // Expose the class (use TelegramCloudStorageStamper.create() in client code)
-        generateP256KeyPair: async () => {
+        // For persistent API keys (ECDSA for signing)
+        generateP256ApiKeyPair: async () => {
           const keyPair = await crypto.subtle.generateKey(
             { name: "ECDSA", namedCurve: "P-256" },
             true,
             ["sign", "verify"]
           );
-          const publicKeyRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
-          const privateKeyRaw = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-          const publicKeyHex = Array.from(new Uint8Array(publicKeyRaw)).map((b) => b.toString(16).padStart(2, "0")).join("");
-          const privateKeyHex = Array.from(new Uint8Array(privateKeyRaw)).map((b) => b.toString(16).padStart(2, "0")).join("");
-          return { publicKey: publicKeyHex, privateKey: privateKeyHex };
+          const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+          const privateJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+          const xHex = base64urlToHex2(publicJwk.x).padStart(64, "0");
+          const yHex = base64urlToHex2(publicJwk.y).padStart(64, "0");
+          const yLastByte = parseInt(yHex.slice(-2), 16);
+          const prefix = yLastByte % 2 === 0 ? "02" : "03";
+          const publicHex = prefix + xHex;
+          const privateHex = base64urlToHex2(privateJwk.d).padStart(64, "0");
+          console.log("Generated API keyPair:", { publicKey: publicHex, privateKey: privateHex });
+          return { publicKey: publicHex, privateKey: privateHex };
+        },
+        // For ephemeral keys (ECDH for HPKE decryption)
+        generateP256EphemeralKeyPair: async () => {
+          const keyPair = await crypto.subtle.generateKey(
+            { name: "ECDH", namedCurve: "P-256" },
+            true,
+            ["deriveKey", "deriveBits"]
+          );
+          const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+          const privateJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+          const xHex = base64urlToHex2(publicJwk.x).padStart(64, "0");
+          const yHex = base64urlToHex2(publicJwk.y).padStart(64, "0");
+          const yLastByte = parseInt(yHex.slice(-2), 16);
+          const prefix = yLastByte % 2 === 0 ? "02" : "03";
+          const publicHex = prefix + xHex;
+          const uncompressedPublic = "04" + xHex + yHex;
+          const privateHex = base64urlToHex2(privateJwk.d).padStart(64, "0");
+          console.log("Generated ephemeral keyPair:", { publicKey: publicHex, privateKey: privateHex, uncompressedPublic });
+          return { publicKey: publicHex, privateKey: privateHex, uncompressedPublic };
         }
       };
       console.log("turnkey-entry.js finished \u2013 window.Turnkey set.");

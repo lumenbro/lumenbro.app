@@ -1,8 +1,8 @@
 // public/mini-app/auth.js - Client-side registration (no WebAuthn)
 window.register = async function () {
     try {
-        if (!window.Turnkey || !window.Turnkey.generateP256KeyPair) {
-            console.error('Turnkey bundle not loaded or generateP256KeyPair missing. Check Network tab for /static/turnkey.min.js load (200 OK). Rebuild bundle and ensure path in index.html.');
+        if (!window.Turnkey || !window.Turnkey.generateP256ApiKeyPair) {
+            console.error('Turnkey bundle not loaded or generateP256ApiKeyPair missing. Check Network tab for /static/turnkey.min.js load (200 OK). Rebuild bundle and ensure path in index.html.');
             throw new Error('Turnkey not available');
         }
 
@@ -30,7 +30,7 @@ window.register = async function () {
         const email = prompt('Enter your email:') || 'unknown@lumenbro.com';
 
         // Generate P256 keypair for API keys (no WebAuthn)
-        const keyPair = await window.Turnkey.generateP256KeyPair();
+        const keyPair = await window.Turnkey.generateP256ApiKeyPair();
 
         // Fetch sub-org from backend (send public key for root user API key)
         const response = await fetch('/mini-app/create-sub-org', {
@@ -47,7 +47,7 @@ window.register = async function () {
         if (!response.ok) throw new Error('Backend error: ' + response.statusText);
         const { subOrgId } = await response.json();
 
-        // Create stamper and store PRIVATE key in Telegram Cloud
+        // Create stamper and store RAW PRIVATE key in Telegram Cloud
         const stamper = await window.Turnkey.TelegramCloudStorageStamper.create({
             cloudStorageAPIKey: {
                 apiPublicKey: keyPair.publicKey,
