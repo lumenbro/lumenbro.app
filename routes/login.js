@@ -5,6 +5,10 @@ const pool = require('../db');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
 const { decryptCredentialBundle } = require('@turnkey/crypto');
+const KMSService = require('../services/kmsService');
+
+// Initialize KMS service
+const kmsService = new KMSService();
 
 // Fetch BOT_TOKEN from env
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -137,10 +141,13 @@ router.post('/mini-app/create-session', async (req, res) => {
     const expirationSeconds = parseInt(bodyObj.parameters.expirationSeconds, 10);
     const sessionExpiry = new Date(Date.now() + expirationSeconds * 1000).toISOString();
 
-    // Store in DB
+    // Encrypt session keys with KMS before storing
+    const { encryptedData, keyId } = await kmsService.encryptSessionKeys(apiPublicKey, apiPrivateKey);
+
+    // Store encrypted session keys in DB
     await pool.query(
-      "UPDATE users SET temp_api_public_key = $1, temp_api_private_key = $2, turnkey_session_id = $3, session_expiry = $4 WHERE telegram_id = $5",
-      [apiPublicKey, apiPrivateKey, sessionId, sessionExpiry, telegramId]
+      "UPDATE users SET kms_encrypted_session_key = $1, kms_key_id = $2, turnkey_session_id = $3, session_expiry = $4, session_created_at = NOW() WHERE telegram_id = $5",
+      [encryptedData, keyId, sessionId, sessionExpiry, telegramId]
     );
 
     res.json({ success: true });
