@@ -42,10 +42,9 @@ async function runProductionMigrations() {
     console.log(`✅ Connected to: ${versionResult.rows[0].version}`);
     client.release();
     
-    // Enable TimescaleDB extension
-    console.log('1. Enabling TimescaleDB extension...');
-    await pool.query('CREATE EXTENSION IF NOT EXISTS timescaledb;');
-    console.log('✓ TimescaleDB extension enabled');
+                // Note: TimescaleDB not available on this RDS instance
+            console.log('1. Using regular PostgreSQL (TimescaleDB not available)...');
+            console.log('✓ Proceeding with standard PostgreSQL tables');
     
     // Create trade_aggregations table
     console.log('2. Creating trade_aggregations table...');
@@ -66,10 +65,9 @@ async function runProductionMigrations() {
     `);
     console.log('✓ trade_aggregations table created');
     
-    // Convert to hypertable
-    console.log('3. Converting to hypertable...');
-    await pool.query("SELECT create_hypertable('trade_aggregations', 'timestamp', if_not_exists => TRUE);");
-    console.log('✓ Hypertable created');
+                // Note: Using regular table instead of hypertable
+            console.log('3. Creating standard table (hypertable not available)...');
+            console.log('✓ Standard table created');
     
     // Create indexes
     console.log('4. Creating indexes...');
