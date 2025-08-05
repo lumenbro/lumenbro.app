@@ -10,7 +10,7 @@ class KMSService {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
     });
     
-    this.kmsKeyId = process.env.KMS_KEY_ID || 'alias/lumenbro-session-key';
+    this.kmsKeyId = process.env.KMS_KEY_ID || '27958fe3-0f3f-44d4-b21d-9d820d5ad96c';
   }
 
   /**

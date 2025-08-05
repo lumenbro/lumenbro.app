@@ -21,7 +21,7 @@ NODE_ENV=development
 AWS_REGION=us-west-1
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-KMS_KEY_ID=alias/lumenbro-session-key
+KMS_KEY_ID=27958fe3-0f3f-44d4-b21d-9d820d5ad96c
 
 # Telegram Bot (existing)
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token

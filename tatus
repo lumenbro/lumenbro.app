@@ -1,0 +1,5 @@
+[33m381ca86[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m debug API calls to create session HKPE temporary keys for automated transactions
+[33mb6ccf65[m finish auth.js debug registration process, prevent key creation overwrite from for telegram cloud
+[33mb31a01e[m integrate modules specific to telegram mini-app
+[33me02e225[m recover user function debugged and sends correct payload format to turnkey api
+[33mc4f27e7[m functioning website page
