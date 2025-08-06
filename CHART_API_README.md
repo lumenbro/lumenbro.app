@@ -10,6 +10,8 @@ A centralized chart data API server for Stellar DEX trading applications, design
 - **Time-series Database**: TimescaleDB for efficient historical data storage
 - **Background Sync**: Automated data aggregation from Stellar Horizon API
 - **Popular Pairs Tracking**: Optimized caching for frequently accessed pairs
+- **Dynamic Pair Discovery**: Add new trading pairs on-demand via API
+- **Asset Validation**: Automatic validation of Stellar assets and issuers
 
 ## Architecture
 
@@ -23,6 +25,14 @@ A centralized chart data API server for Stellar DEX trading applications, design
 - **Sync Service**: Background data synchronization from Horizon API
 - **WebSocket Service**: Real-time updates for connected clients
 - **API Routes**: RESTful endpoints for chart data access
+
+### Discovery Workflow
+1. **Frontend Search**: User searches for a new trading pair
+2. **Discovery API**: Frontend calls `POST /api/charts/discover` with asset objects
+3. **Validation**: API validates asset format and issuer addresses
+4. **Database Storage**: New pair added to `popular_pairs` table with initial popularity score
+5. **Background Sync**: Sync service automatically picks up new pair and starts data collection
+6. **Chart Data**: Pair becomes available for chart data requests
 
 ## Installation
 
@@ -147,6 +157,63 @@ GET /api/charts/sync-status
 ### Health Check
 ```http
 GET /api/charts/health
+```
+
+### Discover New Pairs
+```http
+POST /api/charts/discover
+Content-Type: application/json
+
+{
+  "baseAsset": {"isNative": true},
+  "counterAsset": {
+    "isNative": false,
+    "code": "NEW_TOKEN",
+    "issuer": "GBNEWTOKEN1234567890..."
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Pair discovered and added to tracking",
+  "pair": {
+    "baseAsset": {"isNative": true},
+    "counterAsset": {
+      "isNative": false,
+      "code": "NEW_TOKEN",
+      "issuer": "GBNEWTOKEN1234567890..."
+    }
+  },
+  "popularityScore": 1
+}
+```
+
+### Get All Tracked Pairs
+```http
+GET /api/charts/pairs
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pairs": [
+    {
+      "baseAsset": {"isNative": true},
+      "counterAsset": {
+        "isNative": false,
+        "code": "USDC",
+        "issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+      },
+      "popularityScore": 100,
+      "lastAccessed": "2025-08-06T02:25:03.000Z"
+    }
+  ],
+  "count": 4
+}
 ```
 
 ## WebSocket API
