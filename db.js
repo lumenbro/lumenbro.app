@@ -6,6 +6,8 @@ const path = require('path');
 let sslConfig = false;
 if (process.env.NODE_ENV === 'production') {
   const pemPath = path.join(__dirname, 'global-bundle.pem');
+  console.log('Looking for SSL certificate at:', pemPath);
+  
   if (fs.existsSync(pemPath)) {
     sslConfig = {
       ca: fs.readFileSync(pemPath),
@@ -16,7 +18,12 @@ if (process.env.NODE_ENV === 'production') {
     console.warn('⚠️  global-bundle.pem not found, using default SSL');
     sslConfig = { rejectUnauthorized: false };
   }
+} else {
+  // For development, use default SSL
+  sslConfig = { rejectUnauthorized: false };
 }
+
+console.log('SSL config:', sslConfig ? 'enabled' : 'disabled');
 
 const pool = new Pool({
   user: process.env.DB_USER,
