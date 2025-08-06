@@ -75,7 +75,9 @@ async function testDiscovery() {
     console.log(`  Total Pairs: ${response.data.count}`);
     console.log('  Pairs:');
     response.data.pairs.forEach((pair, index) => {
-      console.log(`    ${index + 1}. ${pair.baseAsset} / ${pair.counterAsset} (Score: ${pair.popularityScore})`);
+      const baseName = pair.baseAsset.isNative ? 'XLM' : `${pair.baseAsset.code}:${pair.baseAsset.issuer}`;
+      const counterName = pair.counterAsset.isNative ? 'XLM' : `${pair.counterAsset.code}:${pair.counterAsset.issuer}`;
+      console.log(`    ${index + 1}. ${baseName} / ${counterName} (Score: ${pair.popularityScore})`);
     });
   } catch (error) {
     console.log(`❌ Failed: ${error.response?.data?.message || error.message}`);

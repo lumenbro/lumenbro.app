@@ -310,10 +310,17 @@ router.post('/discover', async (req, res) => {
       );
     }
 
+    // Get the updated popularity score
+    const updatedResult = await pool.query(
+      'SELECT popularity_score FROM popular_pairs WHERE base_asset = $1 AND counter_asset = $2',
+      [formatAsset(baseAsset), formatAsset(counterAsset)]
+    );
+
     res.json({
       success: true,
       message: 'Pair discovered and added to tracking',
-      pair: { baseAsset, counterAsset }
+      pair: { baseAsset, counterAsset },
+      popularityScore: updatedResult.rows[0]?.popularity_score || 1
     });
 
   } catch (error) {
