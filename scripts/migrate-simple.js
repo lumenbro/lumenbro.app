@@ -71,14 +71,13 @@ async function runMigrations() {
     `);
     console.log('✓ popular_pairs table created');
     
-    // Insert popular pairs
-    console.log('7. Inserting popular pairs...');
-    await pool.query(`
-      INSERT INTO popular_pairs (base_asset, counter_asset, popularity_score) VALUES
-      ('XLM', 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F', 100),
-      ('XLM', 'USDT:GCQTGZQQ5G4PTM2GLRNCDOTK3DJPJ6JKQIMWZXYGEW3C2I44F7XLVTNR', 90)
-      ON CONFLICT (base_asset, counter_asset) DO NOTHING;
-    `);
+            // Insert popular pairs
+            console.log('7. Inserting popular pairs...');
+            await pool.query(`
+              INSERT INTO popular_pairs (base_asset, counter_asset, popularity_score) VALUES
+              ('XLM', 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F', 100)
+              ON CONFLICT (base_asset, counter_asset) DO NOTHING;
+            `);
     console.log('✓ Popular pairs inserted');
     
     // Create function and trigger
