@@ -11,7 +11,7 @@ const POPULAR_PAIRS = [
 ];
 
 // Resolution intervals to sync
-const RESOLUTIONS = ['1m', '5m', '15m', '1h', '4h', '1d'];
+const RESOLUTIONS = ['1m', '5m', '15m', '1h', '1d'];
 
 // Asset format helpers
 const formatAsset = (asset) => {
@@ -164,7 +164,10 @@ class SyncService {
       
       return [];
     } catch (error) {
-      console.error('Horizon API error:', error);
+      console.error('Horizon API error:', error.message);
+      if (error.response && error.response.data) {
+        console.error('Horizon error details:', JSON.stringify(error.response.data, null, 2));
+      }
       return null;
     }
   }
