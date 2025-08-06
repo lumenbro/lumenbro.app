@@ -194,6 +194,27 @@ class SyncService {
   // Store a single record in the database
   async storeRecord(record, baseAsset, counterAsset, resolution) {
     try {
+      // Parse timestamp from Horizon API format
+      let timestamp;
+      if (record.timestamp) {
+        // Handle different timestamp formats from Horizon
+        if (typeof record.timestamp === 'string') {
+          timestamp = new Date(record.timestamp);
+        } else if (typeof record.timestamp === 'number') {
+          timestamp = new Date(record.timestamp * 1000); // Convert seconds to milliseconds
+        } else {
+          timestamp = new Date();
+        }
+      } else {
+        timestamp = new Date();
+      }
+
+      // Validate timestamp
+      if (isNaN(timestamp.getTime())) {
+        console.error('Invalid timestamp from Horizon API:', record.timestamp);
+        return false;
+      }
+
       const query = `
         INSERT INTO trade_aggregations (
           timestamp, base_asset, counter_asset, resolution,
@@ -211,7 +232,7 @@ class SyncService {
       `;
 
       await pool.query(query, [
-        new Date(record.timestamp),
+        timestamp,
         baseAsset,
         counterAsset,
         resolution,
