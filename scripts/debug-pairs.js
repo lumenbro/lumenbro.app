@@ -47,13 +47,19 @@ async function debugPairs() {
       // Convert resolution interval to readable format
       let resolutionName = 'Unknown';
       if (row.resolution) {
-        const ms = parseInt(row.resolution.replace('ms', ''));
+        // Handle both string and interval formats
+        let resolutionStr = row.resolution;
+        if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
+          resolutionStr = row.resolution.milliseconds + 'ms';
+        }
+        
+        const ms = parseInt(resolutionStr.replace('ms', ''));
         if (ms === 60000) resolutionName = '1m';
         else if (ms === 300000) resolutionName = '5m';
         else if (ms === 900000) resolutionName = '15m';
         else if (ms === 3600000) resolutionName = '1h';
         else if (ms === 86400000) resolutionName = '1d';
-        else resolutionName = row.resolution;
+        else resolutionName = resolutionStr;
       }
       console.log(`  ${row.asset_pair} - ${resolutionName} - Last: ${row.last_synced}`);
     });
@@ -81,13 +87,19 @@ async function debugPairs() {
         // Convert resolution interval to readable format
         let resolutionName = 'Unknown';
         if (row.resolution) {
-          const ms = parseInt(row.resolution.replace('ms', ''));
+          // Handle both string and interval formats
+          let resolutionStr = row.resolution;
+          if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
+            resolutionStr = row.resolution.milliseconds + 'ms';
+          }
+          
+          const ms = parseInt(resolutionStr.replace('ms', ''));
           if (ms === 60000) resolutionName = '1m';
           else if (ms === 300000) resolutionName = '5m';
           else if (ms === 900000) resolutionName = '15m';
           else if (ms === 3600000) resolutionName = '1h';
           else if (ms === 86400000) resolutionName = '1d';
-          else resolutionName = row.resolution;
+          else resolutionName = resolutionStr;
         }
         console.log(`  ${row.base_asset} / ${row.counter_asset} (${resolutionName}): ${row.data_points} points (${row.earliest} to ${row.latest})`);
       });
@@ -114,13 +126,19 @@ async function debugPairs() {
         // Convert resolution interval to readable format
         let resolutionName = 'Unknown';
         if (row.resolution) {
-          const ms = parseInt(row.resolution.replace('ms', ''));
+          // Handle both string and interval formats
+          let resolutionStr = row.resolution;
+          if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
+            resolutionStr = row.resolution.milliseconds + 'ms';
+          }
+          
+          const ms = parseInt(resolutionStr.replace('ms', ''));
           if (ms === 60000) resolutionName = '1m';
           else if (ms === 300000) resolutionName = '5m';
           else if (ms === 900000) resolutionName = '15m';
           else if (ms === 3600000) resolutionName = '1h';
           else if (ms === 86400000) resolutionName = '1d';
-          else resolutionName = row.resolution;
+          else resolutionName = resolutionStr;
         }
         console.log(`  ${row.asset_pair} - ${resolutionName} - ${row.last_synced}`);
       });
