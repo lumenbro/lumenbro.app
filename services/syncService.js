@@ -210,6 +210,11 @@ class SyncService {
         timestamp = new Date();
       }
 
+      // Debug: Log the timestamp processing
+      console.log(`Processing timestamp: ${record.timestamp} (type: ${typeof record.timestamp})`);
+      console.log(`Created Date object: ${timestamp.toISOString()}`);
+      console.log(`Is valid: ${!isNaN(timestamp.getTime())}`);
+
       // Validate timestamp (only check if it's a valid date, not NaN)
       if (isNaN(timestamp.getTime())) {
         console.error('Invalid timestamp from Horizon API:', record.timestamp);
