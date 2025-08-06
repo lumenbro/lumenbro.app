@@ -7,7 +7,7 @@ const HORIZON_URL = process.env.HORIZON_URL || 'https://horizon.stellar.org';
 
 // Popular asset pairs to sync
 const POPULAR_PAIRS = [
-  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F' } }
+  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GBRD47ZL6QZECVTQKN8ES4TR4HIZZQDNBZ5PALI2VP2DW46JVK0E9H1V' } }
 ];
 
 // Resolution intervals to sync (in milliseconds as required by Horizon API)
@@ -160,13 +160,20 @@ class SyncService {
       const params = {
         base_asset_type: pair.baseAsset.isNative ? 'native' : 'credit_alphanum4',
         counter_asset_type: pair.counterAsset.isNative ? 'native' : 'credit_alphanum4',
-        base_asset_code: pair.baseAsset.isNative ? undefined : pair.baseAsset.code,
-        base_asset_issuer: pair.baseAsset.isNative ? undefined : pair.baseAsset.issuer,
-        counter_asset_code: pair.counterAsset.isNative ? undefined : pair.counterAsset.code,
-        counter_asset_issuer: pair.counterAsset.isNative ? undefined : pair.counterAsset.issuer,
         resolution: resolution,
         limit: Math.min(hours * 60, 200)
       };
+
+      // Add asset-specific parameters only if not native
+      if (!pair.baseAsset.isNative) {
+        params.base_asset_code = pair.baseAsset.code;
+        params.base_asset_issuer = pair.baseAsset.issuer;
+      }
+      
+      if (!pair.counterAsset.isNative) {
+        params.counter_asset_code = pair.counterAsset.code;
+        params.counter_asset_issuer = pair.counterAsset.issuer;
+      }
 
       const response = await this.horizonClient.get(url, { params });
       
