@@ -210,9 +210,9 @@ class SyncService {
         timestamp = new Date();
       }
 
-      // Debug: Log the timestamp processing
+      // Debug: Log the timestamp processing (without toISOString to avoid RangeError)
       console.log(`Processing timestamp: ${record.timestamp} (type: ${typeof record.timestamp})`);
-      console.log(`Created Date object: ${timestamp.toISOString()}`);
+      console.log(`Created Date object: ${timestamp.getTime()}`);
       console.log(`Is valid: ${!isNaN(timestamp.getTime())}`);
 
       // Validate timestamp (only check if it's a valid date, not NaN)
