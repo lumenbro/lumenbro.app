@@ -142,7 +142,7 @@ async function testPopularPairs() {
         console.log(`  Latest: ${result.records[0].timestamp}`);
       }
     } else {
-      console.log(`  Error: ${result.error?.invalid_field || result.error}`);
+      console.log(`  Error: ${JSON.stringify(result.error, null, 2)}`);
     }
   }
   console.log('');

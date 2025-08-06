@@ -14,7 +14,8 @@
     "add-constraint": "node scripts/add-unique-constraint.js",
     "test-endpoints": "node scripts/test-endpoints.js",
     "debug-pairs": "node scripts/debug-pairs.js",
-    "validate-assets": "node scripts/validate-assets.js"
+    "validate-assets": "node scripts/validate-assets.js",
+    "update-assets": "node scripts/update-verified-assets.js"
   },
   "keywords": [],
   "author": "",
