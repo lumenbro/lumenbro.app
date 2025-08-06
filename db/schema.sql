@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS trade_aggregations (
     close DECIMAL(20,8) NOT NULL,
     base_volume DECIMAL(20,8) NOT NULL,
     counter_volume DECIMAL(20,8) NOT NULL,
-    trade_count INTEGER NOT NULL
+    trade_count INTEGER NOT NULL,
+    UNIQUE(timestamp, base_asset, counter_asset, resolution)
 );
 
 -- Convert to hypertable
@@ -55,13 +56,7 @@ CREATE TABLE IF NOT EXISTS popular_pairs (
 
 -- Insert some common Stellar asset pairs
 INSERT INTO popular_pairs (base_asset, counter_asset, popularity_score) VALUES
-('XLM', 'USDC', 100),
-('XLM', 'USDT', 90),
-('XLM', 'BTC', 80),
-('XLM', 'ETH', 70),
-('USDC', 'USDT', 60),
-('BTC', 'USDC', 50),
-('ETH', 'USDC', 50)
+('XLM', 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN', 100)
 ON CONFLICT (base_asset, counter_asset) DO NOTHING;
 
 -- Create function to update last_accessed timestamp

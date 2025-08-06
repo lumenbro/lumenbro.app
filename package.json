@@ -10,7 +10,8 @@
     "setup": "node scripts/setup.js",
     "migrate": "node scripts/migrate-simple.js",
     "migrate:prod": "NODE_ENV=production node scripts/migrate-production.js",
-    "test-api": "node scripts/test-api.js"
+    "test-api": "node scripts/test-api.js",
+    "add-constraint": "node scripts/add-unique-constraint.js"
   },
   "keywords": [],
   "author": "",
