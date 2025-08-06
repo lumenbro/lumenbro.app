@@ -201,7 +201,8 @@ class SyncService {
         if (typeof record.timestamp === 'string') {
           timestamp = new Date(record.timestamp);
         } else if (typeof record.timestamp === 'number') {
-          timestamp = new Date(record.timestamp * 1000); // Convert seconds to milliseconds
+          // Horizon sends timestamps in milliseconds, so use directly
+          timestamp = new Date(record.timestamp);
         } else {
           timestamp = new Date();
         }
@@ -209,7 +210,7 @@ class SyncService {
         timestamp = new Date();
       }
 
-      // Validate timestamp
+      // Validate timestamp (only check if it's a valid date, not NaN)
       if (isNaN(timestamp.getTime())) {
         console.error('Invalid timestamp from Horizon API:', record.timestamp);
         return false;
