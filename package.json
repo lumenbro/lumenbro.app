@@ -13,7 +13,8 @@
     "test-api": "node scripts/test-api.js",
     "add-constraint": "node scripts/add-unique-constraint.js",
     "test-endpoints": "node scripts/test-endpoints.js",
-    "debug-pairs": "node scripts/debug-pairs.js"
+    "debug-pairs": "node scripts/debug-pairs.js",
+    "validate-assets": "node scripts/validate-assets.js"
   },
   "keywords": [],
   "author": "",

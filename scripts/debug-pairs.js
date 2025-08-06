@@ -44,7 +44,18 @@ async function debugPairs() {
     console.log('🔄 Sync Status:');
     const syncResult = await pool.query('SELECT * FROM sync_status ORDER BY updated_at DESC LIMIT 10');
     syncResult.rows.forEach(row => {
-      console.log(`  ${row.asset_pair} - ${row.resolution} - Last: ${row.last_synced}`);
+      // Convert resolution interval to readable format
+      let resolutionName = 'Unknown';
+      if (row.resolution) {
+        const ms = parseInt(row.resolution.replace('ms', ''));
+        if (ms === 60000) resolutionName = '1m';
+        else if (ms === 300000) resolutionName = '5m';
+        else if (ms === 900000) resolutionName = '15m';
+        else if (ms === 3600000) resolutionName = '1h';
+        else if (ms === 86400000) resolutionName = '1d';
+        else resolutionName = row.resolution;
+      }
+      console.log(`  ${row.asset_pair} - ${resolutionName} - Last: ${row.last_synced}`);
     });
     console.log('');
 
@@ -67,7 +78,18 @@ async function debugPairs() {
       console.log('  ❌ No trade data found in database');
     } else {
       dataResult.rows.forEach(row => {
-        console.log(`  ${row.base_asset} / ${row.counter_asset} (${row.resolution}): ${row.data_points} points (${row.earliest} to ${row.latest})`);
+        // Convert resolution interval to readable format
+        let resolutionName = 'Unknown';
+        if (row.resolution) {
+          const ms = parseInt(row.resolution.replace('ms', ''));
+          if (ms === 60000) resolutionName = '1m';
+          else if (ms === 300000) resolutionName = '5m';
+          else if (ms === 900000) resolutionName = '15m';
+          else if (ms === 3600000) resolutionName = '1h';
+          else if (ms === 86400000) resolutionName = '1d';
+          else resolutionName = row.resolution;
+        }
+        console.log(`  ${row.base_asset} / ${row.counter_asset} (${resolutionName}): ${row.data_points} points (${row.earliest} to ${row.latest})`);
       });
     }
     console.log('');
@@ -89,7 +111,18 @@ async function debugPairs() {
       console.log('  ❌ No recent sync activity');
     } else {
       recentSyncs.rows.forEach(row => {
-        console.log(`  ${row.asset_pair} - ${row.resolution} - ${row.last_synced}`);
+        // Convert resolution interval to readable format
+        let resolutionName = 'Unknown';
+        if (row.resolution) {
+          const ms = parseInt(row.resolution.replace('ms', ''));
+          if (ms === 60000) resolutionName = '1m';
+          else if (ms === 300000) resolutionName = '5m';
+          else if (ms === 900000) resolutionName = '15m';
+          else if (ms === 3600000) resolutionName = '1h';
+          else if (ms === 86400000) resolutionName = '1d';
+          else resolutionName = row.resolution;
+        }
+        console.log(`  ${row.asset_pair} - ${resolutionName} - ${row.last_synced}`);
       });
     }
 
