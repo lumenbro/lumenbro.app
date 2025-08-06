@@ -3,6 +3,31 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+// Helper function to convert resolution to readable format
+function getResolutionName(resolution) {
+  if (!resolution) return 'Unknown';
+  
+  let resolutionStr = resolution;
+  
+  // Handle different resolution formats
+  if (typeof resolution === 'object' && resolution.milliseconds) {
+    resolutionStr = resolution.milliseconds + 'ms';
+  } else if (typeof resolution === 'number') {
+    resolutionStr = resolution + 'ms';
+  } else if (typeof resolution !== 'string') {
+    resolutionStr = String(resolution);
+  }
+  
+  // Convert to readable format
+  const ms = parseInt(resolutionStr.replace('ms', ''));
+  if (ms === 60000) return '1m';
+  else if (ms === 300000) return '5m';
+  else if (ms === 900000) return '15m';
+  else if (ms === 3600000) return '1h';
+  else if (ms === 86400000) return '1d';
+  else return resolutionStr;
+}
+
 async function debugPairs() {
   console.log('🔍 Debugging Pairs and Data...\n');
 
@@ -44,23 +69,7 @@ async function debugPairs() {
     console.log('🔄 Sync Status:');
     const syncResult = await pool.query('SELECT * FROM sync_status ORDER BY updated_at DESC LIMIT 10');
     syncResult.rows.forEach(row => {
-      // Convert resolution interval to readable format
-      let resolutionName = 'Unknown';
-      if (row.resolution) {
-        // Handle both string and interval formats
-        let resolutionStr = row.resolution;
-        if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
-          resolutionStr = row.resolution.milliseconds + 'ms';
-        }
-        
-        const ms = parseInt(resolutionStr.replace('ms', ''));
-        if (ms === 60000) resolutionName = '1m';
-        else if (ms === 300000) resolutionName = '5m';
-        else if (ms === 900000) resolutionName = '15m';
-        else if (ms === 3600000) resolutionName = '1h';
-        else if (ms === 86400000) resolutionName = '1d';
-        else resolutionName = resolutionStr;
-      }
+      const resolutionName = getResolutionName(row.resolution);
       console.log(`  ${row.asset_pair} - ${resolutionName} - Last: ${row.last_synced}`);
     });
     console.log('');
@@ -84,23 +93,7 @@ async function debugPairs() {
       console.log('  ❌ No trade data found in database');
     } else {
       dataResult.rows.forEach(row => {
-        // Convert resolution interval to readable format
-        let resolutionName = 'Unknown';
-        if (row.resolution) {
-          // Handle both string and interval formats
-          let resolutionStr = row.resolution;
-          if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
-            resolutionStr = row.resolution.milliseconds + 'ms';
-          }
-          
-          const ms = parseInt(resolutionStr.replace('ms', ''));
-          if (ms === 60000) resolutionName = '1m';
-          else if (ms === 300000) resolutionName = '5m';
-          else if (ms === 900000) resolutionName = '15m';
-          else if (ms === 3600000) resolutionName = '1h';
-          else if (ms === 86400000) resolutionName = '1d';
-          else resolutionName = resolutionStr;
-        }
+        const resolutionName = getResolutionName(row.resolution);
         console.log(`  ${row.base_asset} / ${row.counter_asset} (${resolutionName}): ${row.data_points} points (${row.earliest} to ${row.latest})`);
       });
     }
@@ -123,23 +116,7 @@ async function debugPairs() {
       console.log('  ❌ No recent sync activity');
     } else {
       recentSyncs.rows.forEach(row => {
-        // Convert resolution interval to readable format
-        let resolutionName = 'Unknown';
-        if (row.resolution) {
-          // Handle both string and interval formats
-          let resolutionStr = row.resolution;
-          if (typeof row.resolution === 'object' && row.resolution.milliseconds) {
-            resolutionStr = row.resolution.milliseconds + 'ms';
-          }
-          
-          const ms = parseInt(resolutionStr.replace('ms', ''));
-          if (ms === 60000) resolutionName = '1m';
-          else if (ms === 300000) resolutionName = '5m';
-          else if (ms === 900000) resolutionName = '15m';
-          else if (ms === 3600000) resolutionName = '1h';
-          else if (ms === 86400000) resolutionName = '1d';
-          else resolutionName = resolutionStr;
-        }
+        const resolutionName = getResolutionName(row.resolution);
         console.log(`  ${row.asset_pair} - ${resolutionName} - ${row.last_synced}`);
       });
     }
