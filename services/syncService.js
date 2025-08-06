@@ -8,9 +8,7 @@ const HORIZON_URL = process.env.HORIZON_URL || 'https://horizon.stellar.org';
 // Popular asset pairs to sync
 const POPULAR_PAIRS = [
   { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F' } },
-  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDT', issuer: 'GCQTGZQQ5G4PTM2GLRNCDOTK3DJPJ6JKQIMWZXYGEW3C2I44F7XLVTNR' } },
-  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'BTC', issuer: 'GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYLPFD5V2C3QN5KRSV2ANMKDLO6Q7' } },
-  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'ETH', issuer: 'GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYLPFD5V2C3QN5KRSV2ANMKDLO6Q7' } }
+  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDT', issuer: 'GCQTGZQQ5G4PTM2GLRNCDOTK3DJPJ6JKQIMWZXYGEW3C2I44F7XLVTNR' } }
 ];
 
 // Resolution intervals to sync
