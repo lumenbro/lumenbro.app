@@ -199,7 +199,9 @@ class SyncService {
       if (record.timestamp) {
         // Handle different timestamp formats from Horizon
         if (typeof record.timestamp === 'string') {
-          timestamp = new Date(record.timestamp);
+          // Convert string timestamp to number first, then create Date
+          const timestampNum = parseInt(record.timestamp, 10);
+          timestamp = new Date(timestampNum);
         } else if (typeof record.timestamp === 'number') {
           // Horizon sends timestamps in milliseconds, so use directly
           timestamp = new Date(record.timestamp);
