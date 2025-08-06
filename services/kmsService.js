@@ -9,7 +9,7 @@ class KMSService {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
     });
-    
+
     this.kmsKeyId = process.env.KMS_KEY_ID || '27958fe3-0f3f-44d4-b21d-9d820d5ad96c';
   }
 
@@ -21,16 +21,14 @@ class KMSService {
    */
   async encryptSessionKeys(publicKey, privateKey) {
     try {
-      // Combine public and private keys into a single payload
+      // Create a JSON object with the session keys using the field names Python expects
       const sessionData = {
-        publicKey,
-        privateKey,
-        timestamp: new Date().toISOString(),
-        version: 1
+        apiPublicKey: publicKey,
+        apiPrivateKey: privateKey
       };
-      
+
       const plaintext = JSON.stringify(sessionData);
-      
+
       const params = {
         KeyId: this.kmsKeyId,
         Plaintext: Buffer.from(plaintext, 'utf8'),
@@ -41,7 +39,7 @@ class KMSService {
       };
 
       const result = await this.kms.encrypt(params).promise();
-      
+
       return {
         encryptedData: result.CiphertextBlob.toString('base64'),
         keyId: result.KeyId
@@ -71,10 +69,10 @@ class KMSService {
       const result = await this.kms.decrypt(params).promise();
       const decryptedText = result.Plaintext.toString('utf8');
       const sessionData = JSON.parse(decryptedText);
-      
+
       return {
-        publicKey: sessionData.publicKey,
-        privateKey: sessionData.privateKey
+        publicKey: sessionData.apiPublicKey,
+        privateKey: sessionData.apiPrivateKey
       };
     } catch (error) {
       console.error('KMS decryption failed:', error);
@@ -130,4 +128,4 @@ class KMSService {
   }
 }
 
-module.exports = KMSService; 
+module.exports = KMSService;
