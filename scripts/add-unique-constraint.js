@@ -1,24 +1,23 @@
 require('dotenv').config();
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 async function addUniqueConstraint() {
   console.log('🔧 Adding unique constraint to trade_aggregations table...');
 
-  // Configure SSL based on environment
+  // Configure SSL for RDS with the .pem file
   let sslConfig = false;
   if (process.env.NODE_ENV === 'production') {
-    if (process.env.SSL_CA_PATH) {
-      try {
-        const fs = require('fs');
-        sslConfig = {
-          ca: fs.readFileSync(process.env.SSL_CA_PATH),
-          rejectUnauthorized: true
-        };
-      } catch (error) {
-        console.warn('SSL CA file not found, using default SSL');
-        sslConfig = { rejectUnauthorized: false };
-      }
+    const pemPath = path.join(__dirname, '..', 'global-bundle.pem');
+    if (fs.existsSync(pemPath)) {
+      sslConfig = {
+        ca: fs.readFileSync(pemPath),
+        rejectUnauthorized: true
+      };
+      console.log('✅ Using SSL certificate from global-bundle.pem');
     } else {
+      console.warn('⚠️  global-bundle.pem not found, using default SSL');
       sslConfig = { rejectUnauthorized: false };
     }
   }

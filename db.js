@@ -1,21 +1,19 @@
 const { Pool } = require('pg');
 const fs = require('fs');
+const path = require('path');
 
 // Configure SSL based on environment
 let sslConfig = false;
 if (process.env.NODE_ENV === 'production') {
-  if (process.env.SSL_CA_PATH) {
-    try {
-      sslConfig = { 
-        ca: fs.readFileSync(process.env.SSL_CA_PATH),
-        rejectUnauthorized: true
-      };
-    } catch (error) {
-      console.warn('SSL CA file not found, using default SSL');
-      sslConfig = { rejectUnauthorized: false };
-    }
+  const pemPath = path.join(__dirname, 'global-bundle.pem');
+  if (fs.existsSync(pemPath)) {
+    sslConfig = {
+      ca: fs.readFileSync(pemPath),
+      rejectUnauthorized: true
+    };
+    console.log('✅ Using SSL certificate from global-bundle.pem');
   } else {
-    // For RDS, we can use default SSL without CA file
+    console.warn('⚠️  global-bundle.pem not found, using default SSL');
     sslConfig = { rejectUnauthorized: false };
   }
 }
