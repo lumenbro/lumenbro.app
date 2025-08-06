@@ -7,7 +7,7 @@ const HORIZON_URL = process.env.HORIZON_URL || 'https://horizon.stellar.org';
 
 // Popular asset pairs to sync
 const POPULAR_PAIRS = [
-  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GBRD47ZL6QZECVTQKN8ES4TR4HIZZQDNBZ5PALI2VP2DW46JVK0E9H1V' } }
+  { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' } }
 ];
 
 // Resolution intervals to sync (in milliseconds as required by Horizon API)

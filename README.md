@@ -24,6 +24,13 @@ Key goals: Non-custodial wallets, automated trading without per-action auth, and
   - /recovery: Email-based recovery with policy updates.
   - Mini App integration: /mini-app for Telegram-gated flows (auth/login/recovery), using stamper for API key storage in Cloud Storage.
 
+- **Chart Data API**:
+  - Centralized chart data aggregation from Stellar Horizon
+  - Real-time WebSocket streaming for live updates
+  - Batch API for multiple asset pairs
+  - Caching with Redis for performance
+  - Background sync service for data collection
+
 - **Security & Automation**:
   - Turnkey sub-orgs per user for isolated wallets.
   - Sessions (up to 1 year) for bot-automated signing (e.g., copy trades without user clicks).
@@ -33,6 +40,152 @@ Key goals: Non-custodial wallets, automated trading without per-action auth, and
 - **Backend**:
   - Node.js/Express: Handles Turnkey API calls, JWT for legacy auth, DB interactions.
   - Python Bot: Aiogram for Telegram handling, Stellar SDK for transactions.
+
+## API Documentation
+
+### Chart Data API Endpoints
+
+Base URL: `https://lumenbro.com/api/charts`
+
+#### Health Check
+```bash
+GET /health
+```
+**Response:**
+```json
+{
+  "success": true,
+  "status": "healthy",
+  "timestamp": "2025-08-05T23:52:30.329Z",
+  "services": {
+    "database": "connected",
+    "redis": "connected"
+  }
+}
+```
+
+#### Single Chart Data
+```bash
+GET /single?baseAsset=XLM&counterAsset=USDC&resolution=1h&hours=24
+```
+**Parameters:**
+- `baseAsset`: Base asset (e.g., "XLM")
+- `counterAsset`: Counter asset (e.g., "USDC", "USDT")
+- `resolution`: Time interval ("1m", "5m", "15m", "1h", "4h", "1d")
+- `hours`: Number of hours to fetch (1-168)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "timestamp": "2025-08-05T00:00:00Z",
+      "open": "0.12345678",
+      "high": "0.12345678",
+      "low": "0.12345678",
+      "close": "0.12345678",
+      "volume": "1000.00000000"
+    }
+  ]
+}
+```
+
+#### Batch Chart Data
+```bash
+POST /batch
+Content-Type: application/json
+
+{
+  "pairs": [
+    {
+      "baseAsset": "XLM",
+      "counterAsset": "USDC",
+      "resolution": "1h",
+      "hours": 24
+    },
+    {
+      "baseAsset": "XLM", 
+      "counterAsset": "USDT",
+      "resolution": "1h",
+      "hours": 24
+    }
+  ]
+}
+```
+
+#### Popular Pairs
+```bash
+GET /popular
+```
+**Response:**
+```json
+{
+  "success": true,
+  "pairs": [
+    {
+      "baseAsset": {"isNative": true},
+      "counterAsset": {"isNative": false, "code": "USDC"},
+      "popularityScore": 100
+    }
+  ],
+  "count": 7
+}
+```
+
+#### Sync Status
+```bash
+GET /sync-status
+```
+**Response:**
+```json
+{
+  "success": true,
+  "syncStatus": [],
+  "count": 0
+}
+```
+
+#### WebSocket Streaming
+```bash
+wss://lumenbro.com/api/charts/stream
+```
+**Subscribe to updates:**
+```json
+{
+  "action": "subscribe",
+  "pairs": [
+    {
+      "baseAsset": "XLM",
+      "counterAsset": "USDC",
+      "resolution": "1h"
+    }
+  ]
+}
+```
+
+**Unsubscribe:**
+```json
+{
+  "action": "unsubscribe",
+  "pairs": [...]
+}
+```
+
+### Asset Format
+
+Assets are formatted as:
+- **Native XLM**: `{"isNative": true}`
+- **Credit Assets**: `{"isNative": false, "code": "USDC", "issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F"}`
+
+### Error Responses
+
+```json
+{
+  "error": "Invalid asset format. Expected JSON string.",
+  "success": false
+}
+```
 
 ## Tech Stack
 

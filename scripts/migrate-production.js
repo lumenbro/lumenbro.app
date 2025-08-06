@@ -112,13 +112,7 @@ async function runProductionMigrations() {
     console.log('7. Inserting popular pairs...');
     await pool.query(`
       INSERT INTO popular_pairs (base_asset, counter_asset, popularity_score) VALUES
-      ('XLM', 'USDC', 100),
-      ('XLM', 'USDT', 90),
-      ('XLM', 'BTC', 80),
-      ('XLM', 'ETH', 70),
-      ('USDC', 'USDT', 60),
-      ('BTC', 'USDC', 50),
-      ('ETH', 'USDC', 50)
+      ('XLM', 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN', 100)
       ON CONFLICT (base_asset, counter_asset) DO NOTHING;
     `);
     console.log('✓ Popular pairs inserted');
