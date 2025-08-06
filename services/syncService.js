@@ -10,8 +10,8 @@ const POPULAR_PAIRS = [
   { baseAsset: { isNative: true }, counterAsset: { isNative: false, code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F' } }
 ];
 
-// Resolution intervals to sync
-const RESOLUTIONS = ['1m', '5m', '15m', '1h', '1d'];
+// Resolution intervals to sync (in milliseconds as required by Horizon API)
+const RESOLUTIONS = [60000, 300000, 900000, 3600000, 86400000];
 
 // Asset format helpers
 const formatAsset = (asset) => {
@@ -27,6 +27,18 @@ const parseAsset = (assetString) => {
   }
   const [code, issuer] = assetString.split(':');
   return { isNative: false, code, issuer };
+};
+
+// Resolution helper
+const getResolutionName = (resolutionMs) => {
+  const names = {
+    60000: '1m',
+    300000: '5m', 
+    900000: '15m',
+    3600000: '1h',
+    86400000: '1d'
+  };
+  return names[resolutionMs] || `${resolutionMs}ms`;
 };
 
 // Sync service class
@@ -114,13 +126,13 @@ class SyncService {
       const baseAssetStr = formatAsset(pair.baseAsset);
       const counterAssetStr = formatAsset(pair.counterAsset);
       
-      console.log(`Syncing ${baseAssetStr}/${counterAssetStr} ${resolution} data...`);
+      console.log(`Syncing ${baseAssetStr}/${counterAssetStr} ${getResolutionName(resolution)} data...`);
 
       // Get data from Horizon API
       const horizonData = await this.getHorizonData(pair, resolution, hours);
       
       if (!horizonData || horizonData.length === 0) {
-        console.log(`No data found for ${baseAssetStr}/${counterAssetStr} ${resolution}`);
+        console.log(`No data found for ${baseAssetStr}/${counterAssetStr} ${getResolutionName(resolution)}`);
         return;
       }
 
@@ -131,13 +143,13 @@ class SyncService {
         if (success) storedCount++;
       }
 
-      console.log(`Stored ${storedCount}/${horizonData.length} records for ${baseAssetStr}/${counterAssetStr} ${resolution}`);
+      console.log(`Stored ${storedCount}/${horizonData.length} records for ${baseAssetStr}/${counterAssetStr} ${getResolutionName(resolution)}`);
 
       // Update sync status
       await this.updateSyncStatus(baseAssetStr, counterAssetStr, resolution);
 
     } catch (error) {
-      console.error(`Error syncing ${formatAsset(pair.baseAsset)}/${formatAsset(pair.counterAsset)} ${resolution}:`, error);
+      console.error(`Error syncing ${formatAsset(pair.baseAsset)}/${formatAsset(pair.counterAsset)} ${getResolutionName(resolution)}:`, error);
     }
   }
 
