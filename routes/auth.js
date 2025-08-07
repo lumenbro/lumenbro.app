@@ -1,87 +1,94 @@
-// routes/auth.js - Backend for registration, adapted for Mini App
+// routes/auth.js - Backend for Turnkey registration and pioneer management
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const pool = require('../db');
-const turnkeyClient = require('../turnkeyClient'); // Renamed to avoid conflict
 const axios = require('axios');
-const crypto = require('crypto');
 
-// Fetch BOT_TOKEN from env for initData validation
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-// Function to validate Telegram initData
-function validateInitData(initData) {
-    const parsed = new URLSearchParams(initData);
-    const hash = parsed.get('hash');
-    parsed.delete('hash');
-    const dataCheckString = Array.from(parsed.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([key, value]) => `${key}=${value}`)
-        .join('\n');
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-    const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    return computedHash === hash;
-}
-
-// Updated to use API public key for root user, no authenticators
-async function createTurnkeySubOrg(telegramId, email, apiPublicKey) {
-  const params = {
-    subOrganizationName: `User-${telegramId}`,
-    rootQuorumThreshold: 1,
-    rootUsers: [
-      {
-        userName: `User-${telegramId}`,
-        userEmail: email,
-        apiKeys: [
-          {
-            apiKeyName: `User-${telegramId}-APIKey`,
-            publicKey: apiPublicKey,
-            curveType: "API_KEY_CURVE_P256"
-          }
-        ],
-        authenticators: [],  // No passkey
-        oauthProviders: []
-      }
-    ],
-    wallet: {
-      walletName: `Stellar-Wallet-${telegramId}`,
-      accounts: [
-        {
-          curve: "CURVE_ED25519",
-          pathFormat: "PATH_FORMAT_BIP32",
-          path: "m/44'/148'/0'",
-          addressFormat: "ADDRESS_FORMAT_XLM"
-        }
-      ]
+// Check if user can become a pioneer (founder)
+async function checkPioneerEligibility(telegramId) {
+  try {
+    // Check if user was referred (referees cannot become pioneers)
+    const referralCheck = await pool.query(
+      "SELECT 1 FROM referrals WHERE referee_id = $1",
+      [telegramId]
+    );
+    
+    if (referralCheck.rows.length > 0) {
+      return { eligible: false, reason: "Users who were referred cannot become pioneers." };
     }
-  };
 
-  const response = await turnkeyClient.createSubOrganization(params);
-  console.log('Full Turnkey createSubOrganization response:', JSON.stringify(response, null, 2));  // Verbose logging for debugging
+    // Check current pioneer count
+    const pioneerCount = await pool.query("SELECT COUNT(*) FROM founders");
+    const currentCount = parseInt(pioneerCount.rows[0].count);
+    
+    if (currentCount >= 25) {
+      return { eligible: false, reason: "Sorry, the pioneer program is full! Only 25 slots are available." };
+    }
 
-  // Parse V7 response structure
-  const result = response.activity?.result?.createSubOrganizationResultV7;
-  if (!result) {
-    console.error('Invalid response structure:', response);
-    throw new Error("Invalid response structure from Turnkey");
+    return { eligible: true, currentCount };
+  } catch (error) {
+    console.error('Error checking pioneer eligibility:', error);
+    return { eligible: false, reason: "Error checking pioneer eligibility." };
   }
-
-  const subOrgId = result.subOrganizationId;
-  const wallet = result.wallet;
-  const keyId = wallet.walletId;
-  const publicKey = wallet.addresses[0];  // Fixed: Direct string, no .address
-  const rootUserId = result.rootUserIds[0]; // Assuming single root user
-
-  console.log('Parsed fields: subOrgId=', subOrgId, 'keyId=', keyId, 'publicKey=', publicKey, 'rootUserId=', rootUserId);  // Detailed logging
-
-  if (!subOrgId || !keyId || !publicKey || !rootUserId) {
-    throw new Error("Missing data in Turnkey response");
-  }
-  return { subOrgId, keyId, publicKey, rootUserId };
 }
 
-// Updated handle: No challenge/attestation, add apiPublicKey
+// Add user as pioneer (founder)
+async function addPioneer(telegramId) {
+  try {
+    const eligibility = await checkPioneerEligibility(telegramId);
+    
+    if (!eligibility.eligible) {
+      throw new Error(eligibility.reason);
+    }
+
+    // Insert into founders table
+    await pool.query(
+      "INSERT INTO founders (telegram_id) VALUES ($1) ON CONFLICT (telegram_id) DO NOTHING",
+      [telegramId]
+    );
+
+    return { success: true, message: "Successfully registered as pioneer!" };
+  } catch (error) {
+    console.error('Error adding pioneer:', error);
+    throw error;
+  }
+}
+
+// Check pioneer eligibility endpoint
+router.get('/check-pioneer-eligibility', async (req, res) => {
+  const { telegramId } = req.query;
+  
+  if (!telegramId) {
+    return res.status(400).json({ error: "Missing telegramId" });
+  }
+
+  try {
+    const eligibility = await checkPioneerEligibility(telegramId);
+    res.json(eligibility);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Register user as pioneer endpoint
+router.post('/register-pioneer', async (req, res) => {
+  const { telegramId } = req.body;
+  
+  if (!telegramId) {
+    return res.status(400).json({ error: "Missing telegramId" });
+  }
+
+  try {
+    const result = await addPioneer(telegramId);
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Handle Turnkey registration with pioneer status check
 async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
   const existing = await pool.query(
     "SELECT turnkey_sub_org_id, turnkey_key_id, public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
@@ -90,6 +97,15 @@ async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
   if (existing.rows.length > 0) {
     console.log(`Existing sub-org found for ${telegramId}`);
     return { subOrgId: existing.rows[0].turnkey_sub_org_id, email };
+  }
+
+  // Check pioneer eligibility before creating new wallet
+  const eligibility = await checkPioneerEligibility(telegramId);
+  if (eligibility.eligible) {
+    console.log(`User ${telegramId} is eligible for pioneer status`);
+    // Note: Pioneer status will be added after successful wallet creation
+  } else {
+    console.log(`User ${telegramId} is not eligible for pioneer status: ${eligibility.reason}`);
   }
 
   const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegramId, email, apiPublicKey);
@@ -120,6 +136,16 @@ async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
       "UPDATE users SET public_key = $1, user_email = $2, turnkey_user_id = $3 WHERE telegram_id = $4",
       [publicKey, email, rootUserId, telegramId]
     );
+    
+    // Add pioneer status if eligible
+    if (eligibility.eligible) {
+      await client.query(
+        "INSERT INTO founders (telegram_id) VALUES ($1) ON CONFLICT (telegram_id) DO NOTHING",
+        [telegramId]
+      );
+      console.log(`Added ${telegramId} as pioneer`);
+    }
+    
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');
@@ -136,69 +162,19 @@ async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
   return { subOrgId, email };
 }
 
-// Adapted for Mini App: POST /mini-app/create-sub-org (API key only)
+// Mini-app registration endpoint
 router.post('/mini-app/create-sub-org', async (req, res) => {
-  const { telegram_id, initData, email, apiPublicKey, referrer_id } = req.body;
-
-  if (!validateInitData(initData)) {
-    return res.status(403).json({ error: "Invalid initData" });
+  const { telegramId, referrerId, email, apiPublicKey } = req.body;
+  
+  if (!telegramId || !email || !apiPublicKey) {
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
-  let referrerId = referrer_id || null;
-
   try {
-    const { subOrgId } = await handleTurnkeyPost(telegram_id, referrerId, email, apiPublicKey);
-    res.json({ subOrgId });
+    const result = await handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey);
+    res.json(result);
   } catch (e) {
-    console.error(`Create sub-org failed: ${e.message}`);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Existing /turnkey-auth routes if needed for non-mini-app (optional: update to API keys if keeping)
-router.get('/turnkey-auth', (req, res) => {
-  const token = req.query.token;
-  if (!token) return res.status(400).json({ error: "Missing token" });
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    res.render('auth');
-  } catch (e) {
-    console.error(`Invalid token: ${e.message}`);
-    res.status(400).json({ error: "Invalid token" });
-  }
-});
-
-router.post('/turnkey-auth', async (req, res) => {
-  const token = req.query.token;
-  if (!token) return res.status(400).json({ error: "Missing token" });
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const telegramId = payload.telegram_id;
-    const referrerId = payload.referrer_id || null;
-    const { email, apiPublicKey } = req.body;  // Updated: apiPublicKey instead of challenge/attestation
-    if (!email || !apiPublicKey) return res.status(400).json({ error: "Missing data" });
-    const { subOrgId } = await handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey);
-    res.json({ success: true, sub_org_id: subOrgId });
-  } catch (e) {
-    console.error(`Auth failed: ${e.message}`);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /mini-app/clear – Clear DB state for user
-router.post('/mini-app/clear', async (req, res) => {
-  const { telegram_id } = req.body;
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-    // Clear or deactivate wallet/user data – example; customize as needed
-    await client.query("UPDATE turnkey_wallets SET is_active = FALSE WHERE telegram_id = $1", [telegram_id]);
-    await client.query("UPDATE users SET public_key = NULL, user_email = NULL, turnkey_user_id = NULL WHERE telegram_id = $1", [telegram_id]);
-    await client.query('COMMIT');
-    client.release();
-    res.json({ success: true });
-  } catch (e) {
-    console.error(`Clear failed: ${e.message}`);
+    console.error('Error in create-sub-org:', e);
     res.status(500).json({ error: e.message });
   }
 });
