@@ -129,9 +129,9 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
   const policyParams = {
     organizationId: subOrgId,
+    name: "recovery-delegation",  // Moved to top level, as 'name' per API
     parameters: {
       policy: {
-        policyName: "recovery-delegation",  // NEW: Required field, unique name for the policy
         effect: "EFFECT_ALLOW",
         note: "Allow parent API key to initiate email auth recovery",
         condition: {
@@ -156,6 +156,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
       }
     }
   };
+  console.log('Creating policy with params:', JSON.stringify(policyParams, null, 2));  // NEW: Debug log
   await turnkeyClient.createPolicy(policyParams);
 
   return { subOrgId, keyId, publicKey, rootUserId };
