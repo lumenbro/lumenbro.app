@@ -164,8 +164,15 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
   const subOrgId = response.subOrganizationId;
   const rootUserId = response.rootUserIds[0];
   const publicKey = apiPublicKey;
-  // Note: We don't get the keyId directly from the response, we'll need to handle this differently
-  const keyId = null; // We'll need to get this from the activity result if needed
+  
+  // Try to get keyId from the activity response if available
+  let keyId = null;
+  if (response.activity?.result?.createSubOrganizationResultV7?.rootUsers?.[0]?.apiKeys?.[0]?.apiKeyId) {
+    keyId = response.activity.result.createSubOrganizationResultV7.rootUsers[0].apiKeys[0].apiKeyId;
+  } else {
+    // Fallback to generating a unique key ID
+    keyId = `key_${Date.now()}`;
+  }
 
   const client = await pool.connect();
   try {
@@ -186,7 +193,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     await client.query(
       "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
       "VALUES ($1, $2, $3, $4, TRUE) " +
-      "ON CONFLICT (telegram_id, turnkey_sub_org_id) DO UPDATE SET public_key = $4, is_active = TRUE",
+      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, is_active = TRUE, created_at = CURRENT_TIMESTAMP",
       [telegram_id, subOrgId, keyId, publicKey]
     );
     await client.query(
