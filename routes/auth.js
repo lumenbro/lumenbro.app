@@ -1,96 +1,114 @@
-// routes/auth.js - Backend for Turnkey registration and pioneer management
+// routes/auth.js - Backend for registration, adapted for Mini App
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const turnkeyClient = require('../turnkeyClient');
 const axios = require('axios');
-const turnkeyRequest = require('../turnkeyClient');
-const { Turnkey } = require('@turnkey/sdk-server');
+const crypto = require('crypto');
 
-// Check if user can become a pioneer (founder)
+// Fetch BOT_TOKEN from env for initData validation
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+// Function to validate Telegram initData
+function validateInitData(initData) {
+  const parsed = new URLSearchParams(initData);
+  const hash = parsed.get('hash');
+  parsed.delete('hash');
+  const dataCheckString = Array.from(parsed.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+  const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+  return computedHash === hash;
+}
+
+// Check pioneer eligibility
 async function checkPioneerEligibility(telegramId) {
   try {
-    // Check if user was referred (referees cannot become pioneers)
-    const referralCheck = await pool.query(
-      "SELECT 1 FROM referrals WHERE referee_id = $1",
-      [telegramId]
+    const result = await pool.query(
+      "SELECT COUNT(*) as count FROM users WHERE telegram_id <= 1000000000",
+      []
     );
-    
-    if (referralCheck.rows.length > 0) {
-      return { eligible: false, reason: "Users who were referred cannot become pioneers." };
-    }
-
-    // Check current pioneer count
-    const pioneerCount = await pool.query("SELECT COUNT(*) FROM founders");
-    const currentCount = parseInt(pioneerCount.rows[0].count);
-    
-    if (currentCount >= 25) {
-      return { eligible: false, reason: "Sorry, the pioneer program is full! Only 25 slots are available." };
-    }
-
-    return { eligible: true, currentCount };
+    const totalUsers = parseInt(result.rows[0].count);
+    return { eligible: totalUsers < 1000, totalUsers };
   } catch (error) {
     console.error('Error checking pioneer eligibility:', error);
-    return { eligible: false, reason: "Error checking pioneer eligibility." };
+    return { eligible: false, totalUsers: 0 };
   }
 }
 
-// Add user as pioneer (founder)
+// Add pioneer to founders table
 async function addPioneer(telegramId) {
   try {
-    const eligibility = await checkPioneerEligibility(telegramId);
-    
-    if (!eligibility.eligible) {
-      throw new Error(eligibility.reason);
-    }
-
-    // Insert into founders table
     await pool.query(
       "INSERT INTO founders (telegram_id) VALUES ($1) ON CONFLICT (telegram_id) DO NOTHING",
       [telegramId]
     );
-
-    return { success: true, message: "Successfully registered as pioneer!" };
+    console.log(`Added ${telegramId} as pioneer`);
   } catch (error) {
     console.error('Error adding pioneer:', error);
-    throw error;
   }
 }
 
-// Check pioneer eligibility endpoint
-router.get('/check-pioneer-eligibility', async (req, res) => {
-  const { telegramId } = req.query;
-  
-  if (!telegramId) {
-    return res.status(400).json({ error: "Missing telegramId" });
+// Updated to use API public key for root user, no authenticators
+async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
+  const params = {
+    subOrganizationName: `User ${telegram_id}`,
+    rootQuorumThreshold: 1,
+    rootUsers: [
+      {
+        userName: email,
+        apiKeys: [
+          {
+            apiKeyName: `API Key - ${email}`,
+            publicKey: apiPublicKey,
+            curveType: "API_KEY_CURVE_SECP256K1"
+          }
+        ],
+        authenticators: [],
+        oauthProviders: []
+      }
+    ],
+    wallet: {
+      walletName: `Stellar-Wallet-${telegram_id}`,
+      accounts: [
+        {
+          curve: "CURVE_ED25519",
+          pathFormat: "PATH_FORMAT_BIP32",
+          path: "m/44'/148'/0'",
+          addressFormat: "ADDRESS_FORMAT_XLM"
+        }
+      ]
+    }
+  };
+
+  const response = await turnkeyClient.createSubOrganization(params);
+  console.log('Full Turnkey createSubOrganization response:', JSON.stringify(response, null, 2));
+
+  // Parse V7 response structure
+  const result = response.activity?.result?.createSubOrganizationResultV7;
+  if (!result) {
+    console.error('Invalid response structure:', response);
+    throw new Error("Invalid response structure from Turnkey");
   }
 
-  try {
-    const eligibility = await checkPioneerEligibility(telegramId);
-    res.json(eligibility);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
+  const subOrgId = result.subOrganizationId;
+  const wallet = result.wallet;
+  const keyId = wallet.walletId;
+  const publicKey = wallet.addresses[0];  // Use Stellar address as public key
+  const rootUserId = result.rootUserIds[0];
 
-// Register user as pioneer endpoint
-router.post('/register-pioneer', async (req, res) => {
-  const { telegramId } = req.body;
-  
-  if (!telegramId) {
-    return res.status(400).json({ error: "Missing telegramId" });
-  }
+  console.log('Parsed fields: subOrgId=', subOrgId, 'keyId=', keyId, 'publicKey=', publicKey, 'rootUserId=', rootUserId);
 
-  try {
-    const result = await addPioneer(telegramId);
-    res.json(result);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+  if (!subOrgId || !keyId || !publicKey || !rootUserId) {
+    throw new Error("Missing data in Turnkey response");
   }
-});
+  return { subOrgId, keyId, publicKey, rootUserId };
+}
 
-// Handle Turnkey registration with pioneer status check
+// Updated handle: No challenge/attestation, add apiPublicKey
 async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) {
   const existing = await pool.query(
     "SELECT turnkey_sub_org_id, turnkey_key_id, public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
@@ -101,78 +119,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     return { subOrgId: existing.rows[0].turnkey_sub_org_id, email };
   }
 
-  // Check pioneer eligibility before creating new wallet
-  const eligibility = await checkPioneerEligibility(telegram_id);
-  if (eligibility.eligible) {
-    console.log(`User ${telegram_id} is eligible for pioneer status`);
-    // Note: Pioneer status will be added after successful wallet creation
-  } else {
-    console.log(`User ${telegram_id} is not eligible for pioneer status: ${eligibility.reason}`);
-  }
-
-  // Create sub-organization using Turnkey API
-  const data = {
-    organizationId: process.env.TURNKEY_ORG_ID,
-    type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
-    timestampMs: String(Date.now()),
-    parameters: {
-      subOrganizationName: `User ${telegram_id}`,
-      rootQuorumThreshold: 1,
-      rootUsers: [{
-        userName: email,
-        apiKeys: [{
-          apiKeyName: `API Key - ${email}`,
-          publicKey: apiPublicKey,
-          curveType: "API_KEY_CURVE_SECP256K1"
-        }],
-        authenticators: [],
-        oauthProviders: []
-      }]
-    }
-  };
-
-  console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
-
-  // Try using raw Turnkey client directly
-  const turnkey = new Turnkey({
-    apiBaseUrl: 'https://api.turnkey.com',
-    apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
-    apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
-    defaultOrganizationId: process.env.TURNKEY_ORG_ID
-  });
-  
-  const turnkeyClient = turnkey.apiClient();
-  const response = await turnkeyClient.createSubOrganization({
-    subOrganizationName: `User ${telegram_id}`,
-    rootUsers: [{
-      userName: email,
-      apiKeys: [{
-        apiKeyName: `API Key - ${email}`,
-        publicKey: apiPublicKey,
-        curveType: "API_KEY_CURVE_SECP256K1"
-      }],
-      authenticators: [],
-      oauthProviders: []
-    }],
-    rootQuorumThreshold: 1
-  });
-  
-  if (!response.subOrganizationId) {
-    throw new Error('Invalid response from Turnkey');
-  }
-
-  const subOrgId = response.subOrganizationId;
-  const rootUserId = response.rootUserIds[0];
-  const publicKey = apiPublicKey;
-  
-  // Try to get keyId from the activity response if available
-  let keyId = null;
-  if (response.activity?.result?.createSubOrganizationResultV7?.rootUsers?.[0]?.apiKeys?.[0]?.apiKeyId) {
-    keyId = response.activity.result.createSubOrganizationResultV7.rootUsers[0].apiKeys[0].apiKeyId;
-  } else {
-    // Fallback to generating a unique key ID
-    keyId = `key_${Date.now()}`;
-  }
+  const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegram_id, email, apiPublicKey);
 
   const client = await pool.connect();
   try {
@@ -193,7 +140,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     await client.query(
       "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
       "VALUES ($1, $2, $3, $4, TRUE) " +
-      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, is_active = TRUE, created_at = CURRENT_TIMESTAMP",
+      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, is_active = TRUE",
       [telegram_id, subOrgId, keyId, publicKey]
     );
     await client.query(
@@ -202,6 +149,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     );
     
     // Add pioneer status if eligible
+    const eligibility = await checkPioneerEligibility(telegram_id);
     if (eligibility.eligible) {
       await client.query(
         "INSERT INTO founders (telegram_id) VALUES ($1) ON CONFLICT (telegram_id) DO NOTHING",
@@ -239,6 +187,40 @@ router.post('/mini-app/create-sub-org', async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('Error in create-sub-org:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Legacy user check endpoint
+router.get('/mini-app/check-legacy-user/:telegram_id', async (req, res) => {
+  const { telegram_id } = req.params;
+  
+  try {
+    const result = await pool.query(
+      "SELECT public_key FROM users WHERE telegram_id = $1",
+      [telegram_id]
+    );
+    
+    const isLegacy = result.rows.length > 0 && result.rows[0].public_key;
+    res.json({ isLegacy });
+  } catch (e) {
+    console.error('Error checking legacy user:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Mark migration as notified
+router.post('/mini-app/mark-migration-notified', async (req, res) => {
+  const { telegram_id } = req.body;
+  
+  try {
+    await pool.query(
+      "UPDATE users SET migration_notified = TRUE WHERE telegram_id = $1",
+      [telegram_id]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error marking migration notified:', e);
     res.status(500).json({ error: e.message });
   }
 });
