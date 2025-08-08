@@ -106,47 +106,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     throw new Error("Missing data in Turnkey response");
   }
 
-  // NEW: After creation, set policy for delegated recovery access
-  // Step 1: Get backend's API key ID (matches the one used by this client)
-  const whoami = await turnkeyClient.getWhoami({ organizationId: process.env.TURNKEY_ORG_ID });
-  const backendUserId = whoami.userId;  // Assumes the API key is tied to a user
-  const apiKeysRes = await turnkeyClient.getApiKeys({ organizationId: process.env.TURNKEY_ORG_ID });
-  // NEW: Log for debugging
-  console.log('Env TURNKEY_API_PUBLIC_KEY:', process.env.TURNKEY_API_PUBLIC_KEY);
-  console.log('Available API keys:', JSON.stringify(apiKeysRes.apiKeys, null, 2));
-  let backendApiKeyId;
-  const envPublicKey = (process.env.TURNKEY_API_PUBLIC_KEY || '').trim().toLowerCase();
-  for (const key of apiKeysRes.apiKeys) {
-    if ((key.publicKey || '').trim().toLowerCase() === envPublicKey) {
-      backendApiKeyId = key.apiKeyId;
-      break;
-    }
-  }
-  if (!backendApiKeyId) {
-    console.warn("Backend API key ID not found - using hardcoded for testing");
-    backendApiKeyId = "5f96d6f9-f95c-4b6a-aa2e-e51f224dc4ce";  // New P-256 key ID
-  }
-
-  // Create policy in root org for delegation
-  const rootOrgId = process.env.TURNKEY_ORG_ID;
-  const policyParams = {
-    type: "ACTIVITY_TYPE_CREATE_POLICIES",
-    timestampMs: String(Date.now()),
-    organizationId: rootOrgId,
-    parameters: {
-      policies: [
-        {
-          policyName: "recovery-delegation",
-          effect: "EFFECT_ALLOW",
-          notes: "Allow parent API key to initiate email auth recovery for sub-orgs",
-          condition: `activityType == "ACTIVITY_TYPE_EMAIL_AUTH" && authenticatorId == "${backendApiKeyId}"`,
-          consensus: `approvalCount == 1`
-        }
-      ]
-    }
-  };
-  await turnkeyClient.createPolicies(policyParams);
-
+  // Return immediately
   return { subOrgId, keyId, publicKey, rootUserId };
 }
 

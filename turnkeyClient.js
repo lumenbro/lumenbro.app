@@ -22,4 +22,5 @@ module.exports = {
   createPolicy: async (params) => await client.createPolicy(params),
   // Add if needed for completion (client-side will handle addAuthenticator)
   addAuthenticator: async (params) => await client.addAuthenticator(params),
+  deletePolicies: async (params) => await client.deletePolicies(params),
 };
