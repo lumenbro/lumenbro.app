@@ -42,7 +42,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     }
 
     console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
-    const response = await turnkeyRequest.signCreateSubOrganization(data);
+    const response = await turnkeyRequest.createSubOrganization(data);
     
     if (!response.activity?.result?.createSubOrganizationResultV7) {
       throw new Error('Invalid response from Turnkey');
