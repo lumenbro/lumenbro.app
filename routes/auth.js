@@ -8,6 +8,14 @@ const turnkeyRequest = require('../turnkeyClient');
 // Create Turnkey sub-organization
 async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   try {
+    // Validate required parameters
+    if (!process.env.TURNKEY_ORG_ID) {
+      throw new Error('TURNKEY_ORG_ID environment variable is not set');
+    }
+    if (!email || !apiPublicKey) {
+      throw new Error('Email and API public key are required');
+    }
+
     const data = {
       organizationId: process.env.TURNKEY_ORG_ID,
       type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
@@ -25,7 +33,16 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
       }
     };
 
-    const response = await turnkeyRequest.createSubOrganization(data);
+    // Validate the data structure
+    if (!data.parameters.rootUsers || data.parameters.rootUsers.length === 0) {
+      throw new Error('rootUsers array is required and cannot be empty');
+    }
+    if (!data.parameters.rootQuorumThreshold) {
+      throw new Error('rootQuorumThreshold is required');
+    }
+
+    console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
+    const response = await turnkeyRequest.signCreateSubOrganization(data);
     
     if (!response.activity?.result?.createSubOrganizationResultV7) {
       throw new Error('Invalid response from Turnkey');
