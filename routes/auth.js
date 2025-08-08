@@ -129,9 +129,11 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
 
   // Step 2: Create policy with corrected structure
   const policyParams = {
+    type: "ACTIVITY_TYPE_CREATE_POLICY",
+    timestampMs: String(Date.now()),
     organizationId: subOrgId,
-    name: "recovery-delegation",  // Top-level name
     parameters: {
+      policyName: "recovery-delegation",
       effect: "EFFECT_ALLOW",
       consensus: {
         operator: "and",
