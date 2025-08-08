@@ -131,7 +131,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     organizationId: subOrgId,
     parameters: {
       policy: {
-        policyName: "RecoveryDelegation",  // NEW: Required field for createPolicy
+        policyName: "recovery-delegation",  // NEW: Required field, unique name for the policy
         effect: "EFFECT_ALLOW",
         note: "Allow parent API key to initiate email auth recovery",
         condition: {
