@@ -16,6 +16,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
       throw new Error('Email and API public key are required');
     }
 
+    // Try a simpler approach - maybe the SDK expects different structure
     const data = {
       organizationId: process.env.TURNKEY_ORG_ID,
       type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
@@ -42,7 +43,18 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     }
 
     console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
-    const response = await turnkeyRequest.createSubOrganization(data);
+    
+    // Try using the raw client method directly
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const turnkey = new Turnkey({
+      apiBaseUrl: 'https://api.turnkey.com',
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+      defaultOrganizationId: process.env.TURNKEY_ORG_ID
+    });
+    
+    const client = turnkey.apiClient();
+    const response = await client.createSubOrganization(data);
     
     if (!response.activity?.result?.createSubOrganizationResultV7) {
       throw new Error('Invalid response from Turnkey');
