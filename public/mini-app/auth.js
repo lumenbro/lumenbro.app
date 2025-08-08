@@ -29,8 +29,47 @@ window.register = async function () {
         // Prompt for email
         const email = prompt('Enter your email:') || 'unknown@lumenbro.com';
 
+        // NEW: Prompt for password to encrypt private key
+        const password = prompt('Create a password for key encryption:');
+        if (!password) throw new Error('Password required');
+
         // Generate P256 keypair for API keys (no WebAuthn)
         const keyPair = await window.Turnkey.generateP256ApiKeyPair();
+
+        // NEW: Encrypt private key with password-derived key
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const derivedKey = await crypto.subtle.deriveKey(
+          {
+            name: 'PBKDF2',
+            salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+          },
+          await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedPrivateKey = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          derivedKey,
+          new TextEncoder().encode(keyPair.privateKey)
+        );
+
+        // Store encrypted data in Telegram Cloud
+        const encryptedData = {
+          publicKey: keyPair.publicKey,
+          encryptedPrivateKey: Array.from(new Uint8Array(encryptedPrivateKey)),
+          iv: Array.from(iv),
+          salt: Array.from(salt)
+        };
+        await new Promise((resolve, reject) => {
+          window.Telegram.WebApp.CloudStorage.setItem('TURNKEY_API_KEY', JSON.stringify(encryptedData), (error) => {
+            if (error) reject(error);
+            else resolve();
+          });
+        });
 
         // Fetch sub-org from backend (send public key for root user API key)
         const response = await fetch('/mini-app/create-sub-org', {

@@ -12,7 +12,14 @@ const client = turnkey.apiClient();
 
 module.exports = {
   createSubOrganization: async (params) => await client.createSubOrganization(params),
-  initUserEmailRecovery: async (data) => await client.initUserEmailRecovery(data),
+  // Remove legacy method
+  // initUserEmailRecovery: async (data) => await client.initUserEmailRecovery(data),
   createReadWriteSession: async (data) => await client.createReadWriteSession(data),
-  // Add more typed methods as needed, e.g., for other activities
+  // Add new methods for Email Auth and policy support
+  emailAuth: async (params) => await client.emailAuth(params),
+  getApiKeys: async (params) => await client.getApiKeys(params),
+  getWhoami: async (params) => await client.getWhoami(params),
+  createPolicy: async (params) => await client.createPolicy(params),
+  // Add if needed for completion (client-side will handle addAuthenticator)
+  addAuthenticator: async (params) => await client.addAuthenticator(params),
 };

@@ -105,6 +105,52 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   if (!subOrgId || !keyId || !publicKey || !rootUserId) {
     throw new Error("Missing data in Turnkey response");
   }
+
+  // NEW: After creation, set policy for delegated recovery access
+  // Step 1: Get backend's API key ID (matches the one used by this client)
+  const whoami = await turnkeyClient.getWhoami({ organizationId: process.env.TURNKEY_ORG_ID });
+  const backendUserId = whoami.userId;  // Assumes the API key is tied to a user
+  const apiKeysRes = await turnkeyClient.getApiKeys({ organizationId: process.env.TURNKEY_ORG_ID });
+  let backendApiKeyId;
+  for (const key of apiKeysRes.apiKeys) {
+    if (key.publicKey === process.env.TURNKEY_API_PUBLIC_KEY) {
+      backendApiKeyId = key.apiKeyId;
+      break;
+    }
+  }
+  if (!backendApiKeyId) throw new Error("Backend API key ID not found");
+
+  // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
+  const policyParams = {
+    organizationId: subOrgId,
+    parameters: {
+      policy: {
+        effect: "EFFECT_ALLOW",
+        note: "Allow parent API key to initiate email auth recovery",
+        condition: {
+          operator: "and",
+          operands: [
+            {
+              operator: "==",
+              operands: [
+                { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
+                { type: "template", template: "activityType" }
+              ]
+            },
+            {
+              operator: "==",
+              operands: [
+                { type: "string", value: backendApiKeyId },
+                { type: "template", template: "authenticatorId" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  };
+  await turnkeyClient.createPolicy(policyParams);
+
   return { subOrgId, keyId, publicKey, rootUserId };
 }
 

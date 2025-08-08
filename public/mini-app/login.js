@@ -107,7 +107,41 @@ async function login() {
 
   try {
     const stamper = await createTelegramCloudStorageStamper();
-    const apiKey = await stamper.getAPIKey(); // Should return {apiPublicKey, apiPrivateKey}
+    // NEW: Instead of direct getAPIKey, retrieve and decrypt
+    const encryptedData = await new Promise((resolve) => {
+      window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+        resolve(value ? JSON.parse(value) : null);
+      });
+    });
+    if (!encryptedData) throw new Error('No stored key found');
+
+    const password = prompt('Enter your password to decrypt key:');
+    if (!password) throw new Error('Password required');
+
+    const derivedKey = await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: Uint8Array.from(encryptedData.salt),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+    const decryptedPrivateKeyBuffer = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: Uint8Array.from(encryptedData.iv) },
+      derivedKey,
+      Uint8Array.from(encryptedData.encryptedPrivateKey)
+    );
+    const decryptedPrivateKey = new TextDecoder().decode(decryptedPrivateKeyBuffer);
+
+    const apiKey = {
+      apiPublicKey: encryptedData.publicKey,
+      apiPrivateKey: decryptedPrivateKey
+    };
+
     console.log('Retrieved API key:', apiKey); // Debug
 
     if (!apiKey || !apiKey.apiPublicKey || !apiKey.apiPrivateKey) {

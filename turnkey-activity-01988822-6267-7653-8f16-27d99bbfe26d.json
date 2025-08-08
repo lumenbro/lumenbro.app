@@ -1,0 +1,131 @@
+{
+  "id": "01988822-6267-7653-8f16-27d99bbfe26d",
+  "fingerprint": "sha256:4973e382cdb9ff34e42b7773379fc786d55df6f42a4ac60e4d0959b6bcb73e2b",
+  "voteList": [
+    {
+      "id": "81151198-e198-4661-b88a-429f270f31af",
+      "userId": "32d8fa24-2355-4970-a737-22bd5ecc8c82",
+      "user": {
+        "userId": "32d8fa24-2355-4970-a737-22bd5ecc8c82",
+        "userName": "Root user",
+        "userEmail": "info@lumenbro.com",
+        "authenticators": [
+          {
+            "transports": [],
+            "attestationType": "fido-u2f",
+            "aaguid": "AAAAAAAAAAAAAAAAAAAAAA",
+            "credentialId": "vrDa0RPtBpvRhdHbt9CK80pgLN7ZuRfv1teajNboQ8epacdC3EG0ac2qVCNYLP-gjRgCyeb9RDgb6VL5omcpFg",
+            "model": "Security key",
+            "credential": {
+              "publicKey": "pQECAyYgASFYIC6nM1HL7TIIuMX1w5C2ONc1qrkaO45ZcAWzhJJu9pxiIlggqwAD-znvtiMlTgNJ5MjtPjE7ZddQaapGp4tt4Mtyq6A",
+              "type": "CREDENTIAL_TYPE_WEBAUTHN_AUTHENTICATOR"
+            },
+            "authenticatorId": "c7484b0d-81b7-4934-b40d-133a7c4877ba",
+            "authenticatorName": "trezor",
+            "createdAt": {
+              "seconds": "1749010294",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1749010294",
+              "nanos": "0"
+            }
+          }
+        ],
+        "apiKeys": [
+          {
+            "credential": {
+              "publicKey": "03719f57abe45f06323134067bb921a340e60a6092a8455e1bfaba4ff65ec0fcc3",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "c6914e78-760b-49d3-a1f2-61b65fb1f4f8",
+            "apiKeyName": "testing",
+            "createdAt": {
+              "seconds": "1749013040",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1749013040",
+              "nanos": "0"
+            }
+          },
+          {
+            "credential": {
+              "publicKey": "03a6e9853ed0d0ac91ae7aff7d06e9ac5956c9a3c0fe80693352ca64cbedbf3637",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "e59d203e-5a5b-4873-a44c-6cae9e5f4ca0",
+            "apiKeyName": "test 2",
+            "createdAt": {
+              "seconds": "1752358977",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1752358977",
+              "nanos": "0"
+            }
+          }
+        ],
+        "userTags": [],
+        "oauthProviders": [],
+        "createdAt": {
+          "seconds": "1749010294",
+          "nanos": "0"
+        },
+        "updatedAt": {
+          "seconds": "1749010294",
+          "nanos": "0"
+        }
+      },
+      "activityId": "01988822-6267-7653-8f16-27d99bbfe26d",
+      "selection": "VOTE_SELECTION_APPROVED",
+      "message": "{\"parameters\":{\"subOrganizationName\":\"User 1723652081\",\"rootUsers\":[{\"userName\":\"info@lumenbro.com\",\"apiKeys\":[{\"apiKeyName\":\"API Key - info@lumenbro.com\",\"publicKey\":\"0306e05632afc9089bcbd384f8819ed28076370e36aea59213914efa50abc17468\",\"curveType\":\"API_KEY_CURVE_SECP256K1\"}],\"authenticators\":[],\"oauthProviders\":[]}],\"rootQuorumThreshold\":1},\"organizationId\":\"e48316d7-5d2a-4b0b-a14f-3a95169579e6\",\"timestampMs\":\"1754630611427\",\"type\":\"ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7\"}",
+      "publicKey": "03a6e9853ed0d0ac91ae7aff7d06e9ac5956c9a3c0fe80693352ca64cbedbf3637",
+      "signature": "3045022015e06eb8cf0fb705cbac724224a1ef9c158feda4abd1caaa9ebf3e18c02fbd83022100cfe1010baced0cdf8351ccdb5629d7ed0f873a50c7732b2cf3f4bfe1f98d28f5",
+      "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+      "createdAt": {
+        "seconds": "1754630611",
+        "nanos": "0"
+      }
+    }
+  ],
+  "permission": {
+    "canApprove": true,
+    "canReject": true
+  },
+  "createdAt": {
+    "seconds": "1754630611",
+    "nanos": "0"
+  },
+  "updatedAt": {
+    "seconds": "1754630611",
+    "nanos": "0"
+  },
+  "status": "ACTIVITY_STATUS_COMPLETED",
+  "failure": null,
+  "type": "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
+  "intent": {
+    "subOrganizationName": "User 1723652081",
+    "rootUsers": [
+      {
+        "userName": "info@lumenbro.com",
+        "apiKeys": [
+          {
+            "apiKeyName": "API Key - info@lumenbro.com",
+            "publicKey": "0306e05632afc9089bcbd384f8819ed28076370e36aea59213914efa50abc17468",
+            "curveType": "API_KEY_CURVE_SECP256K1"
+          }
+        ],
+        "authenticators": [],
+        "oauthProviders": []
+      }
+    ],
+    "rootQuorumThreshold": 1
+  },
+  "result": {
+    "subOrganizationId": "556f7fa9-3619-4650-af0d-cf10b71af56e",
+    "rootUserIds": [
+      "758bb980-f00d-4329-97fb-69df424fbadd"
+    ]
+  }
+}

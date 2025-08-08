@@ -29,12 +29,15 @@ router.post('/init-recovery', async (req, res) => {
       organizationId: orgId,
       email,
       targetPublicKey,
+      // Updated from legacy: Use new params, add apiKeyName for temporary recovery key
+      apiKeyName: `Recovery API Key - ${email}`,
       expirationSeconds: "3600",
       emailCustomization: { appName: "LumenBro" }
     };
     console.log('Init request data:', data);
-    const response = await turnkeyRequest.initUserEmailRecovery(data); // Fixed call: Use the named method
-    const fetchedUserId = response.activity?.result?.initUserEmailRecoveryResult?.userId;
+    // Updated: Use new emailAuth method instead of legacy
+    const response = await turnkeyRequest.emailAuth(data);
+    const fetchedUserId = response.activity?.result?.emailAuthResult?.userId;  // Adjust if response structure differs
     if (fetchedUserId && fetchedUserId !== userId) {
       await pool.query("UPDATE users SET turnkey_user_id = $1 WHERE user_email = $2", [fetchedUserId, email]);
     }
