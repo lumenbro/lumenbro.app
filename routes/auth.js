@@ -3,6 +3,48 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const axios = require('axios');
+const turnkeyRequest = require('../turnkeyClient');
+
+// Create Turnkey sub-organization
+async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
+  try {
+    const data = {
+      organizationId: process.env.TURNKEY_ORG_ID,
+      type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
+      timestampMs: String(Date.now()),
+      parameters: {
+        subOrganizationName: `User ${telegram_id}`,
+        rootQuorum: {
+          approverIds: [process.env.TURNKEY_ROOT_USER_ID]
+        },
+        rootUsers: [{
+          userName: email,
+          apiKeys: [{
+            apiKeyName: `API Key - ${email}`,
+            publicKey: apiPublicKey
+          }]
+        }]
+      }
+    };
+
+    const response = await turnkeyRequest.createSubOrganization(data);
+    
+    if (!response.activity?.result?.createSubOrganizationResultV7) {
+      throw new Error('Invalid response from Turnkey');
+    }
+
+    const result = response.activity.result.createSubOrganizationResultV7;
+    return {
+      subOrgId: result.subOrganizationId,
+      keyId: result.rootUsers[0].apiKeys[0].apiKeyId,
+      publicKey: apiPublicKey,
+      rootUserId: result.rootUsers[0].userId
+    };
+  } catch (error) {
+    console.error('Error creating Turnkey sub-org:', error);
+    throw new Error(`Failed to create sub-organization: ${error.message}`);
+  }
+}
 
 // Check if user can become a pioneer (founder)
 async function checkPioneerEligibility(telegramId) {
