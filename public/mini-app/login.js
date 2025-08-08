@@ -115,6 +115,9 @@ async function login() {
     });
     if (!encryptedData) throw new Error('No stored key found');
 
+    // NEW: Log stored data structure for debugging
+    console.log('Retrieved encryptedData:', JSON.stringify(encryptedData, null, 2));
+
     let apiKey;
     if (encryptedData.encryptedPrivateKey && encryptedData.iv && encryptedData.salt) {
       // Encrypted case
@@ -150,13 +153,16 @@ async function login() {
         apiPrivateKey: decryptedPrivateKey
       };
       console.log('Decryption successful');
-    } else {
-      // Legacy unencrypted case
-      console.log('Using legacy unencrypted key');
+    } else if (encryptedData.apiPublicKey && encryptedData.apiPrivateKey) {
+      // Strict legacy fallback - only if explicitly unencrypted (for old data)
+      console.warn('Using legacy unencrypted key - re-register for security');
       apiKey = {
-        apiPublicKey: encryptedData.publicKey || encryptedData.apiPublicKey,
-        apiPrivateKey: encryptedData.privateKey || encryptedData.apiPrivateKey
+        apiPublicKey: encryptedData.apiPublicKey,
+        apiPrivateKey: encryptedData.apiPrivateKey
       };
+    } else {
+      // Invalid data - force error to re-register
+      throw new Error('Stored key data is invalid or incomplete - please re-register');
     }
 
     console.log('Retrieved API key:', apiKey); // Debug

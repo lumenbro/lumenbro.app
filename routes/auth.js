@@ -115,8 +115,9 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   console.log('Env TURNKEY_API_PUBLIC_KEY:', process.env.TURNKEY_API_PUBLIC_KEY);
   console.log('Available API keys:', JSON.stringify(apiKeysRes.apiKeys, null, 2));
   let backendApiKeyId;
+  const envPublicKey = (process.env.TURNKEY_API_PUBLIC_KEY || '').trim().toLowerCase();
   for (const key of apiKeysRes.apiKeys) {
-    if (key.publicKey === process.env.TURNKEY_API_PUBLIC_KEY) {
+    if ((key.publicKey || '').trim().toLowerCase() === envPublicKey) {
       backendApiKeyId = key.apiKeyId;
       break;
     }
