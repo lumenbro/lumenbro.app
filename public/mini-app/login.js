@@ -95,6 +95,16 @@ async function createTelegramCloudStorageStamper() {
 }
 
 async function login() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const orgId = urlParams.get('orgId');
+  const email = urlParams.get('email');
+  const telegramId = urlParams.get('telegram_id');
+
+  if (!orgId) {
+    document.getElementById('content').innerHTML = 'Error: Missing orgId parameter';
+    return;
+  }
+
   try {
     const stamper = await createTelegramCloudStorageStamper();
     const apiKey = await stamper.getAPIKey(); // Should return {apiPublicKey, apiPrivateKey}
@@ -104,10 +114,15 @@ async function login() {
       throw new Error('Failed to retrieve valid API key from Telegram Cloud Storage');
     }
 
-    // Verify API key matches expected public key
-    const expectedPublicKey = '023dca6fc4a0b275e19c1c6caac0c6ce8efb70461ffe6a1e360d10b725794811e3';
-    if (apiKey.apiPublicKey !== expectedPublicKey) {
-      throw new Error(`API public key mismatch: got ${apiKey.apiPublicKey}, expected ${expectedPublicKey}`);
+    // REMOVED: Hardcoded public key validation
+    // const expectedPublicKey = '023dca6fc4a0b275e19c1c6caac0c6ce8efb70461ffe6a1e360d10b725794811e3';
+    // if (apiKey.apiPublicKey !== expectedPublicKey) {
+    //   throw new Error(`API public key mismatch: got ${apiKey.apiPublicKey}, expected ${expectedPublicKey}`);
+    // }
+
+    // REPLACED with optional format validation:
+    if (!apiKey.apiPublicKey || !apiKey.apiPrivateKey) {
+      throw new Error('Invalid API key format');
     }
 
     // Fetch userId from backend

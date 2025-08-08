@@ -45,7 +45,23 @@ window.register = async function () {
             })
         });
         if (!response.ok) throw new Error('Backend error: ' + response.statusText);
-        const { subOrgId } = await response.json();
+        const result = await response.json();
+        
+        // ADDED: Handle legacy user detection response
+        if (result.isLegacy) {
+            const migrationMessage = `
+                <div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                    <h3>🔄 Legacy User Migration</h3>
+                    <p>Welcome back! We've detected you're a legacy user. Your pioneer status (${result.pioneerStatus || 'None'}) has been preserved.</p>
+                    <p>Your account has been successfully migrated to the new system.</p>
+                    <button onclick="continueRegistration()" style="background: #0066cc; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                        Continue Setup
+                    </button>
+                </div>
+            `;
+            document.getElementById('content').innerHTML = migrationMessage;
+            return;
+        }
 
         // Create stamper and store RAW PRIVATE key in Telegram Cloud
         const stamper = await window.Turnkey.TelegramCloudStorageStamper.create({
@@ -61,3 +77,9 @@ window.register = async function () {
         document.getElementById('content').innerHTML = 'Error: ' + error.message;
     }
 };
+
+// ADDED: Function to continue registration after migration notification
+async function continueRegistration() {
+    // Re-run the registration process
+    await register();
+}

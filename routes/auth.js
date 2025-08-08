@@ -90,6 +90,56 @@ router.post('/register-pioneer', async (req, res) => {
 
 // Handle Turnkey registration with pioneer status check
 async function handleTurnkeyPost(telegramId, referrerId, email, apiPublicKey) {
+  // ADDED: Check for legacy user first
+  const legacyCheck = await pool.query(
+    "SELECT source_old_db, encrypted_s_address_secret, pioneer_status FROM users WHERE telegram_id = $1",
+    [telegramId]
+  );
+  
+  const isLegacy = legacyCheck.rows.length > 0 && 
+                   legacyCheck.rows[0].source_old_db && 
+                   legacyCheck.rows[0].encrypted_s_address_secret;
+  
+  if (isLegacy) {
+    // Handle legacy user migration
+    const legacyUser = legacyCheck.rows[0];
+    
+    // Create new wallet for legacy user
+    const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegramId, email, apiPublicKey);
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Update existing user record with new wallet info
+      await client.query(
+        "UPDATE users SET user_email = $1, turnkey_user_id = $2, migration_notified = TRUE WHERE telegram_id = $3",
+        [email, rootUserId, telegramId]
+      );
+      
+      // Insert new wallet
+      await client.query(
+        "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
+        "VALUES ($1, $2, $3, $4, TRUE)",
+        [telegramId, subOrgId, keyId, publicKey]
+      );
+      
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+    
+    return { 
+      subOrgId, 
+      email,
+      isLegacy: true,
+      pioneerStatus: legacyUser.pioneer_status
+    };
+  }
+
   const existing = await pool.query(
     "SELECT turnkey_sub_org_id, turnkey_key_id, public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
     [telegramId]
