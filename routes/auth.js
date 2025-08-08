@@ -126,34 +126,33 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     console.warn("Backend API key ID not found - using hardcoded fallback for testing");
     backendApiKeyId = "e59d203e-5a5b-4873-a44c-6cae9e5f4ca0";  // Temporary: 'test 2' key ID from logs - remove after fix
   }
-  // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
+
+  // Step 2: Create policy with corrected structure
   const policyParams = {
     organizationId: subOrgId,
+    name: "recovery-delegation",  // Top-level name
     parameters: {
-      policy: {
-        policyName: "recovery-delegation",
-        effect: "EFFECT_ALLOW",
-        note: "Allow parent API key to initiate email auth recovery",
-        consensus: {  // Changed from 'condition' to 'consensus'
-          operator: "and",
-          operands: [
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
-                { type: "template", template: "activityType" }
-              ]
-            },
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: backendApiKeyId },
-                { type: "template", template: "authenticatorId" }
-              ]
-            }
-          ]
-        }
-      }
+      effect: "EFFECT_ALLOW",
+      consensus: {
+        operator: "and",
+        operands: [
+          {
+            operator: "==",
+            operands: [
+              { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
+              { type: "template", template: "activityType" }
+            ]
+          },
+          {
+            operator: "==",
+            operands: [
+              { type: "string", value: backendApiKeyId },
+              { type: "template", template: "authenticatorId" }
+            ]
+          }
+        ]
+      },
+      note: "Allow parent API key to initiate email auth recovery"
     }
   };
   console.log('Creating policy with params:', JSON.stringify(policyParams, null, 2));
