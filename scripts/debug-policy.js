@@ -1,4 +1,4 @@
-// scripts/debug-policy.js - Standalone test for Turnkey createPolicy (new file)
+// scripts/debug-policy.js - Raw axios for create_policies
 
 require('dotenv').config();
 const { Turnkey } = require('@turnkey/sdk-server');
@@ -12,48 +12,35 @@ const turnkey = new Turnkey({
 
 const client = turnkey.apiClient();
 
-async function testCreatePolicy() {
+async function testCreatePolicies() {
   try {
-    const testSubOrgId = '015db711-38ca-4fb9-a8ab-ec84d7d2cfb1';  // From your logs, replace with a test sub-org
-    const backendApiKeyId = 'e59d203e-5a5b-4873-a44c-6cae9e5f4ca0';  // Hardcoded from logs
+    const testSubOrgId = '015db711-38ca-4fb9-a8ab-ec84d7d2cfb1';
+    const backendApiKeyId = '5f96d6f9-f95c-4b6a-aa2e-e51f224dc4ce';
 
-    const policyParams = {
-      type: 'ACTIVITY_TYPE_CREATE_POLICY',
+    const params = {
+      type: 'ACTIVITY_TYPE_CREATE_POLICIES',
       timestampMs: String(Date.now()),
       organizationId: testSubOrgId,
       parameters: {
-        name: "test-recovery-delegation",
-        effect: "EFFECT_ALLOW",
-        note: "Test policy for email auth delegation",
-        consensus: {
-          operator: "and",
-          operands: [
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
-                { type: "template", template: "activityType" }
-              ]
-            },
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: backendApiKeyId },
-                { type: "template", template: "authenticatorId" }
-              ]
-            }
-          ]
-        }
+        policies: [
+          {
+            policyName: "test-recovery-delegation",
+            effect: "EFFECT_ALLOW",
+            notes: "Test policy for email auth delegation",
+            condition: `activityType == "ACTIVITY_TYPE_EMAIL_AUTH" && authenticatorId == "${backendApiKeyId}"`,
+            consensus: `approvalCount == 1`
+          }
+        ]
       }
     };
 
-    console.log('Testing policy params:', JSON.stringify(policyParams, null, 2));
-    const response = await client.createPolicy(policyParams);
+    console.log('Testing params:', JSON.stringify(params, null, 2));
+    const response = await client.createPolicies(params);
     console.log('Success! Response:', JSON.stringify(response, null, 2));
   } catch (error) {
-    console.error('Error creating policy:', error);
+    console.error('Error:', error);
     if (error.details) console.log('Details:', JSON.stringify(error.details, null, 2));
   }
 }
 
-testCreatePolicy();
+testCreatePolicies();

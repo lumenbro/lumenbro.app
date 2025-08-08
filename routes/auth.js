@@ -123,42 +123,29 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     }
   }
   if (!backendApiKeyId) {
-    console.warn("Backend API key ID not found - using hardcoded fallback for testing");
-    backendApiKeyId = "e59d203e-5a5b-4873-a44c-6cae9e5f4ca0";  // Temporary: 'test 2' key ID from logs - remove after fix
+    console.warn("Backend API key ID not found - using hardcoded for testing");
+    backendApiKeyId = "5f96d6f9-f95c-4b6a-aa2e-e51f224dc4ce";  // New P-256 key ID
   }
 
-  // Step 2: Create policy with corrected structure
+  // Create policy in root org for delegation
+  const rootOrgId = process.env.TURNKEY_ORG_ID;
   const policyParams = {
-    type: "ACTIVITY_TYPE_CREATE_POLICY",
+    type: "ACTIVITY_TYPE_CREATE_POLICIES",
     timestampMs: String(Date.now()),
-    organizationId: subOrgId,
+    organizationId: rootOrgId,
     parameters: {
-      policyName: "recovery-delegation",
-      effect: "EFFECT_ALLOW",
-      consensus: {
-        operator: "and",
-        operands: [
-          {
-            operator: "==",
-            operands: [
-              { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
-              { type: "template", template: "activityType" }
-            ]
-          },
-          {
-            operator: "==",
-            operands: [
-              { type: "string", value: backendApiKeyId },
-              { type: "template", template: "authenticatorId" }
-            ]
-          }
-        ]
-      },
-      note: "Allow parent API key to initiate email auth recovery"
+      policies: [
+        {
+          policyName: "recovery-delegation",
+          effect: "EFFECT_ALLOW",
+          notes: "Allow parent API key to initiate email auth recovery for sub-orgs",
+          condition: `activityType == "ACTIVITY_TYPE_EMAIL_AUTH" && authenticatorId == "${backendApiKeyId}"`,
+          consensus: `approvalCount == 1`
+        }
+      ]
     }
   };
-  console.log('Creating policy with params:', JSON.stringify(policyParams, null, 2));
-  await turnkeyClient.createPolicy(policyParams);
+  await turnkeyClient.createPolicies(policyParams);
 
   return { subOrgId, keyId, publicKey, rootUserId };
 }
