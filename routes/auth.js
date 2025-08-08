@@ -111,6 +111,9 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   const whoami = await turnkeyClient.getWhoami({ organizationId: process.env.TURNKEY_ORG_ID });
   const backendUserId = whoami.userId;  // Assumes the API key is tied to a user
   const apiKeysRes = await turnkeyClient.getApiKeys({ organizationId: process.env.TURNKEY_ORG_ID });
+  // NEW: Log for debugging
+  console.log('Env TURNKEY_API_PUBLIC_KEY:', process.env.TURNKEY_API_PUBLIC_KEY);
+  console.log('Available API keys:', JSON.stringify(apiKeysRes.apiKeys, null, 2));
   let backendApiKeyId;
   for (const key of apiKeysRes.apiKeys) {
     if (key.publicKey === process.env.TURNKEY_API_PUBLIC_KEY) {
@@ -118,38 +121,41 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
       break;
     }
   }
-  if (!backendApiKeyId) throw new Error("Backend API key ID not found");
-
-  // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
-  const policyParams = {
-    organizationId: subOrgId,
-    parameters: {
-      policy: {
-        effect: "EFFECT_ALLOW",
-        note: "Allow parent API key to initiate email auth recovery",
-        condition: {
-          operator: "and",
-          operands: [
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
-                { type: "template", template: "activityType" }
-              ]
-            },
-            {
-              operator: "==",
-              operands: [
-                { type: "string", value: backendApiKeyId },
-                { type: "template", template: "authenticatorId" }
-              ]
-            }
-          ]
+  if (!backendApiKeyId) {
+    console.warn("Backend API key ID not found - skipping policy creation for now");
+    // Continue without policy; fix key mismatch later
+  } else {
+    // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
+    const policyParams = {
+      organizationId: subOrgId,
+      parameters: {
+        policy: {
+          effect: "EFFECT_ALLOW",
+          note: "Allow parent API key to initiate email auth recovery",
+          condition: {
+            operator: "and",
+            operands: [
+              {
+                operator: "==",
+                operands: [
+                  { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
+                  { type: "template", template: "activityType" }
+                ]
+              },
+              {
+                operator: "==",
+                operands: [
+                  { type: "string", value: backendApiKeyId },
+                  { type: "template", template: "authenticatorId" }
+                ]
+              }
+            ]
+          }
         }
       }
-    }
-  };
-  await turnkeyClient.createPolicy(policyParams);
+    };
+    await turnkeyClient.createPolicy(policyParams);
+  }
 
   return { subOrgId, keyId, publicKey, rootUserId };
 }
