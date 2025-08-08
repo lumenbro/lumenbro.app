@@ -7,7 +7,7 @@ async function recover() {
     const email = prompt('Enter your email for recovery:');
 
     // Generate target public key for recovery (e.g., new passkey public key for encryption)
-    const targetKeyPair = Turnkey.generateP256KeyPair();
+    const targetKeyPair = await window.Turnkey.generateP256ApiKeyPair();
     const targetPublicKey = targetKeyPair.publicKey;
     const targetPrivateKey = targetKeyPair.privateKey;  // Store securely for decryption
 

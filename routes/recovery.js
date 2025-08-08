@@ -13,6 +13,30 @@ router.get('/recovery', (req, res) => {
   res.render('recovery', { email, org_id: orgId });
 });
 
+// New endpoint for standalone recovery: lookup orgId by email
+router.post('/lookup-org-by-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Missing email" });
+  
+  try {
+    const userRes = await pool.query(
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+      [email]
+    );
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "No active wallet found for this email address" });
+    }
+    
+    const orgId = userRes.rows[0].turnkey_sub_org_id;
+    res.json({ orgId, email });
+    
+  } catch (e) {
+    console.error(`Lookup org by email failed: ${e.message}`);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 router.post('/init-recovery', async (req, res) => {
   const { orgId, email, targetPublicKey } = req.body;
   if (!orgId || !email || !targetPublicKey) return res.status(400).json({ error: "Missing orgId, email, or targetPublicKey" });
