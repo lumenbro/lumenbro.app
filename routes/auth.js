@@ -5,74 +5,6 @@ const pool = require('../db');
 const axios = require('axios');
 const turnkeyRequest = require('../turnkeyClient');
 
-// Create Turnkey sub-organization
-async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
-  try {
-    // Validate required parameters
-    if (!process.env.TURNKEY_ORG_ID) {
-      throw new Error('TURNKEY_ORG_ID environment variable is not set');
-    }
-    if (!email || !apiPublicKey) {
-      throw new Error('Email and API public key are required');
-    }
-
-    // Try a simpler approach - maybe the SDK expects different structure
-    const data = {
-      organizationId: process.env.TURNKEY_ORG_ID,
-      type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
-      timestampMs: String(Date.now()),
-      parameters: {
-        subOrganizationName: `User ${telegram_id}`,
-        rootQuorumThreshold: 1,
-        rootUsers: [{
-          userName: email,
-          apiKeys: [{
-            apiKeyName: `API Key - ${email}`,
-            publicKey: apiPublicKey
-          }]
-        }]
-      }
-    };
-
-    // Validate the data structure
-    if (!data.parameters.rootUsers || data.parameters.rootUsers.length === 0) {
-      throw new Error('rootUsers array is required and cannot be empty');
-    }
-    if (!data.parameters.rootQuorumThreshold) {
-      throw new Error('rootQuorumThreshold is required');
-    }
-
-    console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
-    
-    // Try using the raw client method directly
-    const { Turnkey } = require('@turnkey/sdk-server');
-    const turnkey = new Turnkey({
-      apiBaseUrl: 'https://api.turnkey.com',
-      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
-      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
-      defaultOrganizationId: process.env.TURNKEY_ORG_ID
-    });
-    
-    const client = turnkey.apiClient();
-    const response = await client.createSubOrganization(data);
-    
-    if (!response.activity?.result?.createSubOrganizationResultV7) {
-      throw new Error('Invalid response from Turnkey');
-    }
-
-    const result = response.activity.result.createSubOrganizationResultV7;
-    return {
-      subOrgId: result.subOrganizationId,
-      keyId: result.rootUsers[0].apiKeys[0].apiKeyId,
-      publicKey: apiPublicKey,
-      rootUserId: result.rootUsers[0].userId
-    };
-  } catch (error) {
-    console.error('Error creating Turnkey sub-org:', error);
-    throw new Error(`Failed to create sub-organization: ${error.message}`);
-  }
-}
-
 // Check if user can become a pioneer (founder)
 async function checkPioneerEligibility(telegramId) {
   try {
@@ -159,56 +91,6 @@ router.post('/register-pioneer', async (req, res) => {
 
 // Handle Turnkey registration with pioneer status check
 async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) {
-  // ADDED: Check for legacy user first
-  const legacyCheck = await pool.query(
-    "SELECT source_old_db, encrypted_s_address_secret, pioneer_status FROM users WHERE telegram_id = $1",
-    [telegram_id]
-  );
-  
-  const isLegacy = legacyCheck.rows.length > 0 && 
-                   legacyCheck.rows[0].source_old_db && 
-                   legacyCheck.rows[0].encrypted_s_address_secret;
-  
-  if (isLegacy) {
-    // Handle legacy user migration
-    const legacyUser = legacyCheck.rows[0];
-    
-    // Create new wallet for legacy user
-    const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegram_id, email, apiPublicKey);
-    
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Update existing user record with new wallet info
-      await client.query(
-        "UPDATE users SET user_email = $1, turnkey_user_id = $2, migration_notified = TRUE WHERE telegram_id = $3",
-        [email, rootUserId, telegram_id]
-      );
-      
-      // Insert new wallet
-      await client.query(
-        "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
-        "VALUES ($1, $2, $3, $4, TRUE)",
-        [telegram_id, subOrgId, keyId, publicKey]
-      );
-      
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-    
-    return { 
-      subOrgId, 
-      email,
-      isLegacy: true,
-      pioneerStatus: legacyUser.pioneer_status
-    };
-  }
-
   const existing = await pool.query(
     "SELECT turnkey_sub_org_id, turnkey_key_id, public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
     [telegram_id]
@@ -227,7 +109,35 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     console.log(`User ${telegram_id} is not eligible for pioneer status: ${eligibility.reason}`);
   }
 
-  const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegram_id, email, apiPublicKey);
+  // Create sub-organization using Turnkey API
+  const data = {
+    organizationId: process.env.TURNKEY_ORG_ID,
+    type: "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
+    timestampMs: String(Date.now()),
+    parameters: {
+      subOrganizationName: `User ${telegram_id}`,
+      rootQuorumThreshold: 1,
+      rootUsers: [{
+        userName: email,
+        apiKeys: [{
+          apiKeyName: `API Key - ${email}`,
+          publicKey: apiPublicKey
+        }]
+      }]
+    }
+  };
+
+  const response = await turnkeyRequest.createSubOrganization(data);
+  
+  if (!response.activity?.result?.createSubOrganizationResultV7) {
+    throw new Error('Invalid response from Turnkey');
+  }
+
+  const result = response.activity.result.createSubOrganizationResultV7;
+  const subOrgId = result.subOrganizationId;
+  const keyId = result.rootUsers[0].apiKeys[0].apiKeyId;
+  const publicKey = apiPublicKey;
+  const rootUserId = result.rootUsers[0].userId;
 
   const client = await pool.connect();
   try {
