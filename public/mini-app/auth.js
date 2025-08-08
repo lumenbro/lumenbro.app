@@ -64,12 +64,18 @@ window.register = async function () {
           iv: Array.from(iv),
           salt: Array.from(salt)
         };
-        await new Promise((resolve, reject) => {
-          window.Telegram.WebApp.CloudStorage.setItem('TURNKEY_API_KEY', JSON.stringify(encryptedData), (error) => {
-            if (error) reject(error);
-            else resolve();
+        try {
+          await new Promise((resolve, reject) => {
+            window.Telegram.WebApp.CloudStorage.setItem('TURNKEY_API_KEY', JSON.stringify(encryptedData), (error) => {
+              if (error) reject(new Error(`Cloud storage failed: ${error}`));
+              else resolve();
+            });
           });
-        });
+          console.log('Encrypted data stored successfully');
+        } catch (error) {
+          console.error('Encryption/storage error:', error);
+          throw new Error('Failed to store encrypted key - try again');
+        }
 
         // Fetch sub-org from backend (send public key for root user API key)
         const response = await fetch('/mini-app/create-sub-org', {

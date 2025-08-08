@@ -119,14 +119,14 @@ async function login() {
     console.log('Retrieved encryptedData:', JSON.stringify(encryptedData, null, 2));
 
     let apiKey;
-    if (encryptedData.encryptedPrivateKey && encryptedData.iv && encryptedData.salt) {
-      // Encrypted case
+    if (encryptedData.encryptedPrivateKey && encryptedData.iv && encryptedData.salt && encryptedData.publicKey) {
+      // Encrypted case (strict check for all fields)
       console.log('Attempting decryption of encrypted key');
       const password = prompt('Enter your password to decrypt key:');
       if (!password) throw new Error('Password required');
 
       if (!Array.isArray(encryptedData.salt) || !Array.isArray(encryptedData.iv) || !Array.isArray(encryptedData.encryptedPrivateKey)) {
-        throw new Error('Invalid encrypted data format');
+        throw new Error('Invalid encrypted data format - re-register');
       }
 
       const derivedKey = await crypto.subtle.deriveKey(
@@ -153,16 +153,9 @@ async function login() {
         apiPrivateKey: decryptedPrivateKey
       };
       console.log('Decryption successful');
-    } else if (encryptedData.apiPublicKey && encryptedData.apiPrivateKey) {
-      // Strict legacy fallback - only if explicitly unencrypted (for old data)
-      console.warn('Using legacy unencrypted key - re-register for security');
-      apiKey = {
-        apiPublicKey: encryptedData.apiPublicKey,
-        apiPrivateKey: encryptedData.apiPrivateKey
-      };
     } else {
-      // Invalid data - force error to re-register
-      throw new Error('Stored key data is invalid or incomplete - please re-register');
+      // No fallback - force error to re-register
+      throw new Error('Stored key is not encrypted or invalid - please re-register with password');
     }
 
     console.log('Retrieved API key:', apiKey); // Debug

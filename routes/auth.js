@@ -123,40 +123,39 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
     }
   }
   if (!backendApiKeyId) {
-    console.warn("Backend API key ID not found - skipping policy creation for now");
-    // Continue without policy; fix key mismatch later
-  } else {
-    // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
-    const policyParams = {
-      organizationId: subOrgId,
-      parameters: {
-        policy: {
-          effect: "EFFECT_ALLOW",
-          note: "Allow parent API key to initiate email auth recovery",
-          condition: {
-            operator: "and",
-            operands: [
-              {
-                operator: "==",
-                operands: [
-                  { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
-                  { type: "template", template: "activityType" }
-                ]
-              },
-              {
-                operator: "==",
-                operands: [
-                  { type: "string", value: backendApiKeyId },
-                  { type: "template", template: "authenticatorId" }
-                ]
-              }
-            ]
-          }
+    console.warn("Backend API key ID not found - using hardcoded fallback for testing");
+    backendApiKeyId = "e59d203e-5a5b-4873-a44c-6cae9e5f4ca0";  // Temporary: 'test 2' key ID from logs - remove after fix
+  }
+  // Step 2: Create policy allowing backend to initiate EMAIL_AUTH on this sub-org
+  const policyParams = {
+    organizationId: subOrgId,
+    parameters: {
+      policy: {
+        effect: "EFFECT_ALLOW",
+        note: "Allow parent API key to initiate email auth recovery",
+        condition: {
+          operator: "and",
+          operands: [
+            {
+              operator: "==",
+              operands: [
+                { type: "string", value: "ACTIVITY_TYPE_EMAIL_AUTH" },
+                { type: "template", template: "activityType" }
+              ]
+            },
+            {
+              operator: "==",
+              operands: [
+                { type: "string", value: backendApiKeyId },
+                { type: "template", template: "authenticatorId" }
+              ]
+            }
+          ]
         }
       }
-    };
-    await turnkeyClient.createPolicy(policyParams);
-  }
+    }
+  };
+  await turnkeyClient.createPolicy(policyParams);
 
   return { subOrgId, keyId, publicKey, rootUserId };
 }
