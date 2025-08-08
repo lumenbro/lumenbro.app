@@ -107,7 +107,7 @@ async function processRecovery() {
         
         // Add the new passkey as an authenticator using temporary credential
         const tempStamper = new window.Turnkey.ApiKeyStamper({
-            apiPublicKey: /* derived from decryptedCredential */,
+            apiPublicKey: "temp-public-key", // Placeholder - would be derived from decryptedCredential
             apiPrivateKey: decryptedCredential
         });
         
@@ -186,6 +186,9 @@ function contactSupport() {
 document.addEventListener('DOMContentLoaded', function() {
     updateStatus('Ready to recover your wallet');
     
+    // Debug: Confirm functions are loaded
+    console.log('Standalone recovery loaded. startRecovery available:', typeof window.startRecovery !== 'undefined');
+    
     // Check if Turnkey is available
     if (!window.Turnkey) {
         updateStatus('Loading Turnkey SDK...');
@@ -198,3 +201,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 });
+
+// Make functions globally available
+window.startRecovery = startRecovery;
+window.showStep3 = showStep3;
+window.processRecovery = processRecovery;
+window.showWallet = showWallet;
+window.exportKeys = exportKeys;
+window.setupTelegram = setupTelegram;
+window.contactSupport = contactSupport;
