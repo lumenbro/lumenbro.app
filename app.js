@@ -25,7 +25,7 @@ const authRoutes = require('./routes/auth');
 const loginRoutes = require('./routes/login');
 const recoveryRoutes = require('./routes/recovery');
 const chartsRoutes = require('./routes/charts');
-const walletRoutes = require('./routes/wallet');
+// const walletRoutes = require('./routes/wallet'); // Temporarily disabled
 
 // Add cache-busting for development
 if (process.env.NODE_ENV !== 'production') {
@@ -41,7 +41,7 @@ app.use(authRoutes);
 app.use(loginRoutes);
 app.use(recoveryRoutes);
 app.use('/api/charts', chartsRoutes);
-app.use('/api', walletRoutes);
+// app.use('/api', walletRoutes); // Temporarily disabled
 
 // Landing
 app.get('/', (req, res) => {
