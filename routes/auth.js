@@ -4,6 +4,7 @@ const router = express.Router();
 const pool = require('../db');
 const axios = require('axios');
 const turnkeyRequest = require('../turnkeyClient');
+const { Turnkey } = require('@turnkey/sdk-server');
 
 // Check if user can become a pioneer (founder)
 async function checkPioneerEligibility(telegramId) {
@@ -121,23 +122,50 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
         userName: email,
         apiKeys: [{
           apiKeyName: `API Key - ${email}`,
-          publicKey: apiPublicKey
-        }]
+          publicKey: apiPublicKey,
+          curveType: "API_KEY_CURVE_SECP256K1"
+        }],
+        authenticators: [],
+        oauthProviders: []
       }]
     }
   };
 
-  const response = await turnkeyRequest.createSubOrganization(data);
+  console.log('Sending data to Turnkey:', JSON.stringify(data, null, 2));
+
+  // Try using raw Turnkey client directly
+  const turnkey = new Turnkey({
+    apiBaseUrl: 'https://api.turnkey.com',
+    apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+    apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+    defaultOrganizationId: process.env.TURNKEY_ORG_ID
+  });
   
-  if (!response.activity?.result?.createSubOrganizationResultV7) {
+  const turnkeyClient = turnkey.apiClient();
+  const response = await turnkeyClient.createSubOrganization({
+    subOrganizationName: `User ${telegram_id}`,
+    rootUsers: [{
+      userName: email,
+      apiKeys: [{
+        apiKeyName: `API Key - ${email}`,
+        publicKey: apiPublicKey,
+        curveType: "API_KEY_CURVE_SECP256K1"
+      }],
+      authenticators: [],
+      oauthProviders: []
+    }],
+    rootQuorumThreshold: 1
+  });
+  
+  if (!response.subOrganizationId) {
     throw new Error('Invalid response from Turnkey');
   }
 
-  const result = response.activity.result.createSubOrganizationResultV7;
-  const subOrgId = result.subOrganizationId;
-  const keyId = result.rootUsers[0].apiKeys[0].apiKeyId;
+  const subOrgId = response.subOrganizationId;
+  const rootUserId = response.rootUserIds[0];
   const publicKey = apiPublicKey;
-  const rootUserId = result.rootUsers[0].userId;
+  // Note: We don't get the keyId directly from the response, we'll need to handle this differently
+  const keyId = null; // We'll need to get this from the activity result if needed
 
   const client = await pool.connect();
   try {
@@ -158,7 +186,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
     await client.query(
       "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
       "VALUES ($1, $2, $3, $4, TRUE) " +
-      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, is_active = TRUE",
+      "ON CONFLICT (telegram_id, turnkey_sub_org_id) DO UPDATE SET public_key = $4, is_active = TRUE",
       [telegram_id, subOrgId, keyId, publicKey]
     );
     await client.query(
@@ -209,3 +237,4 @@ router.post('/mini-app/create-sub-org', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.handleTurnkeyPost = handleTurnkeyPost;

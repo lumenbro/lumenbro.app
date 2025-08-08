@@ -58,3 +58,6 @@ jspm_packages/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local testing scripts (contain sensitive data)
+scripts/test-*.js
