@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const StellarSdk = require('@stellar/stellar-sdk');
+
+// Import Stellar SDK with correct destructuring
+const { Server, Keypair, Transaction, Networks } = require('@stellar/stellar-sdk');
 
 // Stellar SDK setup
-const server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+const server = new Server('https://horizon-testnet.stellar.org');
 
 // Get account info endpoint
 router.get('/wallet/account/:publicKey', async (req, res) => {
@@ -11,7 +13,7 @@ router.get('/wallet/account/:publicKey', async (req, res) => {
   
   try {
     // Validate the public key format
-    StellarSdk.Keypair.fromPublicKey(publicKey);
+    Keypair.fromPublicKey(publicKey);
     
     const account = await server.loadAccount(publicKey);
     
@@ -50,7 +52,7 @@ router.post('/wallet/submit-transaction', async (req, res) => {
   
   try {
     // Parse and submit the transaction
-    const transaction = new StellarSdk.Transaction(signedTransaction, StellarSdk.Networks.TESTNET);
+    const transaction = new Transaction(signedTransaction, Networks.TESTNET);
     const result = await server.submitTransaction(transaction);
     
     res.json({
@@ -74,7 +76,7 @@ router.post('/wallet/fund-testnet/:publicKey', async (req, res) => {
   
   try {
     // Validate the public key
-    StellarSdk.Keypair.fromPublicKey(publicKey);
+    Keypair.fromPublicKey(publicKey);
     
     // Use Stellar's friendbot to fund the account
     const response = await fetch(`https://friendbot.stellar.org?addr=${publicKey}`);
