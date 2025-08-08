@@ -25,11 +25,23 @@ const authRoutes = require('./routes/auth');
 const loginRoutes = require('./routes/login');
 const recoveryRoutes = require('./routes/recovery');
 const chartsRoutes = require('./routes/charts');
+const walletRoutes = require('./routes/wallet');
+
+// Add cache-busting for development
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/mini-app', (req, res, next) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+  });
+}
 
 app.use(authRoutes);
 app.use(loginRoutes);
 app.use(recoveryRoutes);
 app.use('/api/charts', chartsRoutes);
+app.use('/api', walletRoutes);
 
 // Landing
 app.get('/', (req, res) => {

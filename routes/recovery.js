@@ -6,11 +6,18 @@ const { Telegraf } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+// Standalone recovery page (no orgId needed)
 router.get('/recovery', (req, res) => {
-  const email = req.query.email || 'unknown@lumenbro.com';
+  const email = req.query.email;
   const orgId = req.query.orgId;
-  if (!orgId) return res.status(400).json({ error: "Missing orgId" });
-  res.render('recovery', { email, org_id: orgId });
+  
+  // If no orgId, serve the standalone recovery page
+  if (!orgId) {
+    return res.sendFile('recovery.html', { root: './public' });
+  }
+  
+  // Legacy mini-app recovery with orgId
+  res.render('recovery', { email: email || 'unknown@lumenbro.com', org_id: orgId });
 });
 
 // New endpoint for standalone recovery: lookup orgId by email

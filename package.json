@@ -26,6 +26,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@stellar/stellar-sdk": "^13.3.0",
     "@turnkey/crypto": "^2.4.3",
     "@turnkey/http": "^3.5.0",
     "@turnkey/iframe-stamper": "^2.5.0",

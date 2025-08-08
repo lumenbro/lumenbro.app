@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumenBro Web Wallet</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .wallet-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .balance {
+            font-size: 2.5em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .address {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            font-weight: bold;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #da190b; }
+        
+        .transaction-form {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .loading { background: rgba(255, 193, 7, 0.2); }
+        .error { background: rgba(244, 67, 54, 0.2); }
+        .success { background: rgba(76, 175, 80, 0.2); }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        .tab.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="wallet-card">
+        <h1>🌟 LumenBro Web Wallet</h1>
+        <div id="walletStatus" class="status loading">Loading wallet...</div>
+        
+        <div id="walletInfo" style="display: none;">
+            <div class="balance">
+                <span id="xlmBalance">0</span> XLM
+            </div>
+            
+            <div>
+                <strong>Wallet Address:</strong>
+                <div class="address" id="walletAddress">Loading...</div>
+                <button onclick="copyAddress()">📋 Copy Address</button>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('send')">Send</button>
+            <button class="tab" onclick="showTab('receive')">Receive</button>
+            <button class="tab" onclick="showTab('export')">Export</button>
+        </div>
+        
+        <!-- Send Tab -->
+        <div id="sendTab" class="tab-content active">
+            <div class="transaction-form">
+                <h3>Send XLM</h3>
+                <input type="text" id="sendTo" placeholder="Destination address (G...)">
+                <input type="number" id="sendAmount" placeholder="Amount (XLM)" step="0.0000001" min="0.0000001">
+                <input type="text" id="sendMemo" placeholder="Memo (optional)">
+                <button onclick="sendPayment()">Send Payment</button>
+            </div>
+        </div>
+        
+        <!-- Receive Tab -->
+        <div id="receiveTab" class="tab-content">
+            <div class="transaction-form">
+                <h3>Receive XLM</h3>
+                <p>Share this address to receive payments:</p>
+                <div class="address" id="receiveAddress">Loading...</div>
+                <button onclick="copyAddress()">📋 Copy Address</button>
+                <button onclick="refreshBalance()">🔄 Refresh Balance</button>
+            </div>
+        </div>
+        
+        <!-- Export Tab -->
+        <div id="exportTab" class="tab-content">
+            <div class="transaction-form">
+                <h3>Export Wallet</h3>
+                <p>⚠️ <strong>Warning:</strong> This will reveal your private key. Only do this in a secure environment.</p>
+                <button onclick="exportPrivateKey()" class="danger">Export Private Key</button>
+                <button onclick="exportSecretKey()" class="danger">Export Secret Key</button>
+                <div id="exportResult" style="margin-top: 20px; display: none;">
+                    <textarea id="exportedKey" rows="3" readonly></textarea>
+                    <button onclick="copyExportedKey()">📋 Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@stellar/stellar-sdk@latest/dist/stellar-sdk.min.js"></script>
+    <script src="/turnkey.js"></script>
+    <script>
+        let wallet = null;
+        let currentKeyPair = null;
+        
+        // Initialize wallet on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                await initializeWallet();
+            } catch (error) {
+                console.error('Wallet initialization error:', error);
+                showStatus('Failed to initialize wallet: ' + error.message, 'error');
+            }
+        });
+        
+        async function initializeWallet() {
+            showStatus('Initializing wallet...', 'loading');
+            
+            // Check if this is a recovered wallet (from URL params)
+            const urlParams = new URLSearchParams(window.location.search);
+            const isRecovered = urlParams.get('recovered') === 'true';
+            
+            if (isRecovered) {
+                showStatus('Wallet recovered! Loading balance...', 'loading');
+                // In a real implementation, you'd get the wallet info from the recovery process
+                // For now, we'll create a test wallet
+                await loadTestWallet();
+            } else {
+                showStatus('No wallet found. This page is for recovered wallets.', 'error');
+                return;
+            }
+            
+            await loadWalletInfo();
+        }
+        
+        async function loadTestWallet() {
+            // This would normally come from the recovery process
+            // For testing, create a random keypair
+            const keypair = StellarSdk.Keypair.random();
+            currentKeyPair = keypair;
+            
+            document.getElementById('walletAddress').textContent = keypair.publicKey();
+            document.getElementById('receiveAddress').textContent = keypair.publicKey();
+        }
+        
+        async function loadWalletInfo() {
+            if (!currentKeyPair) return;
+            
+            try {
+                // Use backend API for account info
+                const response = await fetch(`/api/wallet/account/${currentKeyPair.publicKey()}`);
+                
+                if (response.ok) {
+                    const account = await response.json();
+                    
+                    // Find XLM balance
+                    let xlmBalance = '0';
+                    account.balances.forEach(balance => {
+                        if (balance.assetCode === 'XLM') {
+                            xlmBalance = parseFloat(balance.balance).toFixed(7);
+                        }
+                    });
+                    
+                    document.getElementById('xlmBalance').textContent = xlmBalance;
+                    document.getElementById('walletInfo').style.display = 'block';
+                    showStatus('Wallet loaded successfully!', 'success');
+                    
+                } else if (response.status === 404) {
+                    // Account doesn't exist yet
+                    document.getElementById('xlmBalance').textContent = '0 (Unfunded)';
+                    document.getElementById('walletInfo').style.display = 'block';
+                    showStatus('Wallet found but not funded. ', 'success');
+                    
+                    // Add fund button for testnet
+                    addFundButton();
+                } else {
+                    throw new Error('Failed to load account');
+                }
+                
+            } catch (error) {
+                console.error('Error loading wallet:', error);
+                showStatus('Error loading wallet balance', 'error');
+            }
+        }
+        
+        function addFundButton() {
+            const receiveTab = document.getElementById('receiveTab');
+            if (!document.getElementById('fundButton')) {
+                const fundButton = document.createElement('button');
+                fundButton.id = 'fundButton';
+                fundButton.textContent = '💰 Fund Testnet Account';
+                fundButton.onclick = fundTestnetAccount;
+                receiveTab.querySelector('.transaction-form').appendChild(fundButton);
+            }
+        }
+        
+        async function fundTestnetAccount() {
+            if (!currentKeyPair) return;
+            
+            try {
+                showStatus('Funding testnet account...', 'loading');
+                
+                const response = await fetch(`/api/wallet/fund-testnet/${currentKeyPair.publicKey()}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    showStatus('Account funded with 10,000 XLM!', 'success');
+                    setTimeout(refreshBalance, 3000);
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error);
+                }
+            } catch (error) {
+                console.error('Funding error:', error);
+                showStatus('Failed to fund account: ' + error.message, 'error');
+            }
+        }
+        
+        function showTab(tabName) {
+            // Hide all tabs and remove active class
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function showStatus(message, type = '') {
+            const status = document.getElementById('walletStatus');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+        
+        function copyAddress() {
+            const address = document.getElementById('walletAddress').textContent;
+            navigator.clipboard.writeText(address).then(() => {
+                showStatus('Address copied to clipboard!', 'success');
+                setTimeout(() => showStatus('Wallet loaded successfully!', 'success'), 2000);
+            });
+        }
+        
+        async function refreshBalance() {
+            showStatus('Refreshing balance...', 'loading');
+            await loadWalletInfo();
+        }
+        
+        async function sendPayment() {
+            const destination = document.getElementById('sendTo').value.trim();
+            const amount = document.getElementById('sendAmount').value.trim();
+            const memo = document.getElementById('sendMemo').value.trim();
+            
+            if (!destination || !amount) {
+                showStatus('Please enter destination and amount', 'error');
+                return;
+            }
+            
+            if (!currentKeyPair) {
+                showStatus('No wallet loaded', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('Sending payment...', 'loading');
+                
+                const server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+                const sourceAccount = await server.loadAccount(currentKeyPair.publicKey());
+                
+                let transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+                    fee: StellarSdk.BASE_FEE,
+                    networkPassphrase: StellarSdk.Networks.TESTNET
+                })
+                .addOperation(StellarSdk.Operation.payment({
+                    destination: destination,
+                    asset: StellarSdk.Asset.native(),
+                    amount: amount
+                }))
+                .setTimeout(30);
+                
+                if (memo) {
+                    transaction = transaction.addMemo(StellarSdk.Memo.text(memo));
+                }
+                
+                const builtTransaction = transaction.build();
+                builtTransaction.sign(currentKeyPair);
+                
+                const result = await server.submitTransaction(builtTransaction);
+                
+                showStatus('Payment sent successfully!', 'success');
+                console.log('Transaction result:', result);
+                
+                // Clear form
+                document.getElementById('sendTo').value = '';
+                document.getElementById('sendAmount').value = '';
+                document.getElementById('sendMemo').value = '';
+                
+                // Refresh balance
+                setTimeout(refreshBalance, 2000);
+                
+            } catch (error) {
+                console.error('Send payment error:', error);
+                showStatus('Failed to send payment: ' + error.message, 'error');
+            }
+        }
+        
+        function exportPrivateKey() {
+            if (!currentKeyPair) {
+                showStatus('No wallet loaded', 'error');
+                return;
+            }
+            
+            const privateKey = currentKeyPair.secret();
+            document.getElementById('exportedKey').value = privateKey;
+            document.getElementById('exportResult').style.display = 'block';
+            showStatus('Private key exported. Keep it secure!', 'success');
+        }
+        
+        function exportSecretKey() {
+            // Same as private key for Stellar
+            exportPrivateKey();
+        }
+        
+        function copyExportedKey() {
+            const key = document.getElementById('exportedKey').value;
+            navigator.clipboard.writeText(key).then(() => {
+                showStatus('Private key copied to clipboard!', 'success');
+            });
+        }
+    </script>
+</body>
+</html>
