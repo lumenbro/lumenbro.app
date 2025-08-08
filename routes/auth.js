@@ -14,9 +14,7 @@ async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
       timestampMs: String(Date.now()),
       parameters: {
         subOrganizationName: `User ${telegram_id}`,
-        rootQuorum: {
-          approverIds: [process.env.TURNKEY_ROOT_USER_ID]
-        },
+        rootQuorumThreshold: 1,
         rootUsers: [{
           userName: email,
           apiKeys: [{
