@@ -115,32 +115,49 @@ async function login() {
     });
     if (!encryptedData) throw new Error('No stored key found');
 
-    const password = prompt('Enter your password to decrypt key:');
-    if (!password) throw new Error('Password required');
+    let apiKey;
+    if (encryptedData.encryptedPrivateKey && encryptedData.iv && encryptedData.salt) {
+      // Encrypted case
+      console.log('Attempting decryption of encrypted key');
+      const password = prompt('Enter your password to decrypt key:');
+      if (!password) throw new Error('Password required');
 
-    const derivedKey = await crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: Uint8Array.from(encryptedData.salt),
-        iterations: 100000,
-        hash: 'SHA-256'
-      },
-      await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
-    );
-    const decryptedPrivateKeyBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: Uint8Array.from(encryptedData.iv) },
-      derivedKey,
-      Uint8Array.from(encryptedData.encryptedPrivateKey)
-    );
-    const decryptedPrivateKey = new TextDecoder().decode(decryptedPrivateKeyBuffer);
+      if (!Array.isArray(encryptedData.salt) || !Array.isArray(encryptedData.iv) || !Array.isArray(encryptedData.encryptedPrivateKey)) {
+        throw new Error('Invalid encrypted data format');
+      }
 
-    const apiKey = {
-      apiPublicKey: encryptedData.publicKey,
-      apiPrivateKey: decryptedPrivateKey
-    };
+      const derivedKey = await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: Uint8Array.from(encryptedData.salt),
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+      const decryptedPrivateKeyBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: Uint8Array.from(encryptedData.iv) },
+        derivedKey,
+        Uint8Array.from(encryptedData.encryptedPrivateKey)
+      );
+      const decryptedPrivateKey = new TextDecoder().decode(decryptedPrivateKeyBuffer);
+
+      apiKey = {
+        apiPublicKey: encryptedData.publicKey,
+        apiPrivateKey: decryptedPrivateKey
+      };
+      console.log('Decryption successful');
+    } else {
+      // Legacy unencrypted case
+      console.log('Using legacy unencrypted key');
+      apiKey = {
+        apiPublicKey: encryptedData.publicKey || encryptedData.apiPublicKey,
+        apiPrivateKey: encryptedData.privateKey || encryptedData.apiPrivateKey
+      };
+    }
 
     console.log('Retrieved API key:', apiKey); // Debug
 
