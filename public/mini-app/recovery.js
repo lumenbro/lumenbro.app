@@ -67,17 +67,19 @@ async function completeRecovery() {
 
     const result = await verifyResponse.json();
 
-    // Step 5: Show success and wallet options
-    document.getElementById('content').innerHTML = `
-      <h3>✅ Recovery Successful!</h3>
-      <p>Your wallet has been recovered. Choose what to do next:</p>
-      <button onclick="accessWallet()">Access Web Wallet</button>
-      <button onclick="setupBot()">Setup Bot Trading</button>
-      <button onclick="exportKeys()">Export Private Keys</button>
-    `;
+    // Store recovery credentials securely
+    const credentials = await window.recoveryManager.storeCredentials({
+      userId: result.userId,
+      apiKeyId: result.apiKeyId,
+      credentialBundle: result.credentialBundle,
+      orgId: orgId,
+      targetPrivateKey: targetKeyPair.privateKey,
+      email: email
+    });
 
-    // Store recovery result for wallet access
-    window.recoveryResult = result;
+    // Show recovery success with status
+    document.getElementById('content').innerHTML = 
+      window.recoveryManager.showRecoveryStatus(orgId, credentials);
 
   } catch (error) {
     console.error('Recovery completion error:', error);
