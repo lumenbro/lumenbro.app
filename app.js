@@ -24,6 +24,7 @@ const syncService = require('./services/syncService');
 const authRoutes = require('./routes/auth');
 const loginRoutes = require('./routes/login');
 const recoveryRoutes = require('./routes/recovery');
+const recoveryKeyRoutes = require('./routes/recovery-key-creation');
 const chartsRoutes = require('./routes/charts');
 // const walletRoutes = require('./routes/wallet'); // Temporarily disabled
 
@@ -40,6 +41,7 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(authRoutes);
 app.use(loginRoutes);
 app.use(recoveryRoutes);
+app.use(recoveryKeyRoutes);
 app.use('/api/charts', chartsRoutes);
 // app.use('/api', walletRoutes); // Temporarily disabled
 

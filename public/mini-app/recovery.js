@@ -99,9 +99,33 @@ async function completeRecovery() {
       email: email
     });
 
-    // Show recovery success with status
-    document.getElementById('content').innerHTML = 
-      window.recoveryManager.showRecoveryStatus(orgId, credentials);
+    // Set recovery credentials for key generation
+    window.recoveryKeyGenerator.setRecoveryCredentials(credentials);
+
+    // Show recovery success with new key generation option
+    document.getElementById('content').innerHTML = `
+      <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+        <h3>✅ Recovery Successful!</h3>
+        <p>Your wallet has been recovered with temporary 1-hour access.</p>
+        <p><strong>Organization ID:</strong> ${orgId}</p>
+        
+        <h4>Choose your next step:</h4>
+        
+        <button onclick="accessWallet('${orgId}')" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+          💰 Access Wallet (1 hour)
+        </button>
+        
+        <button onclick="showKeyGenerationOption('${orgId}', '${email}')" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+          🔑 Create New Telegram Keys
+        </button>
+        
+        <button onclick="exportToTelegram('${orgId}')" style="background: #17a2b8; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+          🤖 Setup Telegram Bot
+        </button>
+      </div>
+      
+      <div id="keyGenerationArea"></div>
+    `;
 
   } catch (error) {
     console.error('Recovery completion error:', error);
@@ -147,6 +171,12 @@ function exportKeys() {
 
 function openTelegram() {
   window.open('https://t.me/YourBotUsername', '_blank');
+}
+
+// Show key generation option
+function showKeyGenerationOption(orgId, email) {
+  document.getElementById('keyGenerationArea').innerHTML = 
+    window.recoveryKeyGenerator.showKeyGenerationUI(orgId, email);
 }
 
 // NEW: Call recover on load or button click
