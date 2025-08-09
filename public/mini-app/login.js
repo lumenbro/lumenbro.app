@@ -88,10 +88,44 @@ function derEncodeSignature(sigBuffer) {
   return arrayBufferToHex(der);
 }
 
-async function createTelegramCloudStorageStamper() {
-  const stamper = await Turnkey.TelegramCloudStorageStamper.create();
-  console.log('Stamper initialized'); // Debug
-  return stamper;
+// Manual stamper implementation using our encrypted key storage
+class ManualStamper {
+  constructor(privateKey, publicKey) {
+    this.privateKey = privateKey;
+    this.publicKey = publicKey;
+  }
+
+  async stamp(payload) {
+    try {
+      // Import the private key for signing
+      const privateKeyCrypto = await importPrivateKey(this.privateKey, this.publicKey);
+      
+      // Sign the payload
+      const sigBuffer = await crypto.subtle.sign(
+        { name: "ECDSA", hash: "SHA-256" },
+        privateKeyCrypto,
+        new TextEncoder().encode(payload)
+      );
+      
+      // Encode signature in DER format
+      const sigHex = derEncodeSignature(sigBuffer);
+      
+      // Return stamp object
+      return {
+        publicKey: this.publicKey,
+        scheme: "SIGNATURE_SCHEME_TK_API_P256",
+        signature: sigHex
+      };
+    } catch (error) {
+      console.error('❌ Manual stamping failed:', error);
+      throw error;
+    }
+  }
+}
+
+function createManualStamper(privateKey, publicKey) {
+  console.log('✅ Manual stamper created with encrypted keys');
+  return new ManualStamper(privateKey, publicKey);
 }
 
 async function login() {
@@ -106,16 +140,16 @@ async function login() {
   }
 
   try {
-    const stamper = await createTelegramCloudStorageStamper();
-    
-    // Check if key is in encrypted format
+    // Check if key is in encrypted format first
     const isEncrypted = await window.EncryptionUtils.isKeyEncrypted();
     
     let apiKey;
+    let password; // Store password to avoid asking twice
+    
     if (isEncrypted) {
       // Use standardized decryption
       console.log('Using encrypted key format');
-      const password = prompt('Enter your password to decrypt key:');
+      password = prompt('Enter your password to decrypt key:');
       if (!password) throw new Error('Password required');
       
       apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
@@ -140,7 +174,7 @@ async function login() {
         // Offer to migrate legacy key
         const migrate = confirm('You have a legacy unencrypted key. Would you like to secure it with a password?');
         if (migrate) {
-          const password = prompt('Create a password to encrypt your existing key:');
+          password = prompt('Create a password to encrypt your existing key:');
           if (password) {
             await window.EncryptionUtils.migrateLegacyKey(password);
             apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
@@ -160,6 +194,9 @@ async function login() {
         throw new Error('Invalid key format - please re-register');
       }
     }
+
+    // Create manual stamper using our decrypted keys (bypasses TelegramCloudStorageStamper)
+    const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
 
     console.log('Retrieved API key:', apiKey); // Debug
 
@@ -218,21 +255,8 @@ async function login() {
     const bodyStr = stringifySorted(body);
     console.log('Sent body:', bodyStr);
 
-    // Sign the bodyStr using stored API private key
-    const privateKeyCrypto = await importPrivateKey(apiKey.apiPrivateKey, apiKey.apiPublicKey);
-    const sigBuffer = await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      privateKeyCrypto,
-      new TextEncoder().encode(bodyStr)
-    );
-    const sigHex = derEncodeSignature(sigBuffer);
-
-    // Create stamp object
-    const stamp = {
-      publicKey: apiKey.apiPublicKey,
-      scheme: "SIGNATURE_SCHEME_TK_API_P256",
-      signature: sigHex
-    };
+    // Use manual stamper to sign the bodyStr
+    const stamp = await stamper.stamp(bodyStr);
     const stampJson = stringifySorted(stamp);
     const stampEncoded = btoa(stampJson)
       .replace(/\+/g, '-')
