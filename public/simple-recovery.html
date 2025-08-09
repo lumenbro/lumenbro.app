@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumenBro Recovery</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .step { display: none; } .step.active { display: block; }
+        input, button { width: 100%; padding: 15px; margin: 10px 0; }
+        button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+        .result { background: #f0f0f0; padding: 15px; margin: 20px 0; font-family: monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <h1>🔐 LumenBro Account Recovery</h1>
+    
+    <div id="step1" class="step active">
+        <h3>Step 1: Enter Email</h3>
+        <input type="email" id="email" placeholder="Your registered email">
+        <button onclick="startRecovery()">Send Recovery Email</button>
+    </div>
+    
+    <div id="step2" class="step">
+        <h3>Step 2: Check Email</h3>
+        <p>Recovery instructions sent! Check your email and follow the link.</p>
+        <button onclick="showStep3()">I Got The Email</button>
+    </div>
+    
+    <div id="step3" class="step">
+        <h3>Step 3: Recovery Complete</h3>
+        <p>Your account has been recovered. Here are your options:</p>
+        <button onclick="exportToFreighter()">Export to Freighter Wallet</button>
+        <button onclick="exportToLobstr()">Export to Lobstr</button>
+        <button onclick="exportKeys()">Show Private Keys</button>
+        <div id="exportResult"></div>
+    </div>
+    
+    <script>
+        function showStep(n) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step' + n).classList.add('active');
+        }
+        
+        function showStep3() { showStep(3); }
+        
+        function startRecovery() {
+            // Simulate recovery process
+            setTimeout(() => showStep(2), 1000);
+        }
+        
+        function exportToFreighter() {
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="result">Install Freighter extension, then use "Import Account" with your private key.</div>';
+        }
+        
+        function exportToLobstr() {
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="result">Download Lobstr app, then use "Import existing wallet" option.</div>';
+        }
+        
+        function exportKeys() {
+            document.getElementById('exportResult').innerHTML = 
+                '<div class="result">⚠️ Private Key: SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX<br><br>Copy this key and import it into any Stellar wallet.</div>';
+        }
+    </script>
+</body>
+</html>

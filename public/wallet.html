@@ -212,39 +212,33 @@
             if (!currentKeyPair) return;
             
             try {
-                // Use backend API for account info
-                const response = await fetch(`/api/wallet/account/${currentKeyPair.publicKey()}`);
+                // Use direct Stellar API (client-side only)
+                const server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+                const account = await server.loadAccount(currentKeyPair.publicKey());
                 
-                if (response.ok) {
-                    const account = await response.json();
-                    
-                    // Find XLM balance
-                    let xlmBalance = '0';
-                    account.balances.forEach(balance => {
-                        if (balance.assetCode === 'XLM') {
-                            xlmBalance = parseFloat(balance.balance).toFixed(7);
-                        }
-                    });
-                    
-                    document.getElementById('xlmBalance').textContent = xlmBalance;
-                    document.getElementById('walletInfo').style.display = 'block';
-                    showStatus('Wallet loaded successfully!', 'success');
-                    
-                } else if (response.status === 404) {
+                // Find XLM balance
+                let xlmBalance = '0';
+                account.balances.forEach(balance => {
+                    if (balance.asset_type === 'native') {
+                        xlmBalance = parseFloat(balance.balance).toFixed(7);
+                    }
+                });
+                
+                document.getElementById('xlmBalance').textContent = xlmBalance;
+                document.getElementById('walletInfo').style.display = 'block';
+                showStatus('Wallet loaded successfully!', 'success');
+                
+            } catch (error) {
+                if (error.response && error.response.status === 404) {
                     // Account doesn't exist yet
                     document.getElementById('xlmBalance').textContent = '0 (Unfunded)';
                     document.getElementById('walletInfo').style.display = 'block';
-                    showStatus('Wallet found but not funded. ', 'success');
-                    
-                    // Add fund button for testnet
+                    showStatus('Wallet found but not funded.', 'success');
                     addFundButton();
                 } else {
-                    throw new Error('Failed to load account');
+                    console.error('Error loading wallet:', error);
+                    showStatus('Error loading wallet balance', 'error');
                 }
-                
-            } catch (error) {
-                console.error('Error loading wallet:', error);
-                showStatus('Error loading wallet balance', 'error');
             }
         }
         
@@ -265,16 +259,14 @@
             try {
                 showStatus('Funding testnet account...', 'loading');
                 
-                const response = await fetch(`/api/wallet/fund-testnet/${currentKeyPair.publicKey()}`, {
-                    method: 'POST'
-                });
+                // Use Stellar's friendbot directly
+                const response = await fetch(`https://friendbot.stellar.org?addr=${currentKeyPair.publicKey()}`);
                 
                 if (response.ok) {
                     showStatus('Account funded with 10,000 XLM!', 'success');
                     setTimeout(refreshBalance, 3000);
                 } else {
-                    const error = await response.json();
-                    throw new Error(error.error);
+                    throw new Error('Friendbot funding failed');
                 }
             } catch (error) {
                 console.error('Funding error:', error);

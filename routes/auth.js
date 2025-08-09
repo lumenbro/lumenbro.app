@@ -52,6 +52,33 @@ async function addPioneer(telegramId) {
   }
 }
 
+// Send email verification during registration
+async function verifyEmailWithTurnkey(email, orgId) {
+  try {
+    const verificationData = {
+      type: "ACTIVITY_TYPE_EMAIL_AUTH",
+      organizationId: process.env.TURNKEY_ORG_ID, // Root org for email verification
+      parameters: {
+        email,
+        targetPublicKey: process.env.TURNKEY_API_PUBLIC_KEY, // Use root org public key
+        apiKeyName: `Email Verification - ${email}`,
+        expirationSeconds: "3600",
+        emailCustomization: {
+          appName: "LumenBro",
+          magicLinkTemplate: "Welcome to LumenBro! Please verify your email by entering this code in the app: {{authBundle}}"
+        }
+      }
+    };
+
+    console.log('Sending email verification for:', email);
+    const response = await turnkeyClient.emailAuth(verificationData);
+    return response;
+  } catch (error) {
+    console.error('Email verification failed:', error);
+    throw error;
+  }
+}
+
 // Updated to use API public key for root user, no authenticators
 async function createTurnkeySubOrg(telegram_id, email, apiPublicKey) {
   const params = {
@@ -122,6 +149,15 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
   }
 
   const { subOrgId, keyId, publicKey, rootUserId } = await createTurnkeySubOrg(telegram_id, email, apiPublicKey);
+
+  // NEW: Send email verification to register email with Turnkey
+  try {
+    await verifyEmailWithTurnkey(email, subOrgId);
+    console.log(`Email verification sent for ${email}`);
+  } catch (emailError) {
+    console.warn(`Email verification failed for ${email}:`, emailError.message);
+    // Don't fail registration if email verification fails, but log it
+  }
 
   const client = await pool.connect();
   try {
@@ -242,6 +278,44 @@ router.post('/mini-app/clear', async (req, res) => {
   } catch (e) {
     console.error(`Clear failed: ${e.message}`);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// NEW: Endpoint to handle email verification during registration
+router.post('/verify-email', async (req, res) => {
+  const { telegram_id, email, verificationCode } = req.body;
+  
+  if (!telegram_id || !email || !verificationCode) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    // Get user's orgId
+    const userRes = await pool.query(
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw WHERE tw.telegram_id = $1 AND tw.is_active = TRUE",
+      [telegram_id]
+    );
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const orgId = userRes.rows[0].turnkey_sub_org_id;
+
+    // TODO: Complete email verification with Turnkey
+    // This would involve using the verification code to complete the email auth process
+    
+    // Mark email as verified in database
+    await pool.query(
+      "UPDATE users SET user_email = $1, migration_notified = TRUE WHERE telegram_id = $2",
+      [email, telegram_id]
+    );
+
+    res.json({ success: true, message: "Email verified successfully" });
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

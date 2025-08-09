@@ -57,16 +57,20 @@ router.post('/init-recovery', async (req, res) => {
     userId = userRes.rows[0].turnkey_user_id;
 
     const data = {
+      type: "ACTIVITY_TYPE_EMAIL_AUTH",
       organizationId: orgId,
-      email,
-      targetPublicKey,
-      // Updated from legacy: Use new params, add apiKeyName for temporary recovery key
-      apiKeyName: `Recovery API Key - ${email}`,
-      expirationSeconds: "3600",
-      emailCustomization: { appName: "LumenBro" }
+      parameters: {
+        email,
+        targetPublicKey,
+        apiKeyName: `Recovery API Key - ${email}`,
+        expirationSeconds: "3600",
+        emailCustomization: { 
+          appName: "LumenBro",
+          magicLinkTemplate: "We received a request to recover your LumenBro wallet. Use this code: {{authBundle}}"
+        }
+      }
     };
-    console.log('Init request data:', data);
-    // Updated: Use new emailAuth method instead of legacy
+    console.log('Email Auth request data:', data);
     const response = await turnkeyRequest.emailAuth(data);
     const fetchedUserId = response.activity?.result?.emailAuthResult?.userId;  // Adjust if response structure differs
     if (fetchedUserId && fetchedUserId !== userId) {
@@ -75,6 +79,64 @@ router.post('/init-recovery', async (req, res) => {
     res.json({ success: true, userId: fetchedUserId || userId });
   } catch (e) {
     console.error(`Init recovery failed: ${e.message}\n${e.stack}`);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// New endpoint for OTP completion and passkey addition
+router.post('/complete-otp-recovery', async (req, res) => {
+  const { orgId, email, otpCode, newPasskey } = req.body;
+  if (!orgId || !email || !otpCode || !newPasskey) {
+    return res.status(400).json({ error: "Missing orgId, email, otpCode, or newPasskey" });
+  }
+
+  try {
+    // Get user info
+    const userRes = await pool.query(
+      "SELECT u.turnkey_user_id, u.telegram_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1",
+      [orgId]
+    );
+    if (userRes.rows.length === 0) throw new Error("User not found in database");
+    
+    const { turnkey_user_id: userId, telegram_id: telegramId } = userRes.rows[0];
+
+    // Use the OTP code to add new authenticator (passkey)
+    const addAuthData = {
+      type: "ACTIVITY_TYPE_CREATE_AUTHENTICATORS",
+      organizationId: orgId,
+      parameters: {
+        authenticators: [{
+          authenticatorName: `Recovery Passkey - ${email}`,
+          challenge: otpCode, // Use OTP as challenge
+          attestation: newPasskey
+        }]
+      }
+    };
+
+    const addAuthResponse = await turnkeyRequest.addAuthenticator(addAuthData);
+    
+    if (addAuthResponse.activity?.result) {
+      // Update database to mark recovery complete
+      await pool.query(
+        "UPDATE users SET migration_notified = TRUE, migration_notified_at = NOW() WHERE telegram_id = $1",
+        [telegramId]
+      );
+
+      // Send success notification via Telegram
+      const message = `🎉 Wallet recovery successful! Your new passkey has been added. You can now access your wallet through the bot or mini-app.`;
+      await bot.telegram.sendMessage(telegramId, message);
+
+      res.json({ 
+        success: true, 
+        authenticatorId: addAuthResponse.activity.result.createAuthenticatorsResult?.authenticatorIds?.[0],
+        message: "Recovery completed successfully"
+      });
+    } else {
+      throw new Error("Failed to add new authenticator");
+    }
+
+  } catch (e) {
+    console.error(`Complete OTP recovery failed: ${e.message}`);
     res.status(500).json({ error: e.message });
   }
 });
@@ -131,6 +193,50 @@ router.get('/confirm-policy', async (req, res) => {
   } catch (e) {
     console.error(`Confirm policy failed: ${e.message}`);
     res.status(500).send('<h2>Error: Server error</h2>');
+  }
+});
+
+// Endpoint to proxy transaction requests to the bot API
+router.post('/bot-transaction', async (req, res) => {
+  const { orgId, transactionType, ...transactionParams } = req.body;
+  
+  if (!orgId || !transactionType) {
+    return res.status(400).json({ error: "Missing orgId or transactionType" });
+  }
+
+  try {
+    // Get user's telegram_id from orgId
+    const userRes = await pool.query(
+      "SELECT u.telegram_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1",
+      [orgId]
+    );
+    if (userRes.rows.length === 0) throw new Error("User not found");
+    
+    const telegramId = userRes.rows[0].telegram_id;
+
+    // Forward request to Python bot API on port 8080
+    const botApiUrl = `http://localhost:8080/api/${transactionType}`;
+    const botResponse = await fetch(botApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_id: telegramId,
+        org_id: orgId,
+        ...transactionParams
+      })
+    });
+
+    if (!botResponse.ok) {
+      const errorData = await botResponse.text();
+      throw new Error(`Bot API error: ${errorData}`);
+    }
+
+    const botData = await botResponse.json();
+    res.json(botData);
+
+  } catch (e) {
+    console.error(`Bot transaction proxy failed: ${e.message}`);
+    res.status(500).json({ error: e.message });
   }
 });
 

@@ -116,7 +116,8 @@ window.register = async function () {
             }
         });
 
-        document.getElementById('content').innerHTML = 'Registration complete! API keys stored in Telegram Cloud.';
+        // Show email verification step
+        showEmailVerification(telegram_id, email, result);
     } catch (error) {
         console.error(error);
         document.getElementById('content').innerHTML = 'Error: ' + error.message;
@@ -127,4 +128,85 @@ window.register = async function () {
 async function continueRegistration() {
     // Re-run the registration process
     await register();
+}
+
+// NEW: Email verification functions
+function showEmailVerification(telegram_id, email, registrationResult) {
+    // Store data for verification
+    window.registrationData = { telegram_id, email, registrationResult };
+    
+    document.getElementById('content').innerHTML = `
+        <div style="background: #e8f5e8; border: 1px solid #4CAF50; padding: 15px; margin: 10px 0; border-radius: 5px;">
+            <h3>✅ Wallet Created Successfully!</h3>
+            <p><strong>Organization ID:</strong> ${registrationResult.subOrgId || 'Created'}</p>
+        </div>
+        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 5px;">
+            <h3>📧 Email Verification Required</h3>
+            <p>We've sent a verification code to <strong>${email}</strong></p>
+            <p>Please check your email and enter the verification code below:</p>
+            <input type="text" id="verificationCode" placeholder="Enter verification code" style="margin: 10px 0; padding: 10px; width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+            <button onclick="verifyEmail()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">Verify Email</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">⚠️ Email recovery won't work until verified. You can complete this later in settings.</p>
+            <button onclick="skipVerification()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Skip for Now</button>
+        </div>
+    `;
+}
+
+async function verifyEmail() {
+    try {
+        const verificationCode = document.getElementById('verificationCode').value.trim();
+        if (!verificationCode) {
+            alert('Please enter the verification code');
+            return;
+        }
+
+        const { telegram_id, email } = window.registrationData;
+
+        document.getElementById('content').innerHTML = 'Verifying email...';
+
+        const response = await fetch('/verify-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id,
+                email,
+                verificationCode
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Verification failed');
+        }
+
+        document.getElementById('content').innerHTML = `
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>✅ Email Verified Successfully!</h3>
+                <p>Your email has been verified. Email recovery is now enabled for your wallet.</p>
+                <p>You can now <a href="/mini-app?action=login">login</a> to access your wallet.</p>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Verification error:', error);
+        document.getElementById('content').innerHTML = `
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>❌ Verification Failed</h3>
+                <p>Error: ${error.message}</p>
+                <button onclick="showEmailVerification('${window.registrationData.telegram_id}', '${window.registrationData.email}', window.registrationData.registrationResult)" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+function skipVerification() {
+    document.getElementById('content').innerHTML = `
+        <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+            <h3>📱 Registration Complete!</h3>
+            <p>Your wallet has been created successfully.</p>
+            <p><strong>Note:</strong> Email recovery is disabled until you verify your email.</p>
+            <p>You can verify your email later in wallet settings.</p>
+            <p>You can now <a href="/mini-app?action=login">login</a> to access your wallet.</p>
+        </div>
+    `;
 }
