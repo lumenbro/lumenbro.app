@@ -53,14 +53,23 @@ async function addPioneer(telegramId) {
 }
 
 // Send email verification during registration
-async function verifyEmailWithTurnkey(email, orgId) {
+async function verifyEmailWithTurnkey(email, orgId, userPublicKey) {
   try {
+    // Validate email format first
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error(`Invalid email format: ${email}`);
+    }
+
+    // Use the user's public key as target (hex format)
+    const targetPublicKey = userPublicKey.startsWith('0x') ? userPublicKey.slice(2) : userPublicKey;
+    
     const verificationData = {
       type: "ACTIVITY_TYPE_EMAIL_AUTH",
       organizationId: process.env.TURNKEY_ORG_ID, // Root org for email verification
       parameters: {
-        email,
-        targetPublicKey: process.env.TURNKEY_API_PUBLIC_KEY, // Use root org public key
+        email: email.trim().toLowerCase(), // Ensure clean email format
+        targetPublicKey: targetPublicKey, // Use user's public key for encryption
         apiKeyName: `Email Verification - ${email}`,
         expirationSeconds: "3600",
         emailCustomization: {
@@ -70,7 +79,12 @@ async function verifyEmailWithTurnkey(email, orgId) {
       }
     };
 
-    console.log('Sending email verification for:', email);
+    console.log('Sending email verification request:', {
+      email: verificationData.parameters.email,
+      targetPublicKey: verificationData.parameters.targetPublicKey.substring(0, 20) + '...',
+      orgId: verificationData.organizationId
+    });
+    
     const response = await turnkeyClient.emailAuth(verificationData);
     return response;
   } catch (error) {
@@ -152,7 +166,7 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
 
   // NEW: Send email verification to register email with Turnkey
   try {
-    await verifyEmailWithTurnkey(email, subOrgId);
+    await verifyEmailWithTurnkey(email, subOrgId, apiPublicKey);
     console.log(`Email verification sent for ${email}`);
   } catch (emailError) {
     console.warn(`Email verification failed for ${email}:`, emailError.message);
