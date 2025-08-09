@@ -230,36 +230,78 @@ router.post('/complete-otp-recovery', async (req, res) => {
   }
 });
 
-// POST /create-recovery-api-key - Missing endpoint for recovery key creation
+// POST /create-recovery-api-key - Create new API key using root organization permissions
 router.post('/create-recovery-api-key', async (req, res) => {
-  const { email, orgId, publicKey, encryptedPrivateKey, password } = req.body;
+  const { email, orgId, publicKey, apiKeyName } = req.body;
   
   if (!email || !orgId || !publicKey) {
     return res.status(400).json({ error: "Missing required fields: email, orgId, publicKey" });
   }
   
   try {
-    console.log('🔑 Creating new API key with recovery credentials:', {
+    console.log('🔑 Creating new API key for recovered user:', {
       email,
       orgId,
-      apiKeyName: `Recovery Telegram Key - ${email} - ${new Date().toISOString()}`
+      apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`
     });
     
-    // Use the recovery credentials from session (stored after OTP verification)
-    // TODO: In production, retrieve these from secure session storage
-    const { Turnkey } = require('@turnkey/sdk-server');
+    // First, verify this is a legitimate recovery by checking the database
+    const userRes = await pool.query(
+      "SELECT u.telegram_id, u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1 AND u.user_email = $2 AND tw.is_active = TRUE",
+      [orgId, email.trim().toLowerCase()]
+    );
     
-    // We need the recovery credentials to sign this request
-    // For now, return the data needed for frontend to complete the process
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "No matching user found for this email and organization" });
+    }
+    
+    const { telegram_id: telegramId, turnkey_user_id: userId } = userRes.rows[0];
+    
+    // Use root organization credentials to create API key in user's sub-org
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const turnkey = new Turnkey({
+      apiBaseUrl: 'https://api.turnkey.com',
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+      defaultOrganizationId: process.env.TURNKEY_ORG_ID
+    });
+    const client = turnkey.apiClient();
+
+    // Create new API key for the user
+    const response = await client.createApiKeys({
+      organizationId: orgId, // User's sub-org
+      userId: userId,
+      apiKeys: [{
+        apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
+        publicKey: publicKey,
+        curveType: "API_KEY_CURVE_SECP256K1"
+      }]
+    });
+    
+    console.log('✅ Created new API key via root org:', response);
+    
+    const apiKeyId = response.activity?.result?.createApiKeysResult?.apiKeyIds?.[0];
+    
+    if (!apiKeyId) {
+      throw new Error('Failed to get API key ID from response');
+    }
+    
+    // Log the recovery action
+    console.log(`🎉 Recovery API key created for user ${telegramId} (${email}): ${apiKeyId}`);
+    
     res.json({ 
       success: true,
-      message: "Use recovery credentials on frontend to create API key",
-      apiKeyName: `Recovery Telegram Key - ${email} - ${new Date().toISOString()}`
+      apiKeyId: apiKeyId,
+      message: "API key created successfully",
+      orgId: orgId
     });
     
   } catch (error) {
     console.error('❌ Failed to create recovery API key:', error.message);
-    res.status(500).json({ error: "Failed to create new API key" });
+    res.status(500).json({ 
+      error: "Failed to create new API key",
+      details: error.message 
+    });
   }
 });
 

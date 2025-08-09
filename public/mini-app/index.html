@@ -36,6 +36,7 @@
             const telegramApp = window.Telegram.WebApp;
             window.params = new URLSearchParams(window.location.search);
             window.orgId = window.params.get('orgId') || 'global-org-id';  // Set global orgId from query param
+            window.email = window.params.get('email') || '';  // Set global email from query param
             const action = window.params.get('action');
             if (action === 'register') {
                 window.register();

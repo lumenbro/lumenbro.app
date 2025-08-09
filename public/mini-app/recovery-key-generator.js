@@ -1,225 +1,165 @@
-// Recovery Key Generator - creates new Telegram API keys using recovery credentials
+// recovery-key-generator.js - Handles generating new Telegram API keys after recovery
+
 class RecoveryKeyGenerator {
   constructor() {
-    this.recoveryCredentials = null;
+    this.credentials = null;
   }
 
-  // Set recovery credentials obtained from OTP verification
+  // Set the recovery credentials from OTP verification
   setRecoveryCredentials(credentials) {
-    this.recoveryCredentials = credentials;
-    console.log('✅ Recovery credentials set for key generation');
+    this.credentials = credentials;
+    console.log('🔑 Recovery credentials set:', {
+      orgId: credentials.orgId,
+      email: credentials.email,
+      expiresAt: new Date(credentials.expiresAt).toISOString()
+    });
   }
 
-  // Create new Telegram API key using recovery credentials
-  async createNewTelegramKey(email, orgId, password) {
-    if (!this.recoveryCredentials) {
-      throw new Error('Recovery credentials not set. Complete OTP verification first.');
+  // Generate new Telegram API keys using recovery credentials
+  async generateNewTelegramKey(password) {
+    if (!this.credentials) {
+      throw new Error('No recovery credentials available. Complete OTP verification first.');
     }
 
-    if (!password) {
-      throw new Error('Password required for key encryption');
+    if (Date.now() > this.credentials.expiresAt) {
+      throw new Error('Recovery credentials have expired. Please start recovery again.');
     }
 
     try {
-      console.log('🔑 Creating new Telegram API key...');
+      console.log('🔄 Generating new Telegram API key...');
       
-      // Generate new P256 keypair for Telegram
+      // Generate new P256 keypair for API keys
       const newKeyPair = await window.Turnkey.generateP256ApiKeyPair();
-      console.log('Generated new key pair for Telegram storage');
-
-      // Use recovery credentials to create the API key in Turnkey
-      const apiKeyName = `Recovery Telegram Key - ${email} - ${new Date().toISOString()}`;
       
-      // Create API key using recovery credentials (frontend signing)
-      const createKeyResponse = await this.createApiKeyWithRecoveryCredentials(
-        orgId,
-        this.recoveryCredentials.userId, 
-        newKeyPair.publicKey,
-        apiKeyName
-      );
+      console.log('✅ Generated new API key pair');
+      
+      // Use recovery credentials to create new API key in Turnkey via backend
+      console.log('🔗 Creating new API key via backend...');
+      
+      const createKeyResponse = await fetch('/create-recovery-api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: this.credentials.email,
+          orgId: this.credentials.orgId,
+          publicKey: newKeyPair.publicKey,
+          apiKeyName: `Recovery Telegram Key - ${this.credentials.email}`
+        })
+      });
 
-      if (!createKeyResponse.success) {
-        throw new Error('Failed to create new API key');
+      if (!createKeyResponse.ok) {
+        const errorData = await createKeyResponse.json();
+        throw new Error(errorData.error || 'Failed to create API key via backend');
       }
 
-      console.log('✅ New API key created in Turnkey');
+      const newApiKeyResponse = await createKeyResponse.json();
 
-      // Encrypt and store the new key in Telegram Cloud Storage
-      await window.EncryptionUtils.storeTelegramKey(
-        newKeyPair.publicKey, 
-        newKeyPair.privateKey, 
-        password
-      );
+      console.log('✅ Created new API key in Turnkey:', newApiKeyResponse);
 
-      console.log('✅ New encrypted key stored in Telegram Cloud Storage');
-
+      // Encrypt and store the new keys in Telegram Cloud Storage
+      const encryptedData = await this.encryptKeyWithPassword(newKeyPair, password);
+      
+      // Store in Telegram Cloud Storage
+      await this.storeTelegramKey(encryptedData);
+      
+      console.log('✅ New encrypted keys stored in Telegram Cloud');
+      
       return {
         success: true,
+        apiKeyId: newApiKeyResponse.apiKeyId,
         publicKey: newKeyPair.publicKey,
-        message: 'New Telegram key created and stored successfully!'
+        encrypted: true
       };
 
     } catch (error) {
-      console.error('❌ Failed to create new Telegram key:', error);
-      throw error;
+      console.error('❌ Failed to generate new Telegram key:', error);
+      throw new Error(`Failed to create new API key: ${error.message}`);
     }
   }
 
-  // Create API key using recovery credentials to sign the request
-  async createApiKeyWithRecoveryCredentials(orgId, userId, publicKey, apiKeyName) {
-    try {
-      // Use the recovery credentials to sign a CREATE_API_KEYS_V2 activity
-      const stamper = new window.Turnkey.ApiKeyStamper({
-        apiPublicKey: this.recoveryCredentials.publicKey,
-        apiPrivateKey: this.recoveryCredentials.privateKey
-      });
+  // Encrypt private key with password (uses same method as EncryptionUtils)
+  async encryptKeyWithPassword(keyPair, password) {
+    const encoder = new TextEncoder();
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    
+    // Derive key from password
+    const keyMaterial = await window.crypto.subtle.importKey(
+      'raw',
+      encoder.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits', 'deriveKey']
+    );
+    
+    const derivedKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+    
+    // Encrypt private key
+    const privateKeyData = encoder.encode(keyPair.privateKey);
+    const encryptedData = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      derivedKey,
+      privateKeyData
+    );
+    
+    return {
+      publicKey: keyPair.publicKey,
+      encryptedPrivateKey: Array.from(new Uint8Array(encryptedData)),
+      iv: Array.from(iv),
+      salt: Array.from(salt)
+    };
+  }
 
-      const client = new window.Turnkey.TurnkeyBrowserClient({
-        baseUrl: 'https://api.turnkey.com',
-        stamper: stamper,
-        defaultOrganizationId: orgId
-      });
-
-      const response = await client.createApiKeys({
-        organizationId: orgId,
-        userId: userId,
-        apiKeys: [{
-          apiKeyName: apiKeyName,
-          publicKey: publicKey,
-          curveType: "API_KEY_CURVE_SECP256K1"
-        }]
-      });
-
-      return { 
-        success: true, 
-        response: response,
-        apiKeyId: response.activity?.result?.createApiKeysResult?.apiKeyIds?.[0]
-      };
-
-    } catch (error) {
-      console.error('Recovery API key creation error:', error);
+  // Store encrypted data in Telegram Cloud Storage
+  async storeTelegramKey(encryptedData) {
+    return new Promise((resolve, reject) => {
+      const dataToStore = JSON.stringify(encryptedData);
       
-      // Call the backend endpoint as fallback (for logging/monitoring)
-      try {
-        const backendResponse = await fetch('/create-recovery-api-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: this.recoveryCredentials.email,
-            orgId: orgId,
-            publicKey: publicKey,
-            apiKeyName: apiKeyName
-          })
-        });
-        
-        if (!backendResponse.ok) {
-          throw new Error(`Backend call failed: ${backendResponse.status}`);
+      window.Telegram.WebApp.CloudStorage.setItem('TURNKEY_API_KEY', dataToStore, (error) => {
+        if (error) {
+          reject(new Error(`Failed to store in Telegram Cloud: ${error}`));
+        } else {
+          resolve(encryptedData);
         }
-        
-        const backendData = await backendResponse.json();
-        console.log('Backend response:', backendData);
-        
-      } catch (backendError) {
-        console.error('Backend fallback also failed:', backendError.message);
-      }
-      
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Clear recovery credentials after use
-  clearRecoveryCredentials() {
-    this.recoveryCredentials = null;
-    console.log('Recovery credentials cleared');
+      });
+    });
   }
 
   // Get current recovery status
   getRecoveryStatus() {
-    return {
-      hasCredentials: !!this.recoveryCredentials,
-      email: this.recoveryCredentials?.email,
-      orgId: this.recoveryCredentials?.orgId,
-      expiresAt: this.recoveryCredentials?.expiresAt
+    if (!this.credentials) {
+      return { status: 'no_credentials', message: 'No recovery session active' };
+    }
+    
+    if (Date.now() > this.credentials.expiresAt) {
+      return { status: 'expired', message: 'Recovery session expired' };
+    }
+    
+    return { 
+      status: 'active', 
+      message: 'Recovery session active',
+      orgId: this.credentials.orgId,
+      email: this.credentials.email,
+      expiresIn: Math.floor((this.credentials.expiresAt - Date.now()) / 1000 / 60) // minutes
     };
   }
 }
 
-// Global instance
+// Make available globally
 window.recoveryKeyGenerator = new RecoveryKeyGenerator();
 
-// Helper function to generate new Telegram keys (called from UI)
-async function generateNewTelegramKeys(email, orgId) {
-  try {
-    const password = prompt('Create a password for your new Telegram keys:');
-    if (!password) {
-      throw new Error('Password required');
-    }
-
-    const confirmPassword = prompt('Confirm your password:');
-    if (password !== confirmPassword) {
-      throw new Error('Passwords do not match');
-    }
-
-    console.log('Starting new key generation...');
-    
-    const result = await window.recoveryKeyGenerator.createNewTelegramKey(email, orgId, password);
-    
-    if (result.success) {
-      // Update UI to show success
-      document.getElementById('content').innerHTML = `
-        <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
-          <h3>✅ New Telegram Keys Created!</h3>
-          <p>Your new encrypted API keys have been created and stored in Telegram Cloud Storage.</p>
-          <p><strong>Public Key:</strong> ${result.publicKey.substring(0, 20)}...</p>
-          <p><strong>What's Next:</strong></p>
-          <ol>
-            <li>Your old Telegram bot session is now invalid</li>
-            <li>Use your new password to login via the Telegram bot</li>
-            <li>All your wallet and trading data remains the same</li>
-          </ol>
-          <button onclick="testNewLogin('${orgId}', '${email}')">Test New Login</button>
-          <button onclick="location.reload()">Return to Main</button>
-        </div>
-      `;
-    }
-
-  } catch (error) {
-    console.error(' New key generation failed:', error);
-    
-    // Show error in UI
-    document.getElementById('content').innerHTML = `
-      <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
-        <h3>❌ Key Generation Failed</h3>
-        <p><strong>Error:</strong> ${error.message}</p>
-        <p>Please try the recovery process again or contact support.</p>
-        <button onclick="window.recover()">Try Recovery Again</button>
-        <button onclick="location.reload()">Return to Main</button>
-      </div>
-    `;
-  }
-}
-
-// Test function to verify new login works
-async function testNewLogin(orgId, email) {
-  try {
-    console.log('Testing new login...');
-    
-    const password = prompt('Enter your NEW password to test login:');
-    if (!password) return;
-
-    const apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
-    
-    document.getElementById('content').innerHTML = `
-      <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
-        <h3>✅ Login Test Successful!</h3>
-        <p>Your new password successfully decrypted your Telegram keys.</p>
-        <p><strong>Public Key:</strong> ${apiKey.apiPublicKey.substring(0, 20)}...</p>
-        <p>You can now use this password with the Telegram bot.</p>
-        <button onclick="location.reload()">Return to Main</button>
-      </div>
-    `;
-
-  } catch (error) {
-    alert('Login test failed: ' + error.message);
-  }
+// Export for standalone use
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = RecoveryKeyGenerator;
 }
