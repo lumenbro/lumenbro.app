@@ -96,7 +96,7 @@ router.post('/init-otp', async (req, res) => {
     res.json({ 
       success: true, 
       message: "Recovery code sent to your email!",
-      otpId: response.activity?.result?.initOtpAuthResult?.otpId,
+      otpId: response.otpId, // OTP ID is at top level
       orgId: orgId
     });
     
@@ -152,7 +152,7 @@ router.post('/verify-otp', async (req, res) => {
       otpCode: otpCode.toString(),
       targetPublicKey: targetPublicKey,
       apiKeyName: `Recovery Session - ${email}`,
-      expirationSeconds: 3600 // 1 hour session
+      expirationSeconds: "3600" // 1 hour session (string format)
     });
     console.log('OTP verified successfully:', response);
     
