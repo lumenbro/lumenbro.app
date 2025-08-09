@@ -108,13 +108,9 @@ window.register = async function () {
             return;
         }
 
-        // Create stamper and store RAW PRIVATE key in Telegram Cloud
-        const stamper = await window.Turnkey.TelegramCloudStorageStamper.create({
-            cloudStorageAPIKey: {
-                apiPublicKey: keyPair.publicKey,
-                apiPrivateKey: keyPair.privateKey
-            }
-        });
+        // Keys are already encrypted and stored above - no need for TelegramCloudStorageStamper
+        // The TelegramCloudStorageStamper.create() would overwrite our encrypted keys with plaintext
+        console.log('Encrypted keys stored securely in Telegram Cloud Storage');
 
         // Registration complete - email is registered with Turnkey for recovery
         document.getElementById('content').innerHTML = `
