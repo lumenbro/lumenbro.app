@@ -28,9 +28,31 @@ async function startRecovery() {
     updateStatus('Starting recovery process...');
     
     try {
-        // Generate target key pair for recovery
-        const targetKeyPair = await window.Turnkey.generateP256ApiKeyPair();
+        // Generate uncompressed P-256 key pair for recovery
+        const cryptoKeyPair = await window.crypto.subtle.generateKey(
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            true,
+            ['sign', 'verify']
+        );
+        
+        // Export keys in proper format
+        const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
+        const targetPublicKey = Array.from(new Uint8Array(publicKeyBuffer))
+            .map(byte => byte.toString(16).padStart(2, '0'))
+            .join('');
+        
+        const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
+        const targetPrivateKey = Array.from(new Uint8Array(privateKeyBuffer))
+            .map(byte => byte.toString(16).padStart(2, '0'))
+            .join('');
+        
+        const targetKeyPair = {
+            publicKey: targetPublicKey,
+            privateKey: targetPrivateKey
+        };
+        
         recoveryKeys = targetKeyPair; // Store for later use
+        console.log('Generated uncompressed P-256 key, length:', targetPublicKey.length / 2, 'bytes');
         
         // First, try to find the user's orgId by email
         // This requires a new backend endpoint to lookup orgId by email

@@ -6,9 +6,31 @@ async function recover() {
     const email = prompt('Enter your email for recovery:');
     if (!email) throw new Error('Email required');
 
-    // Generate target public key for recovery encryption
-    const targetKeyPair = await window.Turnkey.generateP256ApiKeyPair();
-    const targetPublicKey = targetKeyPair.publicKey;
+    // Generate uncompressed P-256 key pair for recovery encryption
+    const cryptoKeyPair = await window.crypto.subtle.generateKey(
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      true,
+      ['sign', 'verify']
+    );
+    
+    // Export public key in uncompressed format (65 bytes)
+    const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
+    const targetPublicKey = Array.from(new Uint8Array(publicKeyBuffer))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Export private key for later decryption
+    const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
+    const targetPrivateKey = Array.from(new Uint8Array(privateKeyBuffer))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+    
+    const targetKeyPair = {
+      publicKey: targetPublicKey,
+      privateKey: targetPrivateKey
+    };
+    
+    console.log('Target public key length:', targetPublicKey.length, 'bytes:', targetPublicKey.length / 2);
 
     // Step 1: Initiate OTP recovery via backend
     document.getElementById('content').innerHTML = 'Sending recovery email...';
