@@ -12,10 +12,11 @@ const client = turnkey.apiClient();
 
 module.exports = {
   createSubOrganization: async (params) => await client.createSubOrganization(params),
-  // Remove legacy method
-  // initUserEmailRecovery: async (data) => await client.initUserEmailRecovery(data),
   createReadWriteSession: async (data) => await client.createReadWriteSession(data),
-  // Add new methods for Email Auth and policy support
+  // Modern OTP-based Email Auth methods
+  initOtpAuth: async (params) => await client.initOtpAuth(params),
+  otpAuth: async (params) => await client.otpAuth(params),
+  // Legacy Email Auth (keeping for backward compatibility)
   emailAuth: async (params) => await client.emailAuth(params),
   getApiKeys: async (params) => await client.getApiKeys(params),
   getWhoami: async (params) => await client.getWhoami(params),

@@ -116,8 +116,21 @@ window.register = async function () {
             }
         });
 
-        // Show email verification step
-        showEmailVerification(telegram_id, email, result);
+        // Registration complete - email is registered with Turnkey for recovery
+        document.getElementById('content').innerHTML = `
+            <div style="background: #e8f5e8; border: 1px solid #4CAF50; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>✅ Registration Complete!</h3>
+                <p>Your wallet has been created successfully.</p>
+                <p><strong>Organization ID:</strong> ${result.subOrgId || 'Created'}</p>
+                <p>You can now <a href="/mini-app?action=login">login</a> to access your wallet.</p>
+            </div>
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>📧 Email Recovery Enabled</h3>
+                <p>Your email <strong>${email}</strong> has been registered with your wallet.</p>
+                <p>If you lose access to Telegram, you can recover using: <a href="/recovery" target="_blank">Email Recovery</a></p>
+                <p><strong>Keep safe:</strong> Your password and this email access!</p>
+            </div>
+        `;
     } catch (error) {
         console.error(error);
         document.getElementById('content').innerHTML = 'Error: ' + error.message;

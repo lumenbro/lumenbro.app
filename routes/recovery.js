@@ -44,42 +44,131 @@ router.post('/lookup-org-by-email', async (req, res) => {
   }
 });
 
-router.post('/init-recovery', async (req, res) => {
-  const { orgId, email, targetPublicKey } = req.body;
-  if (!orgId || !email || !targetPublicKey) return res.status(400).json({ error: "Missing orgId, email, or targetPublicKey" });
+// Step 1: Initialize OTP (modern approach)
+router.post('/init-otp', async (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: "Missing email" });
+  }
+  
   try {
-    let userId;
+    // Find the user's sub-org by email
     const userRes = await pool.query(
-      "SELECT u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1",
-      [orgId]
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+      [email.trim().toLowerCase()]
     );
-    if (userRes.rows.length === 0) throw new Error("User not found in database");
-    userId = userRes.rows[0].turnkey_user_id;
-
-    const data = {
-      type: "ACTIVITY_TYPE_EMAIL_AUTH",
-      organizationId: orgId,
-      parameters: {
-        email,
-        targetPublicKey,
-        apiKeyName: `Recovery API Key - ${email}`,
-        expirationSeconds: "3600",
-        emailCustomization: { 
-          appName: "LumenBro",
-          magicLinkTemplate: "We received a request to recover your LumenBro wallet. Use this code: {{authBundle}}"
-        }
-      }
-    };
-    console.log('Email Auth request data:', data);
-    const response = await turnkeyRequest.emailAuth(data);
-    const fetchedUserId = response.activity?.result?.emailAuthResult?.userId;  // Adjust if response structure differs
-    if (fetchedUserId && fetchedUserId !== userId) {
-      await pool.query("UPDATE users SET turnkey_user_id = $1 WHERE user_email = $2", [fetchedUserId, email]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "No wallet found for this email address" });
     }
-    res.json({ success: true, userId: fetchedUserId || userId });
-  } catch (e) {
-    console.error(`Init recovery failed: ${e.message}\n${e.stack}`);
-    res.status(500).json({ error: e.message });
+    
+    const orgId = userRes.rows[0].turnkey_sub_org_id;
+    
+    // Modern OTP initialization (direct SDK call)
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const turnkey = new Turnkey({
+      apiBaseUrl: 'https://api.turnkey.com',
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+      defaultOrganizationId: process.env.TURNKEY_ORG_ID
+    });
+    const client = turnkey.apiClient();
+
+    console.log('Initiating OTP for:', {
+      email: email.trim().toLowerCase(),
+      orgId: orgId
+    });
+    
+    const response = await client.initOtpAuth({
+      organizationId: orgId, // User's sub-org
+      otpType: "OTP_TYPE_EMAIL",
+      contact: email.trim().toLowerCase(),
+      otpLength: 6,
+      emailCustomization: {
+        appName: "LumenBro",
+        emailSubject: "LumenBro Wallet Recovery Code",
+        emailBody: "Your LumenBro recovery code is: {{OTP}}\n\nThis code expires in 5 minutes."
+      }
+    });
+    console.log('OTP initiated successfully:', response);
+    
+    res.json({ 
+      success: true, 
+      message: "Recovery code sent to your email!",
+      otpId: response.activity?.result?.initOtpAuthResult?.otpId,
+      orgId: orgId
+    });
+    
+  } catch (error) {
+    console.error(`OTP initiation failed: ${error.message}`);
+    res.status(500).json({ 
+      error: "Failed to send recovery code",
+      details: error.message 
+    });
+  }
+});
+
+// Step 2: Verify OTP and get session
+router.post('/verify-otp', async (req, res) => {
+  const { otpId, otpCode, targetPublicKey, email } = req.body;
+  
+  if (!otpId || !otpCode || !targetPublicKey || !email) {
+    return res.status(400).json({ error: "Missing required fields: otpId, otpCode, targetPublicKey, email" });
+  }
+  
+  try {
+    // Find the user's sub-org by email
+    const userRes = await pool.query(
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+      [email.trim().toLowerCase()]
+    );
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "No wallet found for this email address" });
+    }
+    
+    const orgId = userRes.rows[0].turnkey_sub_org_id;
+    
+    // Use direct SDK call for OTP verification
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const turnkey = new Turnkey({
+      apiBaseUrl: 'https://api.turnkey.com',
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+      defaultOrganizationId: process.env.TURNKEY_ORG_ID
+    });
+    const client = turnkey.apiClient();
+
+    console.log('Verifying OTP:', {
+      otpId: otpId,
+      orgId: orgId,
+      codeLength: otpCode.toString().length
+    });
+    
+    const response = await client.otpAuth({
+      organizationId: orgId,
+      otpId: otpId,
+      otpCode: otpCode.toString(),
+      targetPublicKey: targetPublicKey,
+      apiKeyName: `Recovery Session - ${email}`,
+      expirationSeconds: 3600 // 1 hour session
+    });
+    console.log('OTP verified successfully:', response);
+    
+    res.json({ 
+      success: true, 
+      message: "Recovery successful!",
+      credential: response.activity?.result?.otpAuthResult?.credential,
+      orgId: orgId
+    });
+    
+  } catch (error) {
+    console.error(`OTP verification failed: ${error.message}`);
+    res.status(500).json({ 
+      error: "Invalid recovery code or code expired",
+      details: error.message 
+    });
   }
 });
 
