@@ -68,3 +68,4 @@ async function createProperOtpPolicy() {
 }
 
 createProperOtpPolicy();
+

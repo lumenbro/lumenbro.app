@@ -107,55 +107,58 @@ async function login() {
 
   try {
     const stamper = await createTelegramCloudStorageStamper();
-    // NEW: Instead of direct getAPIKey, retrieve and decrypt
-    const encryptedData = await new Promise((resolve) => {
-      window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
-        resolve(value ? JSON.parse(value) : null);
-      });
-    });
-    if (!encryptedData) throw new Error('No stored key found');
-
-    // NEW: Log stored data structure for debugging
-    console.log('Retrieved encryptedData:', JSON.stringify(encryptedData, null, 2));
-
+    
+    // Check if key is in encrypted format
+    const isEncrypted = await window.EncryptionUtils.isKeyEncrypted();
+    
     let apiKey;
-    if (encryptedData.encryptedPrivateKey && encryptedData.iv && encryptedData.salt && encryptedData.publicKey) {
-      // Encrypted case (strict check for all fields)
-      console.log('Attempting decryption of encrypted key');
+    if (isEncrypted) {
+      // Use standardized decryption
+      console.log('Using encrypted key format');
       const password = prompt('Enter your password to decrypt key:');
       if (!password) throw new Error('Password required');
-
-      if (!Array.isArray(encryptedData.salt) || !Array.isArray(encryptedData.iv) || !Array.isArray(encryptedData.encryptedPrivateKey)) {
-        throw new Error('Invalid encrypted data format - re-register');
-      }
-
-      const derivedKey = await crypto.subtle.deriveKey(
-        {
-          name: 'PBKDF2',
-          salt: Uint8Array.from(encryptedData.salt),
-          iterations: 100000,
-          hash: 'SHA-256'
-        },
-        await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
-        { name: 'AES-GCM', length: 256 },
-        false,
-        ['encrypt', 'decrypt']
-      );
-      const decryptedPrivateKeyBuffer = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: Uint8Array.from(encryptedData.iv) },
-        derivedKey,
-        Uint8Array.from(encryptedData.encryptedPrivateKey)
-      );
-      const decryptedPrivateKey = new TextDecoder().decode(decryptedPrivateKeyBuffer);
-
-      apiKey = {
-        apiPublicKey: encryptedData.publicKey,
-        apiPrivateKey: decryptedPrivateKey
-      };
-      console.log('Decryption successful');
+      
+      apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+      console.log('✅ Decryption successful');
+      
     } else {
-      // No fallback - force error to re-register
-      throw new Error('Stored key is not encrypted or invalid - please re-register with password');
+      // Handle legacy unencrypted keys
+      const storedData = await new Promise((resolve) => {
+        window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+          resolve(value ? JSON.parse(value) : null);
+        });
+      });
+      
+      if (!storedData) throw new Error('No stored key found');
+      
+      console.log('Legacy unencrypted key detected:', {
+        hasApiPublicKey: !!storedData.apiPublicKey,
+        hasApiPrivateKey: !!storedData.apiPrivateKey
+      });
+      
+      if (storedData.apiPublicKey && storedData.apiPrivateKey) {
+        // Offer to migrate legacy key
+        const migrate = confirm('You have a legacy unencrypted key. Would you like to secure it with a password?');
+        if (migrate) {
+          const password = prompt('Create a password to encrypt your existing key:');
+          if (password) {
+            await window.EncryptionUtils.migrateLegacyKey(password);
+            apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+            console.log('✅ Legacy key migrated and decrypted');
+          } else {
+            throw new Error('Password required for migration');
+          }
+        } else {
+          // Use legacy key without encryption (temporarily)
+          apiKey = {
+            apiPublicKey: storedData.apiPublicKey,
+            apiPrivateKey: storedData.apiPrivateKey
+          };
+          console.log('⚠️ Using legacy unencrypted key');
+        }
+      } else {
+        throw new Error('Invalid key format - please re-register');
+      }
     }
 
     console.log('Retrieved API key:', apiKey); // Debug

@@ -36,41 +36,10 @@ window.register = async function () {
         // Generate P256 keypair for API keys (no WebAuthn)
         const keyPair = await window.Turnkey.generateP256ApiKeyPair();
 
-        // NEW: Encrypt private key with password-derived key
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const derivedKey = await crypto.subtle.deriveKey(
-          {
-            name: 'PBKDF2',
-            salt,
-            iterations: 100000,
-            hash: 'SHA-256'
-          },
-          await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']),
-          { name: 'AES-GCM', length: 256 },
-          false,
-          ['encrypt', 'decrypt']
-        );
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encryptedPrivateKey = await crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv },
-          derivedKey,
-          new TextEncoder().encode(keyPair.privateKey)
-        );
-
-        // Store encrypted data in Telegram Cloud
-        const encryptedData = {
-          publicKey: keyPair.publicKey,
-          encryptedPrivateKey: Array.from(new Uint8Array(encryptedPrivateKey)),
-          iv: Array.from(iv),
-          salt: Array.from(salt)
-        };
+        // Use standardized encryption
+        const storedData = await window.EncryptionUtils.storeTelegramKey(keyPair.publicKey, keyPair.privateKey, password);
+        
         try {
-          await new Promise((resolve, reject) => {
-            window.Telegram.WebApp.CloudStorage.setItem('TURNKEY_API_KEY', JSON.stringify(encryptedData), (error) => {
-              if (error) reject(new Error(`Cloud storage failed: ${error}`));
-              else resolve();
-            });
-          });
           console.log('Encrypted data stored successfully');
         } catch (error) {
           console.error('Encryption/storage error:', error);

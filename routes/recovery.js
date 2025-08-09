@@ -230,6 +230,39 @@ router.post('/complete-otp-recovery', async (req, res) => {
   }
 });
 
+// POST /create-recovery-api-key - Missing endpoint for recovery key creation
+router.post('/create-recovery-api-key', async (req, res) => {
+  const { email, orgId, publicKey, encryptedPrivateKey, password } = req.body;
+  
+  if (!email || !orgId || !publicKey) {
+    return res.status(400).json({ error: "Missing required fields: email, orgId, publicKey" });
+  }
+  
+  try {
+    console.log('🔑 Creating new API key with recovery credentials:', {
+      email,
+      orgId,
+      apiKeyName: `Recovery Telegram Key - ${email} - ${new Date().toISOString()}`
+    });
+    
+    // Use the recovery credentials from session (stored after OTP verification)
+    // TODO: In production, retrieve these from secure session storage
+    const { Turnkey } = require('@turnkey/sdk-server');
+    
+    // We need the recovery credentials to sign this request
+    // For now, return the data needed for frontend to complete the process
+    res.json({ 
+      success: true,
+      message: "Use recovery credentials on frontend to create API key",
+      apiKeyName: `Recovery Telegram Key - ${email} - ${new Date().toISOString()}`
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to create recovery API key:', error.message);
+    res.status(500).json({ error: "Failed to create new API key" });
+  }
+});
+
 router.post('/notify-recovery-complete', async (req, res) => {
   const { orgId, email, authenticatorId } = req.body;
   if (!orgId || !email || !authenticatorId) return res.status(400).json({ error: "Missing orgId, email, or authenticatorId" });
