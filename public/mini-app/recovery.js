@@ -10,13 +10,13 @@ async function recover() {
     const targetKeyPair = await window.Turnkey.generateP256ApiKeyPair();
     const targetPublicKey = targetKeyPair.publicKey;
 
-    // Step 1: Initiate recovery via backend
+    // Step 1: Initiate OTP recovery via backend
     document.getElementById('content').innerHTML = 'Sending recovery email...';
     
-    const initResponse = await fetch('/init-recovery', {
+    const initResponse = await fetch('/init-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orgId, email, targetPublicKey })
+      body: JSON.stringify({ email })
     });
     
     if (!initResponse.ok) {
@@ -24,11 +24,14 @@ async function recover() {
       throw new Error(errorData.error || 'Recovery initiation failed');
     }
 
+    const initData = await initResponse.json();
+    const { otpId, orgId: responseOrgId } = initData;
+
     // Step 2: Prompt for OTP code from email
-    document.getElementById('content').innerHTML = 'Check your email for the recovery code and enter it below:<br><br><input type="text" id="otpCode" placeholder="Enter OTP code"><br><button onclick="completeRecovery()">Complete Recovery</button>';
+    document.getElementById('content').innerHTML = 'Check your email for the recovery code and enter it below:<br><br><input type="text" id="otpCode" placeholder="Enter 6-digit code"><br><button onclick="completeRecovery()">Complete Recovery</button>';
     
     // Store data for completion step
-    window.recoveryData = { orgId, email, targetKeyPair };
+    window.recoveryData = { orgId: responseOrgId, email, targetKeyPair, otpId };
 
   } catch (error) {
     console.error('Recovery error:', error);
@@ -41,52 +44,28 @@ async function completeRecovery() {
     const otpCode = document.getElementById('otpCode').value.trim();
     if (!otpCode) throw new Error('Please enter the OTP code');
 
-    const { orgId, email, targetKeyPair } = window.recoveryData;
+    const { orgId, email, targetKeyPair, otpId } = window.recoveryData;
 
-    document.getElementById('content').innerHTML = 'Completing recovery...';
+    document.getElementById('content').innerHTML = 'Verifying OTP code...';
 
-    // Step 3: Generate new passkey using WebAuthn
-    const newPasskey = await navigator.credentials.create({
-      publicKey: {
-        challenge: new TextEncoder().encode(otpCode),
-        rp: { name: "LumenBro" },
-        user: {
-          id: new TextEncoder().encode(email),
-          name: email,
-          displayName: "LumenBro User"
-        },
-        pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-        authenticatorSelection: {
-          authenticatorAttachment: "platform",
-          userVerification: "required"
-        }
-      }
-    });
-
-    // Step 4: Complete recovery with new passkey
-    const completeResponse = await fetch('/complete-otp-recovery', {
+    // Step 3: Verify OTP and get session credentials
+    const verifyResponse = await fetch('/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        orgId,
-        email,
+        otpId,
         otpCode,
-        newPasskey: {
-          id: Array.from(new Uint8Array(newPasskey.rawId)),
-          response: {
-            attestationObject: Array.from(new Uint8Array(newPasskey.response.attestationObject)),
-            clientDataJSON: Array.from(new Uint8Array(newPasskey.response.clientDataJSON))
-          }
-        }
+        targetPublicKey: targetKeyPair.publicKey,
+        email
       })
     });
 
-    if (!completeResponse.ok) {
-      const errorData = await completeResponse.json();
-      throw new Error(errorData.error || 'Recovery completion failed');
+    if (!verifyResponse.ok) {
+      const errorData = await verifyResponse.json();
+      throw new Error(errorData.error || 'OTP verification failed');
     }
 
-    const result = await completeResponse.json();
+    const result = await verifyResponse.json();
 
     // Step 5: Show success and wallet options
     document.getElementById('content').innerHTML = `

@@ -47,21 +47,22 @@ async function startRecovery() {
         const lookupData = await lookupResponse.json();
         userOrgId = lookupData.orgId;
         
-        // Initiate recovery
-        const recoveryResponse = await fetch('/init-recovery', {
+        // Initiate OTP recovery
+        const recoveryResponse = await fetch('/init-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                orgId: userOrgId, 
-                email, 
-                targetPublicKey: targetKeyPair.publicKey 
-            })
+            body: JSON.stringify({ email })
         });
         
         if (!recoveryResponse.ok) {
             const errorData = await recoveryResponse.json();
             throw new Error(errorData.error || 'Recovery initiation failed');
         }
+        
+        const recoveryData = await recoveryResponse.json();
+        // Store OTP ID for verification step
+        window.recoveryOtpId = recoveryData.otpId;
+        window.recoveryOrgId = recoveryData.orgId;
         
         updateStatus('Recovery email sent!');
         showStep(2);
@@ -75,58 +76,38 @@ async function startRecovery() {
 }
 
 async function processRecovery() {
-    const encryptedCode = document.getElementById('recoveryCode').value.trim();
-    if (!encryptedCode) {
-        alert('Please paste the recovery code from your email');
+    const otpCode = document.getElementById('recoveryCode').value.trim();
+    if (!otpCode) {
+        alert('Please enter the 6-digit code from your email');
         return;
     }
 
-    updateStatus('Processing recovery code...');
+    updateStatus('Verifying OTP code...');
     
     try {
-        // Decrypt the recovery code using our target private key
-        const decryptedCredential = await decryptRecoveryCode(encryptedCode, recoveryKeys.privateKey);
-        
-        // Generate new passkey for the user
-        const newPasskey = await window.Turnkey.createPasskey({
-            publicKey: {
-                rp: { name: "LumenBro", id: window.location.hostname },
-                user: {
-                    id: new TextEncoder().encode(userOrgId),
-                    name: document.getElementById('email').value,
-                    displayName: "LumenBro User"
-                },
-                challenge: crypto.getRandomValues(new Uint8Array(32)),
-                pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-                authenticatorSelection: {
-                    authenticatorAttachment: "platform",
-                    userVerification: "required"
-                }
-            }
-        });
-        
-        // Add the new passkey as an authenticator using temporary credential
-        const tempStamper = new window.Turnkey.ApiKeyStamper({
-            apiPublicKey: "temp-public-key", // Placeholder - would be derived from decryptedCredential
-            apiPrivateKey: decryptedCredential
-        });
-        
-        // This would need proper implementation based on Turnkey's exact API
-        const addAuthResponse = await fetch('/add-authenticator', {
+        // Verify OTP code with Turnkey
+        const verifyResponse = await fetch('/verify-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                orgId: userOrgId,
-                authenticator: newPasskey,
-                tempCredential: decryptedCredential
+                otpId: window.recoveryOtpId,
+                otpCode: otpCode,
+                targetPublicKey: recoveryKeys.publicKey,
+                email: document.getElementById('email').value
             })
         });
-        
-        if (!addAuthResponse.ok) {
-            throw new Error('Failed to add new authenticator');
+
+        if (!verifyResponse.ok) {
+            const errorData = await verifyResponse.json();
+            throw new Error(errorData.error || 'OTP verification failed');
         }
+
+        const verifyData = await verifyResponse.json();
         
-        updateStatus('Recovery complete!');
+        // Store recovery credentials for wallet access
+        window.recoveryCredentials = verifyData;
+        
+        updateStatus('Recovery complete! You now have access to your wallet.');
         showStep(4);
         
     } catch (error) {
