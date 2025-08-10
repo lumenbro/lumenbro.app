@@ -145,12 +145,10 @@ class ExportUtils {
            
            console.log('🔑 Using private key for decryption:', privateKeyHex.substring(0, 20) + '...');
            
-           decryptedData = await window.Turnkey.decryptExportBundle({
-             exportBundle: exportResult.exportBundle,
-             embeddedKey: privateKeyHex,
-             organizationId: subOrgId,
-             keyFormat: "HEXADECIMAL"
-           });
+                       decryptedData = await window.Turnkey.decryptExportBundle({
+              exportBundle: exportResult.exportBundle,
+              privateKey: privateKeyHex
+            });
         } else if (window.Turnkey.decryptBundle) {
           // Method 2: Try decryptBundle
           decryptedData = await window.Turnkey.decryptBundle({
