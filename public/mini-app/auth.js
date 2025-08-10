@@ -678,7 +678,7 @@ function showExportResults(exportResult) {
     
     modal.innerHTML = `
         <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative;">
-            <button onclick="confirmCloseExport()" style="position: absolute; top: 15px; right: 20px; background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; z-index: 1001;">
+            <button onclick="confirmCloseExport()" style="position: absolute; top: 10px; right: 10px; background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; z-index: 1001; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                 ✕ Close
             </button>
             <h2 style="color: #d32f2f; margin-top: 0;">🔐 Stellar Wallet Backup</h2>
@@ -750,6 +750,12 @@ function showExportResults(exportResult) {
     `;
     
     document.body.appendChild(modal);
+    
+    // Auto-clear sensitive data after 5 minutes for security
+    setTimeout(() => {
+        console.log('⏰ Auto-clearing sensitive data after timeout');
+        clearSensitiveData();
+    }, 5 * 60 * 1000); // 5 minutes
 }
 
 // Helper functions for export modal
@@ -770,7 +776,31 @@ function toggleKeyVisibility(elementId) {
 function confirmCloseExport() {
     const confirmed = confirm('⚠️ Are you sure you want to close the export results?\n\nMake sure you have saved your private keys before closing.');
     if (confirmed) {
+        // Clear sensitive data from memory
+        clearSensitiveData();
         closeExportModal();
+    }
+}
+
+function clearSensitiveData() {
+    try {
+        // Clear any sensitive data from memory
+        const sensitiveElements = ['privateKeyDisplay', 'sAddressDisplay'];
+        sensitiveElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.value = '';
+            }
+        });
+        
+        // Clear any stored variables
+        if (window.currentExportData) {
+            window.currentExportData = null;
+        }
+        
+        console.log('🧹 Sensitive data cleared from memory');
+    } catch (error) {
+        console.error('Error clearing sensitive data:', error);
     }
 }
 

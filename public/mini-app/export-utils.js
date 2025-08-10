@@ -125,15 +125,15 @@ class ExportUtils {
       
              // Step 5: Extract the Stellar private key (decryptedData is the hex string directly)
        const stellarPrivateKey = decryptedData;
-       console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
        console.log('📋 Stellar private key length:', stellarPrivateKey.length);
+       console.log('📋 Private key format validation:', stellarPrivateKey.length === 64 ? 'PASSED' : 'FAILED');
        
                // Step 6: Convert to Stellar S-address format
         // Stellar S-address format: S + base58check encoded private key
         // We need to convert hex to base58check with proper checksum
         const stellarSAddress = await this.hexToStellarSAddress(stellarPrivateKey);
-        console.log('📋 Stellar S-address:', stellarSAddress.substring(0, 20) + '...');
-        console.log('📋 Stellar S-address length:', stellarSAddress.length);
+               console.log('📋 Stellar S-address length:', stellarSAddress.length);
+       console.log('📋 S-address format validation:', stellarSAddress.startsWith('S') ? 'PASSED' : 'FAILED');
        
                // Note: Private key format looks correct (64 hex characters)
         console.log('✅ Private key format appears correct (64 hex characters)');
@@ -159,8 +159,7 @@ class ExportUtils {
         // Debug: Test with your actual private key
         console.log('🔍 Testing with actual private key...');
         const actualSAddress = await this.hexToStellarSAddress(stellarPrivateKey);
-        console.log('📋 Your private key hex:', stellarPrivateKey);
-        console.log('📋 Your Stellar StrKey:', actualSAddress);
+        console.log('📋 Private key format validation:', stellarPrivateKey.length === 64 ? 'PASSED' : 'FAILED');
         console.log('📋 StrKey starts with S:', actualSAddress.startsWith('S'));
         console.log('📋 StrKey length:', actualSAddress.length);
       

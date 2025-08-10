@@ -91,6 +91,25 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
     console.log('Private hex length:', privateHex?.length);
     console.log('Public hex length:', publicCompressedHex?.length);
     
+    // Mobile-compatible approach - use raw key import
+    if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+      console.log('🔧 Using mobile-compatible raw key import...');
+      
+      const privateBytes = hexToUint8Array(privateHex);
+      console.log('✅ Private bytes converted, length:', privateBytes.length);
+      
+      // For mobile, use raw key import instead of JWK
+      const result = await crypto.subtle.importKey(
+        "raw",
+        privateBytes,
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["sign"]
+      );
+      console.log('✅ Private key imported successfully (mobile-compatible)');
+      return result;
+    }
+    
     // Desktop approach - use JWK import
     console.log('🔍 Using JWK import approach...');
     
@@ -134,6 +153,26 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
       console.error('- Web Crypto API limitations on mobile');
       console.error('- Key format issues');
       console.error('- Memory constraints');
+      
+      // Try alternative approach for mobile
+      try {
+        console.log('🔄 Trying alternative mobile approach...');
+        const privateBytes = hexToUint8Array(privateHex);
+        
+        // Try with different key format
+        const result = await crypto.subtle.importKey(
+          "pkcs8",
+          privateBytes,
+          { name: "ECDSA", namedCurve: "P-256" },
+          true,
+          ["sign"]
+        );
+        console.log('✅ Private key imported successfully (alternative mobile approach)');
+        return result;
+      } catch (altError) {
+        console.error('❌ Alternative mobile approach also failed:', altError);
+        throw error; // Throw original error
+      }
     }
     
     throw error;
