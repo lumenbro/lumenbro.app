@@ -148,13 +148,13 @@ class ExportUtils {
           console.log('❌ Private key format validation failed');
         }
         
-        // Test S-address conversion with known example
-        console.log('🔍 Testing S-address conversion...');
-        const testHex = 'cd0d01c473a4669a1100897f74f13f2dd2ee417e3730b2794e4489fd3b94ea1d';
-        const testSAddress = await this.hexToStellarSAddress(testHex);
-        console.log('📋 Test conversion result:', testSAddress);
-        console.log('📋 Expected result: SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
-        console.log('📋 Conversion match:', testSAddress === 'SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
+                 // Test S-address conversion with known example
+         console.log('🔍 Testing S-address conversion...');
+         const testHex = 'cd0d01c473a4669a1100897f74f13f2dd2ee417e3730b2794e4489fd3b94ea1d';
+         const testSAddress = await this.hexToStellarSAddress(testHex);
+         console.log('📋 Test conversion result:', testSAddress);
+         console.log('📋 Expected result: SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
+         console.log('📋 Conversion match:', testSAddress === 'SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
         
         // Debug: Test with your actual private key
         console.log('🔍 Testing with actual private key...');
@@ -247,29 +247,29 @@ class ExportUtils {
       return bytes;
     }
     
-    // Helper: CRC16-XMODEM implementation (SEP-0023 specification)
-    static crc16Xmodem(data) {
-      let crc = 0x0000;
-      const polynomial = 0x1021; // XMODEM polynomial
-      
-      for (let i = 0; i < data.length; i++) {
-        crc ^= (data[i] << 8);
-        for (let j = 0; j < 8; j++) {
-          if (crc & 0x8000) {
-            crc = (crc << 1) ^ polynomial;
-          } else {
-            crc = crc << 1;
-          }
-          crc &= 0xFFFF; // Keep 16-bit
-        }
-      }
-      
-      // Return as 2 bytes (big-endian)
-      const result = new Uint8Array(2);
-      result[0] = (crc >> 8) & 0xFF;  // High byte
-      result[1] = crc & 0xFF;         // Low byte
-      return result;
-    }
+         // Helper: CRC16-XMODEM implementation (SEP-0023 specification)
+     static crc16Xmodem(data) {
+       let crc = 0x0000;
+       const polynomial = 0x1021; // XMODEM polynomial
+       
+       for (let i = 0; i < data.length; i++) {
+         crc ^= (data[i] << 8);
+         for (let j = 0; j < 8; j++) {
+           if (crc & 0x8000) {
+             crc = (crc << 1) ^ polynomial;
+           } else {
+             crc = crc << 1;
+           }
+           crc &= 0xFFFF; // Keep 16-bit
+         }
+       }
+       
+       // Return as 2 bytes (little-endian - as used by Stellar)
+       const result = new Uint8Array(2);
+       result[0] = crc & 0xFF;         // Low byte first
+       result[1] = (crc >> 8) & 0xFF;  // High byte second
+       return result;
+     }
     
     // Helper: Base32 encoding (RFC4648, no padding, uppercase)
     static base32Encode(data) {
