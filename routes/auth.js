@@ -516,6 +516,10 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     
     // Match the client-side derEncodeSignature logic exactly
     const sigBytes = signature.signature;
+    console.log('🔍 sigBytes type:', typeof sigBytes, 'length:', sigBytes.length);
+    console.log('🔍 sigBytes slice 32-64:', sigBytes.slice(32, 64));
+    console.log('🔍 sigBytes slice 32-64 toString:', sigBytes.slice(32, 64).toString('hex'));
+    
     const rBytes = sigBytes.slice(0, 32);
     let s = BigInt('0x' + sigBytes.slice(32, 64).toString('hex'));
     
