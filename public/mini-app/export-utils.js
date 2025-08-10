@@ -147,7 +147,9 @@ class ExportUtils {
            
            decryptedData = await window.Turnkey.decryptExportBundle({
              exportBundle: exportResult.exportBundle,
-             privateKey: privateKeyHex
+             embeddedKey: privateKeyHex,
+             organizationId: subOrgId,
+             keyFormat: "HEXADECIMAL"
            });
         } else if (window.Turnkey.decryptBundle) {
           // Method 2: Try decryptBundle
@@ -195,12 +197,12 @@ class ExportUtils {
       
       console.log('✅ Bundle decrypted successfully');
       
-      // Step 5: Extract the Stellar private key
-      const stellarPrivateKey = decryptedData.privateKey;
+      // Step 5: Extract the Stellar private key (decryptedData is the hex string directly)
+      const stellarPrivateKey = decryptedData;
       console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
       
       // Step 6: Convert to Stellar S-address format
-      const stellarSAddress = 'S' + stellarPrivateKey.substring(2); // Remove '0x' prefix and add 'S'
+      const stellarSAddress = 'S' + stellarPrivateKey; // Add 'S' prefix for Stellar S-address format
       
       return {
         stellarPrivateKey,
