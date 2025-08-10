@@ -419,11 +419,11 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     // Create SHA-256 hash of the payload
     const payloadHash = crypto.createHash('sha256').update(payload).digest();
     
-    // Sign the hash using secp256k1
-    const signature = secp256k1.sign(payloadHash, privateKeyBuffer);
+    // Sign the hash using secp256k1 (correct API)
+    const signature = secp256k1.ecdsaSign(payloadHash, privateKeyBuffer);
     
     // Convert signature to DER format
-    const derSignature = signature.toDER();
+    const derSignature = secp256k1.signatureExport(signature.signature);
     const signatureHex = derSignature.toString('hex');
     
     console.log('✅ Mobile payload signed successfully');
