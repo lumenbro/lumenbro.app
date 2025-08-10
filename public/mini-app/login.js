@@ -337,14 +337,20 @@ class ManualStamper {
               throw new Error(`Backend signing failed: ${response.status}`);
             }
             
-            const stampResult = await response.json();
-            console.log('✅ Backend signing successful for mobile');
-            
-            return {
-              publicKey: this.publicKey,
-              scheme: "SIGNATURE_SCHEME_TK_API_P256",
-              signature: stampResult.signature
-            };
+                         const stampResult = await response.json();
+             console.log('✅ Backend signing successful for mobile');
+             
+             // Store the correct sub-org ID for use in the login process
+             if (stampResult.subOrgId) {
+               window.correctSubOrgId = stampResult.subOrgId;
+               console.log('🔧 Using correct sub-org ID:', stampResult.subOrgId);
+             }
+             
+             return {
+               publicKey: stampResult.publicKey || this.publicKey, // Use returned public key if available
+               scheme: "SIGNATURE_SCHEME_TK_API_P256",
+               signature: stampResult.signature
+             };
             
           } catch (backendError) {
             console.error('❌ Backend signing also failed:', backendError);
@@ -615,11 +621,15 @@ async function login() {
     }
     console.log('Ephemeral keypair:', ephemeralKeyPair); // Debug
 
+    // Use the correct sub-organization ID if available (from backend signing)
+    const correctOrgId = window.correctSubOrgId || orgId;
+    console.log('🔧 Using organization ID:', correctOrgId, '(original:', orgId, ')');
+    
     // Prepare body for createReadWriteSession (V2 structure)
     const body = {
       type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
       timestampMs: String(Date.now()),
-      organizationId: orgId,
+      organizationId: correctOrgId,
       email: userEmail,
       parameters: {
         userId,
@@ -728,11 +738,15 @@ async function continueLoginProcess(apiKey) {
     }
     console.log('Ephemeral keypair:', ephemeralKeyPair); // Debug
 
+    // Use the correct sub-organization ID if available (from backend signing)
+    const correctOrgId = window.correctSubOrgId || orgId;
+    console.log('🔧 Using organization ID:', correctOrgId, '(original:', orgId, ')');
+    
     // Prepare body for createReadWriteSession (V2 structure)
     const body = {
       type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
       timestampMs: String(Date.now()),
-      organizationId: orgId,
+      organizationId: correctOrgId,
       email: userEmail,
       parameters: {
         userId,

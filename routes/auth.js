@@ -416,6 +416,24 @@ router.post('/mini-app/sign-payload', async (req, res) => {
       publicKeyLength: publicKey.length
     });
 
+    // Find the correct sub-organization ID for this user's API key
+    console.log('🔍 Looking up sub-organization ID for API key:', publicKey);
+    
+    const userResult = await pool.query(
+      "SELECT tw.turnkey_sub_org_id, u.user_email FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.public_key = $1",
+      [publicKey]
+    );
+    
+    if (userResult.rows.length === 0) {
+      console.error('❌ No sub-organization found for API key:', publicKey);
+      return res.status(404).json({ error: 'Sub-organization not found for this API key' });
+    }
+    
+    const subOrgId = userResult.rows[0].turnkey_sub_org_id;
+    const userEmail = userResult.rows[0].user_email;
+    
+    console.log('✅ Found sub-organization ID:', subOrgId, 'for user:', userEmail);
+
     // Convert hex private key to buffer
     const privateKeyBuffer = Buffer.from(privateKey, 'hex');
     
@@ -458,6 +476,8 @@ router.post('/mini-app/sign-payload', async (req, res) => {
 
     res.json({ 
       signature: signatureHex,
+      publicKey: publicKey, // Return the original public key
+      subOrgId: subOrgId, // Return the correct sub-org ID
       message: 'Mobile fallback signing successful'
     });
     
