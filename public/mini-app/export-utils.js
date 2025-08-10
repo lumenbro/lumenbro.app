@@ -13,15 +13,41 @@ class ExportUtils {
         ['deriveKey']
       );
       
+      // Export as uncompressed format
       const publicKey = await window.crypto.subtle.exportKey(
         'raw',
         keyPair.publicKey
       );
       
-      // Convert to hex format (uncompressed P-256 public key)
-      const targetPublicKey = '04' + Array.from(new Uint8Array(publicKey))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      // P-256 raw format is 65 bytes (uncompressed)
+      // First byte should be 0x04 for uncompressed
+      const publicKeyArray = new Uint8Array(publicKey);
+      
+      // Ensure it's uncompressed format (65 bytes starting with 0x04)
+      let targetPublicKey;
+      if (publicKeyArray.length === 65 && publicKeyArray[0] === 0x04) {
+        // Already in correct format
+        targetPublicKey = Array.from(publicKeyArray)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } else if (publicKeyArray.length === 65) {
+        // 65 bytes but wrong prefix, fix it
+        publicKeyArray[0] = 0x04;
+        targetPublicKey = Array.from(publicKeyArray)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } else {
+        // Wrong length, create proper uncompressed format
+        targetPublicKey = '04' + Array.from(publicKeyArray)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+      
+      console.log('🔑 Generated targetPublicKey:', {
+        length: targetPublicKey.length,
+        prefix: targetPublicKey.substring(0, 2),
+        sample: targetPublicKey.substring(0, 10) + '...'
+      });
       
       return {
         keyPair,
