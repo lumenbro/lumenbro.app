@@ -163,6 +163,213 @@ async function continueRegistration() {
     await register();
 }
 
+// ADDED: Function to handle export from mini-app
+async function exportWallet() {
+    try {
+        console.log('🔍 Starting export from mini-app...');
+        
+        // Check if we have the required parameters
+        if (!window.orgId || !window.email) {
+            document.getElementById('content').innerHTML = `
+                <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                    <h3>❌ Missing Parameters</h3>
+                    <p>Organization ID or email not found in URL parameters.</p>
+                    <p>Please use the export button from the bot menu.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Show export form
+        document.getElementById('content').innerHTML = `
+            <div style="background: #e8f5e8; border: 1px solid #4CAF50; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h2 style="color: #2E7D32; margin-top: 0;">🔐 Export Wallet Keys</h2>
+                <p><strong>Organization ID:</strong> ${window.orgId}</p>
+                <p><strong>Email:</strong> ${window.email}</p>
+            </div>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px;">
+                <h3>📧 Enter Your Password</h3>
+                <p>Enter the password you used to encrypt your API keys:</p>
+                <input type="password" id="exportPassword" placeholder="Enter your password" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="startExport()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">🔐 Export Wallet Keys</button>
+            </div>
+            
+            <div id="exportStatus" style="display: none;"></div>
+            <div id="exportResults" style="display: none;"></div>
+        `;
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        document.getElementById('content').innerHTML = `
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>❌ Export Error</h3>
+                <p>Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ADDED: Function to start the export process
+async function startExport() {
+    try {
+        const password = document.getElementById('exportPassword').value;
+        
+        if (!password) {
+            showExportStatus('❌ Please enter your password', 'error');
+            return;
+        }
+        
+        showExportStatus('🔍 Starting export process...', 'loading');
+        
+        // Step 1: Get user's API keys from Telegram Cloud Storage
+        const apiKeyPair = await EncryptionUtils.retrieveTelegramKey(password);
+        if (!apiKeyPair) {
+            showExportStatus('❌ No API keys found. Please check your password.', 'error');
+            return;
+        }
+        
+        showExportStatus('✅ API keys decrypted successfully', 'success');
+        
+        // Step 2: Get wallet information
+        const walletInfo = await getWalletInfo(window.email, apiKeyPair);
+        if (!walletInfo) {
+            showExportStatus('❌ Wallet not found. Please check your email.', 'error');
+            return;
+        }
+        
+        showExportStatus('✅ Wallet information retrieved', 'success');
+        
+        // Step 3: Export wallet account
+        const result = await ExportUtils.exportWalletAccount(
+            walletInfo.subOrgId,
+            walletInfo.walletAccountId,
+            walletInfo.stellarAddress,
+            apiKeyPair.publicKey,
+            apiKeyPair.privateKey
+        );
+        
+        // Display results
+        displayExportResults(result, walletInfo.stellarAddress);
+        
+        showExportStatus('✅ Export completed successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        showExportStatus('❌ Export failed: ' + error.message, 'error');
+    }
+}
+
+// ADDED: Helper function to get wallet info
+async function getWalletInfo(email, apiKeyPair) {
+    try {
+        // Call backend API to get wallet information
+        const response = await fetch('/api/wallet-info', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                apiPublicKey: apiKeyPair.publicKey,
+                apiPrivateKey: apiKeyPair.privateKey
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to get wallet info');
+        }
+
+        const data = await response.json();
+        return data.walletInfo;
+    } catch (error) {
+        console.error('Error getting wallet info:', error);
+        throw error;
+    }
+}
+
+// ADDED: Helper function to display export results
+function displayExportResults(result, stellarAddress) {
+    const resultsDiv = document.getElementById('exportResults');
+    resultsDiv.innerHTML = `
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px solid #e9ecef; margin-top: 20px;">
+            <h3>✅ Export Successful!</h3>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <strong>⚠️ Security Warning:</strong><br>
+                • Never share these keys with anyone<br>
+                • Store them offline in a secure location<br>
+                • These keys give full access to your wallet<br>
+                • We cannot recover your funds if you lose these keys
+            </div>
+
+            <div>
+                <label><strong>Stellar Private Key (Hex):</strong></label>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${result.stellarPrivateKey}</div>
+                <button onclick="copyToClipboard('${result.stellarPrivateKey}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Private Key</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label><strong>Stellar S-Address:</strong></label>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${result.stellarSAddress}</div>
+                <button onclick="copyToClipboard('${result.stellarSAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy S-Address</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label><strong>Stellar Public Address:</strong></label>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${stellarAddress}</div>
+                <button onclick="copyToClipboard('${stellarAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Public Address</button>
+            </div>
+
+            <button onclick="downloadBackup('${result.stellarPrivateKey}', '${result.stellarSAddress}', '${stellarAddress}')" style="background: #27ae60; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 20px; width: 100%;">💾 Download Backup File</button>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
+}
+
+// ADDED: Helper function to show export status
+function showExportStatus(message, type) {
+    const statusDiv = document.getElementById('exportStatus');
+    statusDiv.textContent = message;
+    statusDiv.className = `status ${type}`;
+    statusDiv.style.display = 'block';
+
+    if (type !== 'loading') {
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// ADDED: Helper function to copy to clipboard
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showExportStatus('✅ Copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Copy failed:', error);
+        showExportStatus('❌ Copy failed', 'error');
+    }
+}
+
+// ADDED: Helper function to download backup
+function downloadBackup(stellarPrivateKey, stellarSAddress, stellarAddress) {
+    try {
+        const backupContent = ExportUtils.createBackupFileContent(
+            stellarPrivateKey,
+            stellarSAddress,
+            stellarAddress
+        );
+
+        ExportUtils.downloadAsFile(backupContent, `lumenbro-wallet-backup-${Date.now()}.txt`);
+        showExportStatus('✅ Backup file downloaded!', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showExportStatus('❌ Download failed: ' + error.message, 'error');
+    }
+}
+
 // NEW: Email verification functions
 function showEmailVerification(telegram_id, email, registrationResult) {
     // Store data for verification
