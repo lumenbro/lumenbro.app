@@ -38,11 +38,29 @@ class ExportUtils {
     try {
       console.log('🔍 Starting wallet account export...');
       
+      // Wait for Turnkey to be available
+      let attempts = 0;
+      while (!window.Turnkey && attempts < 10) {
+        console.log(`⏳ Waiting for Turnkey to load... (attempt ${attempts + 1})`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+      
+      if (!window.Turnkey) {
+        throw new Error('Turnkey SDK not loaded after 5 seconds');
+      }
+      
       // Step 1: Generate ephemeral key pair
       const { keyPair, targetPublicKey } = await this.generateEphemeralKeyPair();
       console.log('✅ Generated ephemeral key pair');
       
       // Step 2: Initialize Turnkey client with user's API keys
+      console.log('🔍 Turnkey availability check:', {
+        hasTurnkey: !!window.Turnkey,
+        turnkeyType: typeof window.Turnkey,
+        turnkeyKeys: window.Turnkey ? Object.keys(window.Turnkey) : 'N/A'
+      });
+      
       const userClient = new window.Turnkey({
         apiBaseUrl: "https://api.turnkey.com",
         apiPublicKey: userApiPublicKey,
