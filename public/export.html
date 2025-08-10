@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumenBro - Export Wallet</title>
+    <link rel="stylesheet" href="/mini-app/styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/static/turnkey.js"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #7f8c8d;
+            margin: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .export-section {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+        .key-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+        }
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+        .security-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Export Wallet Keys</h1>
+            <p>Export your Stellar wallet keys for backup</p>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div id="exportForm">
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" placeholder="Enter your registered email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Enter your wallet password" required>
+            </div>
+
+            <button class="btn btn-primary" onclick="startExport()">🔐 Export Wallet Keys</button>
+        </div>
+
+        <div id="exportSection" class="export-section">
+            <h3>✅ Export Successful!</h3>
+            
+            <div class="security-warning">
+                <strong>⚠️ Security Warning:</strong><br>
+                • Never share these keys with anyone<br>
+                • Store them offline in a secure location<br>
+                • These keys give full access to your wallet<br>
+                • We cannot recover your funds if you lose these keys
+            </div>
+
+            <div>
+                <label><strong>Stellar Private Key (Hex):</strong></label>
+                <div id="privateKeyDisplay" class="key-display"></div>
+                <button class="copy-btn" onclick="copyToClipboard('privateKey')">📋 Copy Private Key</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label><strong>Stellar S-Address:</strong></label>
+                <div id="sAddressDisplay" class="key-display"></div>
+                <button class="copy-btn" onclick="copyToClipboard('sAddress')">📋 Copy S-Address</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label><strong>Stellar Public Address:</strong></label>
+                <div id="publicAddressDisplay" class="key-display"></div>
+                <button class="copy-btn" onclick="copyToClipboard('publicAddress')">📋 Copy Public Address</button>
+            </div>
+
+            <button class="btn btn-success" onclick="downloadBackup()" style="margin-top: 20px;">
+                💾 Download Backup File
+            </button>
+        </div>
+    </div>
+
+    <script src="/mini-app/encryption-utils.js"></script>
+    <script src="/mini-app/export-utils.js"></script>
+    <script>
+        let exportResult = null;
+
+        // Initialize page
+        window.addEventListener('load', function() {
+            console.log('Export page loaded');
+            
+            // Check if Turnkey is available
+            if (!window.Turnkey) {
+                showStatus('❌ Turnkey SDK not loaded', 'error');
+                return;
+            }
+            
+            // Get email from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const email = urlParams.get('email');
+            if (email) {
+                document.getElementById('email').value = email;
+            }
+            
+            console.log('✅ Export page ready');
+        });
+
+        async function startExport() {
+            try {
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+
+                if (!email || !password) {
+                    showStatus('❌ Please enter both email and password', 'error');
+                    return;
+                }
+
+                showStatus('🔍 Starting export process...', 'loading');
+
+                // Step 1: Get user's API keys from Telegram Cloud Storage
+                const apiKeyPair = await EncryptionUtils.retrieveTelegramKey(password);
+                if (!apiKeyPair) {
+                    showStatus('❌ No API keys found. Please check your password.', 'error');
+                    return;
+                }
+
+                showStatus('✅ API keys decrypted successfully', 'success');
+
+                // Step 2: Get wallet information
+                const walletInfo = await getWalletInfo(email, apiKeyPair);
+                if (!walletInfo) {
+                    showStatus('❌ Wallet not found. Please check your email.', 'error');
+                    return;
+                }
+
+                showStatus('✅ Wallet information retrieved', 'success');
+
+                // Step 3: Export wallet account
+                const result = await ExportUtils.exportWalletAccount(
+                    walletInfo.subOrgId,
+                    walletInfo.walletAccountId,
+                    walletInfo.stellarAddress,
+                    apiKeyPair.publicKey,
+                    apiKeyPair.privateKey
+                );
+
+                // Store result for download
+                exportResult = {
+                    ...result,
+                    stellarAddress: walletInfo.stellarAddress
+                };
+
+                // Display results
+                displayExportResults(result, walletInfo.stellarAddress);
+
+                showStatus('✅ Export completed successfully!', 'success');
+
+            } catch (error) {
+                console.error('Export error:', error);
+                showStatus('❌ Export failed: ' + error.message, 'error');
+            }
+        }
+
+        async function getWalletInfo(email, apiKeyPair) {
+            try {
+                // This would typically call your backend to get wallet info
+                // For now, we'll use a simplified approach
+                
+                // You could add an endpoint like /api/wallet-info that returns:
+                // { subOrgId, walletId, walletAccountId, stellarAddress }
+                
+                // For demonstration, we'll use placeholder data
+                // In production, this should come from your database
+                return {
+                    subOrgId: '6bd6b39a-8db2-4f4d-bc47-46ed907b7db5', // Get from DB
+                    walletId: 'fbd53f01-730c-52b0-81dd-18a59940a17d', // Get from DB
+                    walletAccountId: '4abb07f0-4670-411b-a157-e48ca0f4f15f', // Get from DB
+                    stellarAddress: 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI' // Get from DB
+                };
+            } catch (error) {
+                console.error('Error getting wallet info:', error);
+                throw error;
+            }
+        }
+
+        function displayExportResults(result, stellarAddress) {
+            document.getElementById('exportForm').style.display = 'none';
+            document.getElementById('exportSection').style.display = 'block';
+
+            document.getElementById('privateKeyDisplay').textContent = result.stellarPrivateKey;
+            document.getElementById('sAddressDisplay').textContent = result.stellarSAddress;
+            document.getElementById('publicAddressDisplay').textContent = stellarAddress;
+        }
+
+        async function copyToClipboard(type) {
+            try {
+                let text = '';
+                switch (type) {
+                    case 'privateKey':
+                        text = exportResult.stellarPrivateKey;
+                        break;
+                    case 'sAddress':
+                        text = exportResult.stellarSAddress;
+                        break;
+                    case 'publicAddress':
+                        text = exportResult.stellarAddress;
+                        break;
+                }
+
+                await navigator.clipboard.writeText(text);
+                showStatus('✅ Copied to clipboard!', 'success');
+            } catch (error) {
+                console.error('Copy failed:', error);
+                showStatus('❌ Copy failed', 'error');
+            }
+        }
+
+        function downloadBackup() {
+            try {
+                if (!exportResult) {
+                    showStatus('❌ No export data available', 'error');
+                    return;
+                }
+
+                const backupContent = ExportUtils.createBackupFileContent(
+                    exportResult.stellarPrivateKey,
+                    exportResult.stellarSAddress,
+                    exportResult.stellarAddress
+                );
+
+                ExportUtils.downloadAsFile(backupContent, `lumenbro-wallet-backup-${Date.now()}.txt`);
+                showStatus('✅ Backup file downloaded!', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showStatus('❌ Download failed: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

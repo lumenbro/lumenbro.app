@@ -92,4 +92,124 @@ router.post('/wallet/fund-testnet/:publicKey', async (req, res) => {
   }
 });
 
+// Export wallet private keys
+router.post('/export-wallet', async (req, res) => {
+  try {
+    const { organizationId, walletId, apiKeyId, apiPrivateKey } = req.body;
+    
+    if (!organizationId || !walletId || !apiKeyId || !apiPrivateKey) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    console.log('Exporting wallet:', { organizationId, walletId, apiKeyId });
+
+    // Create Turnkey client with user's API keys
+    const turnkeyClient = new Turnkey({
+      apiBaseUrl: "https://api.turnkey.com",
+      apiPublicKey: apiKeyId,
+      apiPrivateKey: apiPrivateKey,
+      defaultOrganizationId: organizationId,
+    });
+
+    // Export the wallet
+    const exportResult = await turnkeyClient.apiClient().exportWallet({
+      walletId: walletId,
+      keyFormat: "KEY_FORMAT_HEXADECIMAL"
+    });
+
+    console.log('Export successful for wallet:', walletId);
+    res.json({ 
+      success: true, 
+      exportBundle: exportResult.exportBundle,
+      message: 'Wallet exported successfully' 
+    });
+
+  } catch (error) {
+    console.error('Export wallet error:', error);
+    res.status(500).json({ 
+      error: 'Failed to export wallet', 
+      details: error.message 
+    });
+  }
+});
+
+// Export specific wallet account
+router.post('/export-account', async (req, res) => {
+  try {
+    const { organizationId, walletAccountId, apiKeyId, apiPrivateKey } = req.body;
+    
+    if (!organizationId || !walletAccountId || !apiKeyId || !apiPrivateKey) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    console.log('Exporting account:', { organizationId, walletAccountId, apiKeyId });
+
+    // Create Turnkey client with user's API keys
+    const turnkeyClient = new Turnkey({
+      apiBaseUrl: "https://api.turnkey.com",
+      apiPublicKey: apiKeyId,
+      apiPrivateKey: apiPrivateKey,
+      defaultOrganizationId: organizationId,
+    });
+
+    // Export the wallet account
+    const exportResult = await turnkeyClient.apiClient().exportWalletAccount({
+      walletAccountId: walletAccountId,
+      keyFormat: "KEY_FORMAT_HEXADECIMAL"
+    });
+
+    console.log('Export successful for account:', walletAccountId);
+    res.json({ 
+      success: true, 
+      exportBundle: exportResult.exportBundle,
+      message: 'Account exported successfully' 
+    });
+
+  } catch (error) {
+    console.error('Export account error:', error);
+    res.status(500).json({ 
+      error: 'Failed to export account', 
+      details: error.message 
+    });
+  }
+});
+
+// Decrypt export bundle (client-side helper)
+router.post('/decrypt-export', async (req, res) => {
+  try {
+    const { exportBundle, embeddedKey, organizationId } = req.body;
+    
+    if (!exportBundle || !embeddedKey || !organizationId) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    console.log('Decrypting export bundle for org:', organizationId);
+
+    // Note: This is a helper endpoint - actual decryption should happen client-side
+    // This just validates the bundle format
+    const parsedBundle = JSON.parse(exportBundle);
+    
+    if (!parsedBundle.enclaveQuorumPublic || !parsedBundle.dataSignature || !parsedBundle.data) {
+      return res.status(400).json({ error: 'Invalid export bundle format' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Export bundle is valid - decrypt client-side',
+      bundleInfo: {
+        hasEnclaveSignature: !!parsedBundle.enclaveQuorumPublic,
+        hasDataSignature: !!parsedBundle.dataSignature,
+        hasEncryptedData: !!parsedBundle.data
+      }
+    });
+
+  } catch (error) {
+    console.error('Decrypt export error:', error);
+    res.status(500).json({ 
+      error: 'Failed to validate export bundle', 
+      details: error.message 
+    });
+  }
+});
+
 module.exports = router;

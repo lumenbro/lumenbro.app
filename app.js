@@ -25,6 +25,7 @@ const authRoutes = require('./routes/auth');
 const loginRoutes = require('./routes/login');
 const recoveryRoutes = require('./routes/recovery');
 const chartsRoutes = require('./routes/charts');
+const exportRoutes = require('./routes/export');
 // const walletRoutes = require('./routes/wallet'); // Temporarily disabled
 
 // Add cache-busting for development
@@ -41,6 +42,7 @@ app.use(authRoutes);
 app.use(loginRoutes);
 app.use(recoveryRoutes);
 app.use('/api/charts', chartsRoutes);
+app.use(exportRoutes);
 // app.use('/api', walletRoutes); // Temporarily disabled
 
 // Landing

@@ -96,6 +96,49 @@ window.register = async function () {
                 <p><strong>Keep safe:</strong> Your password and this email access!</p>
             </div>
         `;
+
+        // Show success message
+        document.getElementById('registrationForm').style.display = 'none';
+        document.getElementById('successMessage').style.display = 'block';
+        
+        // DEBUG: Log registration response for testing
+        console.log('🔍 REGISTRATION DEBUG INFO:');
+        console.log('Sub-org ID:', result.activity?.result?.createSubOrganizationResultV7?.subOrganizationId);
+        console.log('Wallet ID:', result.activity?.result?.createSubOrganizationResultV7?.wallet?.walletId);
+        console.log('User IDs:', result.activity?.result?.createSubOrganizationResultV7?.rootUserIds);
+        console.log('Full response:', result);
+        
+        // Store IDs in session for export testing
+        if (result.activity?.result?.createSubOrganizationResultV7) {
+            const subOrgId = result.activity.result.createSubOrganizationResultV7.subOrganizationId;
+            const walletId = result.activity.result.createSubOrganizationResultV7.wallet?.walletId;
+            
+            sessionStorage.setItem('subOrgId', subOrgId);
+            sessionStorage.setItem('walletId', walletId);
+            
+            console.log('💾 Stored for testing:');
+            console.log('  Sub-org ID:', subOrgId);
+            console.log('  Wallet ID:', walletId);
+        }
+        
+        // Add export wallet option
+        const exportSection = document.createElement('div');
+        exportSection.innerHTML = `
+            <div class="export-section" style="margin-top: 20px; padding: 15px; border: 2px solid #4CAF50; border-radius: 8px; background: #f0f8f0;">
+                <h3 style="color: #2E7D32; margin-top: 0;">🔐 Wallet Backup</h3>
+                <p style="margin-bottom: 15px; color: #555;">
+                    <strong>Important:</strong> Export your wallet keys for backup. You'll need these if you lose access to Telegram.
+                </p>
+                <button onclick="exportWallet()" class="btn btn-warning" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                    📤 Export Wallet Keys
+                </button>
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                    ⚠️ Store these keys securely offline. Never share them with anyone.
+                </p>
+            </div>
+        `;
+        document.getElementById('successMessage').appendChild(exportSection);
+
     } catch (error) {
         console.error(error);
         document.getElementById('content').innerHTML = 'Error: ' + error.message;
@@ -187,4 +230,245 @@ function skipVerification() {
             <p>You can now <a href="/mini-app?action=login">login</a> to access your wallet.</p>
         </div>
     `;
+}
+
+// Export wallet function
+async function exportWallet() {
+    try {
+        showStatus('Preparing wallet export...', 'loading');
+        
+        // Get user's API keys from Telegram Cloud Storage
+        const apiKeyPair = await EncryptionUtils.retrieveTelegramKey();
+        if (!apiKeyPair) {
+            throw new Error('No API keys found. Please log in first.');
+        }
+        
+        // Get wallet info from session storage (set during registration)
+        const subOrgId = sessionStorage.getItem('subOrgId');
+        const walletId = sessionStorage.getItem('walletId');
+        
+        if (!subOrgId || !walletId) {
+            throw new Error('Wallet information not found. Please try registering again.');
+        }
+        
+        console.log('Exporting wallet account:', { subOrgId, walletId });
+        
+        // Get wallet accounts to find the account ID and Stellar address
+        const userClient = new window.Turnkey({
+            apiBaseUrl: "https://api.turnkey.com",
+            apiPublicKey: apiKeyPair.publicKey,
+            apiPrivateKey: apiKeyPair.privateKey,
+            defaultOrganizationId: subOrgId,
+        });
+        
+        // Get wallet accounts
+        const wallets = await userClient.apiClient().getWallets({
+            organizationId: subOrgId
+        });
+        
+        if (!wallets.wallets || wallets.wallets.length === 0) {
+            throw new Error('No wallets found');
+        }
+        
+        const wallet = wallets.wallets[0];
+        const stellarAddress = wallet.addresses?.[0];
+        
+        if (!stellarAddress) {
+            throw new Error('No Stellar address found');
+        }
+        
+        // Get wallet accounts to find the account ID
+        const accounts = await userClient.apiClient().getWalletAccounts({
+            organizationId: subOrgId,
+            walletId: walletId
+        });
+        
+        if (!accounts.accounts || accounts.accounts.length === 0) {
+            throw new Error('No wallet accounts found');
+        }
+        
+        const walletAccount = accounts.accounts[0];
+        const walletAccountId = walletAccount.walletAccountId;
+        
+        console.log('Found wallet account:', { walletAccountId, stellarAddress });
+        
+        // Use the new ExportUtils to export the wallet account
+        const exportResult = await ExportUtils.exportWalletAccount(
+            subOrgId,
+            walletAccountId,
+            stellarAddress,
+            apiKeyPair.publicKey,
+            apiKeyPair.privateKey
+        );
+        
+        // Show export results with Stellar format
+        showExportResults(exportResult);
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        showStatus('Export failed: ' + error.message, 'error');
+    }
+}
+
+// Show export results in a secure modal
+function showExportResults(exportResult) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); z-index: 10000; display: flex;
+        align-items: center; justify-content: center;
+    `;
+    
+    // Format keys for display
+    const formattedPrivateKey = ExportUtils.formatPrivateKeyForDisplay(exportResult.stellarPrivateKey);
+    const formattedSAddress = ExportUtils.formatSAddressForDisplay(exportResult.stellarSAddress);
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="color: #d32f2f; margin-top: 0;">🔐 Stellar Wallet Backup</h2>
+            
+            <div style="background: #fff3e0; border: 1px solid #ff9800; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; color: #e65100;">⚠️ Security Warning</h4>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Never share these keys with anyone</li>
+                    <li>Store them offline in a secure location</li>
+                    <li>These keys give full access to your Stellar wallet</li>
+                    <li>We cannot recover your funds if you lose these keys</li>
+                </ul>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Stellar Private Key (Hex):</label>
+                <div style="position: relative;">
+                    <input type="password" id="privateKeyDisplay" value="${exportResult.stellarPrivateKey}" 
+                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px;">
+                    <button onclick="toggleKeyVisibility('privateKeyDisplay')" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                        👁️ Show
+                    </button>
+                </div>
+                <button onclick="copyToClipboard('privateKeyDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                    📋 Copy Private Key
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Stellar S-Address:</label>
+                <div style="position: relative;">
+                    <input type="password" id="sAddressDisplay" value="${exportResult.stellarSAddress}" 
+                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px;">
+                    <button onclick="toggleKeyVisibility('sAddressDisplay')" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                        👁️ Show
+                    </button>
+                </div>
+                <button onclick="copyToClipboard('sAddressDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                    📋 Copy S-Address
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Formatted Keys (for easy reading):</label>
+                <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                    <div><strong>Private Key:</strong></div>
+                    <div style="word-break: break-all;">${formattedPrivateKey}</div>
+                    <div style="margin-top: 10px;"><strong>S-Address:</strong></div>
+                    <div style="word-break: break-all;">${formattedSAddress}</div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Download Backup File:</label>
+                <button onclick="downloadBackupFile()" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
+                    💾 Download Backup File
+                </button>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">
+                    Save this file securely offline. It contains all your wallet information.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="confirmExportBackup()" style="background: #d32f2f; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                    ✅ I've Saved My Keys Securely
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Helper functions for export modal
+function toggleKeyVisibility(elementId) {
+    const element = document.getElementById(elementId);
+    const button = element.nextElementSibling;
+    
+    if (element.type === 'password') {
+        element.type = 'text';
+        button.textContent = '🙈 Hide';
+    } else {
+        element.type = 'password';
+        button.textContent = '👁️ Show';
+    }
+}
+
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = element.parentElement.nextElementSibling;
+    const originalText = button.textContent;
+    button.textContent = '✅ Copied!';
+    button.style.background = '#4CAF50';
+    
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.style.background = '#4CAF50';
+    }, 2000);
+}
+
+function confirmExportBackup() {
+    // Remove modal
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) modal.remove();
+    
+    showStatus('✅ Wallet backup completed! Keep your keys safe.', 'success');
+    
+    // Store confirmation in session
+    sessionStorage.setItem('walletExported', 'true');
+}
+
+// Download backup file function
+function downloadBackupFile() {
+    try {
+        // Get the export result from the modal
+        const privateKeyInput = document.getElementById('privateKeyDisplay');
+        const sAddressInput = document.getElementById('sAddressDisplay');
+        
+        if (!privateKeyInput || !sAddressInput) {
+            throw new Error('Export data not found');
+        }
+        
+        const stellarPrivateKey = privateKeyInput.value;
+        const stellarSAddress = sAddressInput.value;
+        
+        // Get Stellar address from session or generate placeholder
+        const stellarAddress = sessionStorage.getItem('stellarAddress') || 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI';
+        
+        // Create backup file content
+        const backupContent = ExportUtils.createBackupFileContent(
+            stellarPrivateKey,
+            stellarSAddress,
+            stellarAddress
+        );
+        
+        // Download the file
+        ExportUtils.downloadAsFile(backupContent, `lumenbro-wallet-backup-${Date.now()}.txt`);
+        
+        showStatus('✅ Backup file downloaded successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        showStatus('❌ Download failed: ' + error.message, 'error');
+    }
 }

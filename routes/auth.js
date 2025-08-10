@@ -284,23 +284,9 @@ router.post('/mini-app/mark-migration-notified', async (req, res) => {
   }
 });
 
-// POST /mini-app/clear – Clear DB state for user
-router.post('/mini-app/clear', async (req, res) => {
-  const { telegram_id } = req.body;
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-    // Clear or deactivate wallet/user data
-    await client.query("UPDATE turnkey_wallets SET is_active = FALSE WHERE telegram_id = $1", [telegram_id]);
-    await client.query("UPDATE users SET public_key = NULL, user_email = NULL, turnkey_user_id = NULL WHERE telegram_id = $1", [telegram_id]);
-    await client.query('COMMIT');
-    client.release();
-    res.json({ success: true });
-  } catch (e) {
-    console.error(`Clear failed: ${e.message}`);
-    res.status(500).json({ error: e.message });
-  }
-});
+// POST /mini-app/clear – Clear DB state for user (REMOVED - now only clears client-side data)
+// This endpoint was removed to prevent accidental database clearing
+// Users should use the client-side clear function which only clears Telegram Cloud Storage
 
 // NEW: Endpoint to handle email verification during registration
 router.post('/verify-email', async (req, res) => {
