@@ -294,7 +294,7 @@ async function login() {
             console.log('✅ Decryption successful (mobile-compatible)');
             
             // Continue with the rest of the login process
-            continueLoginProcess();
+            continueLoginProcess(apiKey);
           } catch (error) {
             console.error('❌ Mobile decryption error:', error);
             document.getElementById('content').innerHTML = `
@@ -502,7 +502,7 @@ async function login() {
 };
 
 // Continue login process after mobile password decryption
-async function continueLoginProcess() {
+async function continueLoginProcess(apiKey) {
   try {
     // Get the orgId and email from the original login function scope
     const urlParams = new URLSearchParams(window.location.search);
@@ -516,6 +516,7 @@ async function continueLoginProcess() {
     
     console.log('🔍 continueLoginProcess - orgId:', orgId, 'email:', email);
     console.log('🔍 continueLoginProcess - apiKey available:', !!apiKey);
+    console.log('🔍 continueLoginProcess - apiKey parameter:', apiKey ? 'present' : 'missing');
     
     if (!apiKey) {
       throw new Error('API key not available in continueLoginProcess');

@@ -678,7 +678,7 @@ function showExportResults(exportResult) {
     
     modal.innerHTML = `
         <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative;">
-            <button onclick="closeExportModal()" style="position: absolute; top: 15px; right: 20px; background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; z-index: 1001;">
+            <button onclick="confirmCloseExport()" style="position: absolute; top: 15px; right: 20px; background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; z-index: 1001;">
                 ✕ Close
             </button>
             <h2 style="color: #d32f2f; margin-top: 0;">🔐 Stellar Wallet Backup</h2>
@@ -767,6 +767,13 @@ function toggleKeyVisibility(elementId) {
 }
 
 // Function to close export modal
+function confirmCloseExport() {
+    const confirmed = confirm('⚠️ Are you sure you want to close the export results?\n\nMake sure you have saved your private keys before closing.');
+    if (confirmed) {
+        closeExportModal();
+    }
+}
+
 function closeExportModal() {
     const modal = document.querySelector('div[style*="position: fixed"][style*="z-index: 10000"]');
     if (modal) {
@@ -778,6 +785,13 @@ function closeExportModal() {
 // Function to automatically clear cloud storage
 async function autoClearCloudStorage() {
     try {
+        // Add confirmation dialog to prevent accidental clearing
+        const confirmed = confirm('⚠️ WARNING: This will permanently delete all your stored API keys and session data.\n\nThis action cannot be undone. Are you sure you want to continue?');
+        if (!confirmed) {
+            console.log('❌ Auto-clear cancelled by user');
+            return;
+        }
+        
         console.log('🧹 Auto-clearing cloud storage...');
         
         // Clear all stored data
