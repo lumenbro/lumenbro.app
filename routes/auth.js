@@ -6,6 +6,7 @@ const pool = require('../db');
 const turnkeyClient = require('../turnkeyClient');
 const axios = require('axios');
 const crypto = require('crypto');
+const secp256k1 = require('secp256k1');
 
 
 // Fetch BOT_TOKEN from env for initData validation
@@ -399,6 +400,50 @@ router.post('/api/auto-clear-cloud-storage', async (req, res) => {
 });
 
 
+
+// Add endpoint for mobile payload signing (fallback for mobile Web Crypto API limitations)
+router.post('/mini-app/sign-payload', async (req, res) => {
+  try {
+    const { payload, privateKey, publicKey } = req.body;
+    
+    if (!payload || !privateKey || !publicKey) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    console.log('🔍 Mobile payload signing request (fallback):', {
+      payloadLength: payload.length,
+      privateKeyLength: privateKey.length,
+      publicKeyLength: publicKey.length
+    });
+
+    // Convert hex private key to buffer
+    const privateKeyBuffer = Buffer.from(privateKey, 'hex');
+    
+    // Create SHA-256 hash of the payload
+    const payloadHash = crypto.createHash('sha256').update(payload).digest();
+    
+    // Sign the hash using secp256k1 (correct API)
+    const signature = secp256k1.ecdsaSign(payloadHash, privateKeyBuffer);
+    
+    // Convert signature to DER format
+    const derSignature = secp256k1.signatureExport(signature);
+    const signatureHex = derSignature.toString('hex');
+
+    console.log('✅ Mobile backend signing successful');
+
+    res.json({ 
+      signature: signatureHex,
+      message: 'Mobile fallback signing successful'
+    });
+    
+  } catch (error) {
+    console.error('❌ Mobile backend signing error:', error);
+    res.status(500).json({ 
+      error: 'Backend signing failed',
+      details: error.message 
+    });
+  }
+});
 
 module.exports = router;
 module.exports.handleTurnkeyPost = handleTurnkeyPost;
