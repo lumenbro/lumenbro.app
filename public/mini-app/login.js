@@ -272,40 +272,91 @@ class ManualStamper {
             };
             
           } catch (jwkError) {
-            console.log('🔄 JWK approach failed, trying alternative mobile method...');
+            console.log('🔄 JWK approach failed, trying PKCS8 method...');
             
-            // Alternative: Use raw key import with explicit parameters
-            const privateKeyCrypto = await crypto.subtle.importKey(
-              "raw",
-              privateBytes,
-              { 
-                name: "ECDSA", 
-                namedCurve: "P-256",
-                // Add explicit parameters for mobile compatibility
-                hash: "SHA-256"
-              },
-              true,
-              ["sign"]
-            );
-            
-            console.log('✅ Raw key import successful for mobile');
-            
-            // Sign the payload
-            const payloadBytes = new TextEncoder().encode(payload);
-            const sigBuffer = await crypto.subtle.sign(
-              { name: "ECDSA", hash: "SHA-256" },
-              privateKeyCrypto,
-              payloadBytes
-            );
-            
-            // Encode signature in DER format
-            const sigHex = derEncodeSignature(sigBuffer);
-            
-            return {
-              publicKey: this.publicKey,
-              scheme: "SIGNATURE_SCHEME_TK_API_P256",
-              signature: sigHex
-            };
+            // Alternative: Use PKCS8 format (more widely supported on mobile)
+            try {
+              // Convert private key to PKCS8 format
+              const privateKeyBuffer = hexToUint8Array(this.privateKey);
+              
+              // Create PKCS8 structure for P-256
+              const pkcs8Header = new Uint8Array([
+                0x30, 0x81, 0x87, // SEQUENCE
+                0x02, 0x01, 0x00, // INTEGER 0 (version)
+                0x30, 0x13,       // SEQUENCE
+                0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, // OID for P-256
+                0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, // OID for ECDSA
+                0x04, 0x6D,       // OCTET STRING
+                0x30, 0x6B,       // SEQUENCE
+                0x02, 0x01, 0x01, // INTEGER 1 (version)
+                0x04, 0x20        // OCTET STRING (32 bytes for private key)
+              ]);
+              
+              const pkcs8Key = new Uint8Array(pkcs8Header.length + privateKeyBuffer.length);
+              pkcs8Key.set(pkcs8Header);
+              pkcs8Key.set(privateKeyBuffer, pkcs8Header.length);
+              
+              const privateKeyCrypto = await crypto.subtle.importKey(
+                "pkcs8",
+                pkcs8Key,
+                { name: "ECDSA", namedCurve: "P-256" },
+                true,
+                ["sign"]
+              );
+              
+                            console.log('✅ PKCS8 import successful for mobile');
+              
+              // Sign the payload
+              const payloadBytes = new TextEncoder().encode(payload);
+              const sigBuffer = await crypto.subtle.sign(
+                { name: "ECDSA", hash: "SHA-256" },
+                privateKeyCrypto,
+                payloadBytes
+              );
+              
+              // Encode signature in DER format
+              const sigHex = derEncodeSignature(sigBuffer);
+              
+              return {
+                publicKey: this.publicKey,
+                scheme: "SIGNATURE_SCHEME_TK_API_P256",
+                signature: sigHex
+              };
+              
+            } catch (pkcs8Error) {
+              console.log('🔄 PKCS8 approach failed, trying raw key method...');
+              
+              // Last resort: Try raw key import
+              const privateKeyCrypto = await crypto.subtle.importKey(
+                "raw",
+                privateBytes,
+                { 
+                  name: "ECDSA", 
+                  namedCurve: "P-256"
+                },
+                true,
+                ["sign"]
+              );
+              
+              console.log('✅ Raw key import successful for mobile');
+              
+              // Sign the payload
+              const payloadBytes = new TextEncoder().encode(payload);
+              const sigBuffer = await crypto.subtle.sign(
+                { name: "ECDSA", hash: "SHA-256" },
+                privateKeyCrypto,
+                payloadBytes
+              );
+              
+              // Encode signature in DER format
+              const sigHex = derEncodeSignature(sigBuffer);
+              
+              return {
+                publicKey: this.publicKey,
+                scheme: "SIGNATURE_SCHEME_TK_API_P256",
+                signature: sigHex
+              };
+            }
           }
           
         } catch (mobileError) {
