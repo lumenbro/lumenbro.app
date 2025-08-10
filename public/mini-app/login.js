@@ -4,7 +4,29 @@
 // Helper functions
 function hexToUint8Array(hex) {
   if (!hex) throw new Error('Hex string is undefined or empty');
-  return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+  
+  // Mobile-compatible hex to Uint8Array conversion
+  try {
+    // Remove any '0x' prefix
+    const cleanHex = hex.replace(/^0x/, '');
+    
+    // Ensure even length
+    if (cleanHex.length % 2 !== 0) {
+      throw new Error('Hex string must have even length');
+    }
+    
+    // Split into pairs and convert
+    const pairs = [];
+    for (let i = 0; i < cleanHex.length; i += 2) {
+      pairs.push(cleanHex.substr(i, 2));
+    }
+    
+    return new Uint8Array(pairs.map(byte => parseInt(byte, 16)));
+  } catch (error) {
+    console.error('❌ hexToUint8Array error:', error);
+    console.error('Input hex:', hex);
+    throw new Error(`Hex conversion failed: ${error.message}`);
+  }
 }
 
 function arrayBufferToHex(buffer) {
@@ -26,35 +48,70 @@ function bytesToBase64url(bytes) {
 }
 
 async function importPrivateKey(privateHex, publicCompressedHex) {
-  const publicBytes = hexToUint8Array(publicCompressedHex);
-  const publicKeyCrypto = await crypto.subtle.importKey(
-    "raw",
-    publicBytes,
-    { name: "ECDSA", namedCurve: "P-256" },
-    true,
-    ["verify"]
-  );
+  try {
+    console.log('🔍 Importing private key...');
+    console.log('Private hex length:', privateHex?.length);
+    console.log('Public hex length:', publicCompressedHex?.length);
+    
+    const publicBytes = hexToUint8Array(publicCompressedHex);
+    console.log('✅ Public bytes converted, length:', publicBytes.length);
+    
+    const publicKeyCrypto = await crypto.subtle.importKey(
+      "raw",
+      publicBytes,
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["verify"]
+    );
+    console.log('✅ Public key imported');
 
-  const publicJwk = await crypto.subtle.exportKey("jwk", publicKeyCrypto);
+    const publicJwk = await crypto.subtle.exportKey("jwk", publicKeyCrypto);
+    console.log('✅ Public JWK exported');
 
-  const privateBytes = hexToUint8Array(privateHex);
-  const d = bytesToBase64url(privateBytes);
+    const privateBytes = hexToUint8Array(privateHex);
+    console.log('✅ Private bytes converted, length:', privateBytes.length);
+    
+    const d = bytesToBase64url(privateBytes);
+    console.log('✅ Private key base64url encoded');
 
-  const privateJwk = {
-    kty: "EC",
-    crv: "P-256",
-    d,
-    x: publicJwk.x,
-    y: publicJwk.y
-  };
+    const privateJwk = {
+      kty: "EC",
+      crv: "P-256",
+      d,
+      x: publicJwk.x,
+      y: publicJwk.y
+    };
+    console.log('✅ Private JWK created');
 
-  return await crypto.subtle.importKey(
-    "jwk",
-    privateJwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    true,
-    ["sign"]
-  );
+    const result = await crypto.subtle.importKey(
+      "jwk",
+      privateJwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign"]
+    );
+    console.log('✅ Private key imported successfully');
+    return result;
+  } catch (error) {
+    console.error('❌ importPrivateKey failed:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      line: error.line,
+      column: error.column
+    });
+    
+    // Mobile-specific error handling
+    if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+      console.error('🔍 This is a mobile-specific error in importPrivateKey');
+      console.error('Possible causes:');
+      console.error('- Web Crypto API limitations on mobile');
+      console.error('- Key format issues');
+      console.error('- Memory constraints');
+    }
+    
+    throw error;
+  }
 }
 
 function derEncodeSignature(sigBuffer) {
@@ -97,18 +154,31 @@ class ManualStamper {
 
   async stamp(payload) {
     try {
+      console.log('🔍 Starting manual stamping process...');
+      console.log('Private key length:', this.privateKey?.length);
+      console.log('Public key length:', this.publicKey?.length);
+      
       // Import the private key for signing
+      console.log('🔍 Importing private key...');
       const privateKeyCrypto = await importPrivateKey(this.privateKey, this.publicKey);
+      console.log('✅ Private key imported successfully');
       
       // Sign the payload
+      console.log('🔍 Signing payload...');
+      const payloadBytes = new TextEncoder().encode(payload);
+      console.log('Payload length:', payloadBytes.length);
+      
       const sigBuffer = await crypto.subtle.sign(
         { name: "ECDSA", hash: "SHA-256" },
         privateKeyCrypto,
-        new TextEncoder().encode(payload)
+        payloadBytes
       );
+      console.log('✅ Payload signed successfully');
       
       // Encode signature in DER format
+      console.log('🔍 Encoding signature...');
       const sigHex = derEncodeSignature(sigBuffer);
+      console.log('✅ Signature encoded successfully');
       
       // Return stamp object
       return {
@@ -118,6 +188,12 @@ class ManualStamper {
       };
     } catch (error) {
       console.error('❌ Manual stamping failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        line: error.line,
+        column: error.column
+      });
       throw error;
     }
   }

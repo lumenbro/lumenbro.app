@@ -188,15 +188,15 @@ class MobileDebug {
         }
 
         try {
-            // Test basic encryption
-            const testData = { test: 'data' };
+            // Test basic encryption using available functions
+            const testPrivateKey = 'test1234567890abcdef';
             const password = 'test123';
             
-            this.log('Testing encryption with:', testData);
-            const encrypted = await window.EncryptionUtils.encryptData(testData, password);
-            this.log('✅ Encryption successful:', encrypted.substring(0, 50) + '...');
+            this.log('Testing encryption with test private key');
+            const encrypted = await window.EncryptionUtils.encryptPrivateKey(testPrivateKey, password);
+            this.log('✅ Encryption successful:', JSON.stringify(encrypted).substring(0, 50) + '...');
             
-            const decrypted = await window.EncryptionUtils.decryptData(encrypted, password);
+            const decrypted = await window.EncryptionUtils.decryptPrivateKey(encrypted, password);
             this.log('✅ Decryption successful:', decrypted);
             
             return true;
