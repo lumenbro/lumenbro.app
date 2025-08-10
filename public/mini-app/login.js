@@ -47,6 +47,8 @@ function bytesToBase64url(bytes) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+
+
 // Convert compressed public key to uncompressed format
 async function convertCompressedToUncompressed(compressedHex) {
   try {
@@ -89,9 +91,8 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
     console.log('Private hex length:', privateHex?.length);
     console.log('Public hex length:', publicCompressedHex?.length);
     
-    // For mobile compatibility, use a simpler approach
-    // Convert the private key to base64url and create JWK directly
-    console.log('🔍 Using simplified mobile-compatible approach...');
+    // Desktop approach - use JWK import
+    console.log('🔍 Using JWK import approach...');
     
     const privateBytes = hexToUint8Array(privateHex);
     console.log('✅ Private bytes converted, length:', privateBytes.length);
@@ -100,18 +101,13 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
     const d = bytesToBase64url(privateBytes);
     console.log('✅ Private key base64url encoded');
     
-    // For mobile, we'll use the provided compressed public key
-    // but convert it to the format we need for JWK
-    console.log('🔍 Using provided compressed public key for JWK...');
-    
     // Create a simple JWK with just the private key
-    // The public key components will be derived by the Web Crypto API
     const privateJwk = {
       kty: "EC",
       crv: "P-256",
       d: d
     };
-    console.log('✅ Private JWK created (mobile-compatible)');
+    console.log('✅ Private JWK created');
 
     const result = await crypto.subtle.importKey(
       "jwk",
@@ -260,6 +256,75 @@ async function login() {
     if (isEncrypted) {
       // Use standardized decryption
       console.log('Using encrypted key format');
+      
+      // For mobile compatibility, use a simpler approach
+      if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+        console.log('🔧 Using mobile-compatible approach...');
+        
+        // Show a simple password input (like export does)
+        document.getElementById('content').innerHTML = `
+          <div style="background: #e7f3ff; border: 1px solid #b3d7ff; padding: 20px; margin: 10px 0; border-radius: 5px;">
+            <h3>🔐 Enter Password</h3>
+            <p>Enter your password to decrypt your API keys:</p>
+            <input type="password" id="loginPassword" placeholder="Enter password" 
+                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; margin: 10px 0; font-size: 16px;">
+            <button onclick="submitMobileLogin()" 
+                    style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 5px; font-size: 16px; cursor: pointer; width: 100%;">
+              Continue Login
+            </button>
+          </div>
+        `;
+        
+        // Focus on password input
+        setTimeout(() => {
+          document.getElementById('loginPassword').focus();
+        }, 100);
+        
+        // Define the submit function
+        window.submitMobileLogin = async () => {
+          try {
+            const password = document.getElementById('loginPassword').value;
+            if (!password) {
+              alert('Password required');
+              return;
+            }
+            
+            // Use the password to decrypt (same as export)
+            apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+            console.log('✅ Decryption successful (mobile-compatible)');
+            
+            // Continue with the rest of the login process
+            continueLoginProcess();
+          } catch (error) {
+            console.error('❌ Mobile decryption error:', error);
+            document.getElementById('content').innerHTML = `
+              <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>❌ Mobile Login Error</h3>
+                <p>There was an issue decrypting your key on mobile. This is likely due to:</p>
+                <ul>
+                  <li>Web Crypto API limitations on mobile</li>
+                  <li>Data format compatibility issues</li>
+                  <li>Telegram WebView restrictions</li>
+                </ul>
+                <p><strong>Try:</strong></p>
+                <ul>
+                  <li>Using desktop version</li>
+                  <li>Re-registering on mobile</li>
+                  <li>Checking the debug console (🐛 button)</li>
+                </ul>
+                <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                  🐛 Show Debug Info
+                </button>
+              </div>
+            `;
+          }
+        };
+        
+        // Return early - the rest will be handled by submitMobileLogin
+        return;
+      }
+      
+      // Desktop approach - use prompt
       password = prompt('Enter your password to decrypt key:');
       if (!password) throw new Error('Password required');
       
@@ -435,6 +500,110 @@ async function login() {
     document.getElementById('content').innerHTML = 'Error: ' + error.message;
   }
 };
+
+// Continue login process after mobile password decryption
+async function continueLoginProcess() {
+  // Get the orgId and email from the original login function scope
+  const urlParams = new URLSearchParams(window.location.search);
+  const orgId = urlParams.get('orgId');
+  const email = urlParams.get('email');
+  
+  if (!orgId) {
+    document.getElementById('content').innerHTML = 'Error: Missing orgId parameter';
+    return;
+  }
+  try {
+    // Create manual stamper using our decrypted keys (bypasses TelegramCloudStorageStamper)
+    const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
+
+    console.log('Retrieved API key:', apiKey); // Debug
+
+    if (!apiKey || !apiKey.apiPublicKey || !apiKey.apiPrivateKey) {
+      throw new Error('Failed to retrieve valid API key from Telegram Cloud Storage');
+    }
+
+    // REPLACED with optional format validation:
+    if (!apiKey.apiPublicKey || !apiKey.apiPrivateKey) {
+      throw new Error('Invalid API key format');
+    }
+
+    // Fetch userId from backend
+    const userIdResponse = await fetch(`/get-user-id?orgId=${orgId}`);
+    if (!userIdResponse.ok) throw new Error('Failed to fetch userId');
+    const { userId } = await userIdResponse.json();
+
+    // Fetch email from backend
+    let email;
+    const emailResponse = await fetch(`/get-user-email?orgId=${orgId}`);
+    if (!emailResponse.ok) {
+      console.warn('Email fetch failed, using fallback');
+      email = 'bpeterscqa@gmail.com';
+    } else {
+      const emailData = await emailResponse.json() || { email: 'bpeterscqa@gmail.com' };
+      email = emailData.email;
+    }
+
+    // Generate ephemeral key for HPKE
+    const ephemeralKeyPair = await Turnkey.generateP256EphemeralKeyPair();
+    if (!ephemeralKeyPair.uncompressedPublic) {
+      throw new Error('Ephemeral keypair missing uncompressedPublic');
+    }
+    console.log('Ephemeral keypair:', ephemeralKeyPair); // Debug
+
+    // Prepare body for createReadWriteSession (V2 structure)
+    const body = {
+      type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+      timestampMs: String(Date.now()),
+      organizationId: orgId,
+      email,
+      parameters: {
+        userId,
+        expirationSeconds: "7776000",
+        targetPublicKey: ephemeralKeyPair.uncompressedPublic,
+        apiKeyName: `Read Write Session - ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`,
+        invalidateExisting: true
+      }
+    };
+    const bodyStr = stringifySorted(body);
+    console.log('Sent body:', bodyStr);
+
+    // Use manual stamper to sign the bodyStr
+    const stamp = await stamper.stamp(bodyStr);
+    const stampJson = stringifySorted(stamp);
+    const stampEncoded = btoa(stampJson)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    console.log('Generated stamp:', stampEncoded);
+
+    // Send to backend proxy
+    const response = await fetch('/mini-app/create-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        body: bodyStr,
+        stamp: stampEncoded,
+        ephemeralPrivateKey: ephemeralKeyPair.privateKey,
+        initData: window.Telegram.WebApp.initData
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Backend error: ${errorText}`);
+    }
+
+    document.getElementById('content').innerHTML = 'Session started! Temp keys stored.';
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    // Enhanced mobile error handling
+    if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+      MobileEncryptionFix.handleMobileError(error, 'login process');
+    }
+    
+    document.getElementById('content').innerHTML = 'Error: ' + error.message;
+  }
+}
 
 // Make login function globally available
 window.login = login;
