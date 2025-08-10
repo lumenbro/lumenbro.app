@@ -99,12 +99,17 @@ window.EncryptionUtils = {
       hasEncryptedPrivateKey: !!encryptedData.encryptedPrivateKey,
       hasIv: !!encryptedData.iv,
       hasSalt: !!encryptedData.salt,
-      isLegacyFormat: !!(encryptedData.apiPublicKey && encryptedData.apiPrivateKey)
+      isLegacyFormat: !!(encryptedData.apiPublicKey && encryptedData.apiPrivateKey),
+      keys: Object.keys(encryptedData)
     });
 
     // Check for legacy unencrypted format
     if (encryptedData.apiPublicKey && encryptedData.apiPrivateKey) {
-      throw new Error('Legacy unencrypted key detected - please re-register with password');
+      console.log('Legacy unencrypted key detected - returning directly');
+      return {
+        apiPublicKey: encryptedData.apiPublicKey,
+        apiPrivateKey: encryptedData.apiPrivateKey
+      };
     }
 
     // Decrypt the private key
