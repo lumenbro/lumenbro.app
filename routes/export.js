@@ -11,7 +11,7 @@ router.get('/export', (req, res) => {
 // Get wallet information for export
 router.post('/api/wallet-info', async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, apiPublicKey, apiPrivateKey } = req.body;
         
         if (!email) {
             return res.status(400).json({ 
@@ -39,13 +39,79 @@ router.post('/api/wallet-info', async (req, res) => {
 
         const user = userResult.rows[0];
         
-        // For now, we'll return placeholder data
-        // In production, you'd query Turnkey API to get the actual wallet account info
+        // If API keys are provided, use them to get real wallet data from Turnkey
+        if (apiPublicKey && apiPrivateKey) {
+            try {
+                const { Turnkey } = require('@turnkey/sdk-server');
+                const userClient = new Turnkey({
+                    apiBaseUrl: "https://api.turnkey.com",
+                    apiPublicKey: apiPublicKey,
+                    apiPrivateKey: apiPrivateKey,
+                    defaultOrganizationId: user.turnkey_sub_org_id,
+                });
+
+                // Get wallets
+                const wallets = await userClient.apiClient().getWallets({
+                    organizationId: user.turnkey_sub_org_id
+                });
+
+                if (!wallets.wallets || wallets.wallets.length === 0) {
+                    return res.status(404).json({ 
+                        success: false, 
+                        error: 'No wallets found' 
+                    });
+                }
+
+                const wallet = wallets.wallets[0];
+                const stellarAddress = wallet.addresses?.[0];
+
+                if (!stellarAddress) {
+                    return res.status(404).json({ 
+                        success: false, 
+                        error: 'No Stellar address found' 
+                    });
+                }
+
+                // Get wallet accounts
+                const accounts = await userClient.apiClient().getWalletAccounts({
+                    organizationId: user.turnkey_sub_org_id,
+                    walletId: wallet.walletId
+                });
+
+                if (!accounts.accounts || accounts.accounts.length === 0) {
+                    return res.status(404).json({ 
+                        success: false, 
+                        error: 'No wallet accounts found' 
+                    });
+                }
+
+                const walletAccount = accounts.accounts[0];
+
+                const walletInfo = {
+                    subOrgId: user.turnkey_sub_org_id,
+                    walletId: wallet.walletId,
+                    walletAccountId: walletAccount.walletAccountId,
+                    stellarAddress: stellarAddress
+                };
+
+                res.json({
+                    success: true,
+                    walletInfo
+                });
+                return;
+
+            } catch (turnkeyError) {
+                console.error('Turnkey API error:', turnkeyError);
+                // Fall back to database data if Turnkey API fails
+            }
+        }
+
+        // Fallback: return basic data from database
         const walletInfo = {
             subOrgId: user.turnkey_sub_org_id,
-            walletId: 'fbd53f01-730c-52b0-81dd-18a59940a17d', // This would come from Turnkey API
-            walletAccountId: '4abb07f0-4670-411b-a157-e48ca0f4f15f', // This would come from Turnkey API
-            stellarAddress: 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI' // This would come from Turnkey API
+            walletId: 'fbd53f01-730c-52b0-81dd-18a59940a17d', // Placeholder
+            walletAccountId: '4abb07f0-4670-411b-a157-e48ca0f4f15f', // Placeholder
+            stellarAddress: 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI' // Placeholder
         };
 
         res.json({

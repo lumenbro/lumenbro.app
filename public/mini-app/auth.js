@@ -98,8 +98,20 @@ window.register = async function () {
         `;
 
         // Show success message
-        document.getElementById('registrationForm').style.display = 'none';
-        document.getElementById('successMessage').style.display = 'block';
+        const contentDiv = document.getElementById('content');
+        contentDiv.innerHTML = `
+            <div id="successMessage" style="background: #e8f5e8; border: 1px solid #4CAF50; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h2 style="color: #2E7D32; margin-top: 0;">✅ Registration Successful!</h2>
+                <p><strong>Your Turnkey wallet has been created successfully!</strong></p>
+                <p>You can now use the bot to trade Stellar assets.</p>
+                <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px;">
+                    <h4>🔐 Security Information:</h4>
+                    <p>Your API keys are encrypted and stored securely in Telegram Cloud Storage.</p>
+                    <p>If you lose access to Telegram, you can recover using: <a href="/recovery" target="_blank">Email Recovery</a></p>
+                    <p><strong>Keep safe:</strong> Your password and this email access!</p>
+                </div>
+            </div>
+        `;
         
         // DEBUG: Log registration response for testing
         console.log('🔍 REGISTRATION DEBUG INFO:');

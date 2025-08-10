@@ -282,20 +282,26 @@
 
         async function getWalletInfo(email, apiKeyPair) {
             try {
-                // This would typically call your backend to get wallet info
-                // For now, we'll use a simplified approach
-                
-                // You could add an endpoint like /api/wallet-info that returns:
-                // { subOrgId, walletId, walletAccountId, stellarAddress }
-                
-                // For demonstration, we'll use placeholder data
-                // In production, this should come from your database
-                return {
-                    subOrgId: '6bd6b39a-8db2-4f4d-bc47-46ed907b7db5', // Get from DB
-                    walletId: 'fbd53f01-730c-52b0-81dd-18a59940a17d', // Get from DB
-                    walletAccountId: '4abb07f0-4670-411b-a157-e48ca0f4f15f', // Get from DB
-                    stellarAddress: 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI' // Get from DB
-                };
+                // Call backend API to get wallet information
+                const response = await fetch('/api/wallet-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        apiPublicKey: apiKeyPair.publicKey,
+                        apiPrivateKey: apiKeyPair.privateKey
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get wallet info');
+                }
+
+                const data = await response.json();
+                return data.walletInfo;
             } catch (error) {
                 console.error('Error getting wallet info:', error);
                 throw error;
