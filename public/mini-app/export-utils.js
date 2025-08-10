@@ -1,63 +1,29 @@
 // public/mini-app/export-utils.js - Wallet export utilities
 class ExportUtils {
   
-  // Generate ephemeral key pair for HPKE encryption
-  static async generateEphemeralKeyPair() {
-    try {
-      const keyPair = await window.crypto.subtle.generateKey(
-        {
-          name: 'ECDH',
-          namedCurve: 'P-256'
-        },
-        true,
-        ['deriveKey']
-      );
-      
-      // Export as uncompressed format
-      const publicKey = await window.crypto.subtle.exportKey(
-        'raw',
-        keyPair.publicKey
-      );
-      
-      // P-256 raw format is 65 bytes (uncompressed)
-      // First byte should be 0x04 for uncompressed
-      const publicKeyArray = new Uint8Array(publicKey);
-      
-      // Ensure it's uncompressed format (65 bytes starting with 0x04)
-      let targetPublicKey;
-      if (publicKeyArray.length === 65 && publicKeyArray[0] === 0x04) {
-        // Already in correct format
-        targetPublicKey = Array.from(publicKeyArray)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      } else if (publicKeyArray.length === 65) {
-        // 65 bytes but wrong prefix, fix it
-        publicKeyArray[0] = 0x04;
-        targetPublicKey = Array.from(publicKeyArray)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      } else {
-        // Wrong length, create proper uncompressed format
-        targetPublicKey = '04' + Array.from(publicKeyArray)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      }
-      
-      console.log('🔑 Generated targetPublicKey:', {
-        length: targetPublicKey.length,
-        prefix: targetPublicKey.substring(0, 2),
-        sample: targetPublicKey.substring(0, 10) + '...'
-      });
-      
-      return {
-        keyPair,
-        targetPublicKey
-      };
-    } catch (error) {
-      console.error('Error generating ephemeral key pair:', error);
-      throw error;
-    }
-  }
+     // Generate ephemeral key pair for HPKE encryption using Turnkey library
+   static async generateEphemeralKeyPair() {
+     try {
+       // Use Turnkey's generateP256KeyPair function
+       const turnkeyKeyPair = window.Turnkey.generateP256KeyPair();
+       
+       console.log('🔑 Generated Turnkey key pair:', {
+         privateKeyLength: turnkeyKeyPair.privateKey.length,
+         publicKeyLength: turnkeyKeyPair.publicKey.length,
+         publicKeyUncompressedLength: turnkeyKeyPair.publicKeyUncompressed.length,
+         privateKeySample: turnkeyKeyPair.privateKey.substring(0, 20) + '...',
+         publicKeySample: turnkeyKeyPair.publicKey.substring(0, 20) + '...'
+       });
+       
+       return {
+         privateKeyHex: turnkeyKeyPair.privateKey,
+         targetPublicKey: turnkeyKeyPair.publicKeyUncompressed
+       };
+     } catch (error) {
+       console.error('Error generating ephemeral key pair:', error);
+       throw error;
+     }
+   }
   
   // Export wallet account and get Stellar private key
   static async exportWalletAccount(subOrgId, walletAccountId, stellarAddress, userApiPublicKey, userApiPrivateKey) {
@@ -76,9 +42,9 @@ class ExportUtils {
         throw new Error('Turnkey SDK not loaded after 5 seconds');
       }
       
-      // Step 1: Generate ephemeral key pair
-      const { keyPair, targetPublicKey } = await this.generateEphemeralKeyPair();
-      console.log('✅ Generated ephemeral key pair');
+             // Step 1: Generate ephemeral key pair
+       const { privateKeyHex, targetPublicKey } = await this.generateEphemeralKeyPair();
+       console.log('✅ Generated ephemeral key pair');
       
       // Step 2: Initialize Turnkey client with user's API keys
       console.log('🔍 Turnkey availability check:', {
@@ -131,68 +97,21 @@ class ExportUtils {
        console.log('🔍 Before decryption - decryptExportBundle exists:', !!window.Turnkey.decryptExportBundle);
        console.log('🔍 Before decryption - decryptExportBundle type:', typeof window.Turnkey.decryptExportBundle);
       
-      // Try different decryption approaches
-      let decryptedData;
-      try {
-                 // Method 1: Try decryptExportBundle
-         if (window.Turnkey.decryptExportBundle) {
-           // Export the private key in raw format for decryption
-           const privateKeyRaw = await window.crypto.subtle.exportKey(
-             'raw',
-             keyPair.privateKey
-           );
-           
-           // Convert to hex
-           const privateKeyHex = Array.from(new Uint8Array(privateKeyRaw))
-             .map(b => b.toString(16).padStart(2, '0'))
-             .join('');
-           
-           console.log('🔑 Using private key for decryption:', privateKeyHex.substring(0, 20) + '...');
-           
-                       decryptedData = await window.Turnkey.decryptExportBundle({
-              exportBundle: exportResult.exportBundle,
-              privateKey: privateKeyHex,
-              organizationId: subOrgId
-            });
-        } else if (window.Turnkey.decryptBundle) {
-          // Method 2: Try decryptBundle
-          decryptedData = await window.Turnkey.decryptBundle({
-            exportBundle: exportResult.exportBundle,
-            privateKey: keyPair.privateKey
-          });
-        } else if (window.Turnkey.decrypt) {
-          // Method 3: Try generic decrypt
-          decryptedData = await window.Turnkey.decrypt({
-            exportBundle: exportResult.exportBundle,
-            privateKey: keyPair.privateKey
-          });
-        } else {
-          // Method 4: Manual decryption using the ephemeral private key
-          console.log('🔍 Attempting manual decryption...');
-          
-          // Export the private key in raw format
-          const privateKeyRaw = await window.crypto.subtle.exportKey(
-            'raw',
-            keyPair.privateKey
-          );
-          
-          // Convert to hex
-          const privateKeyHex = Array.from(new Uint8Array(privateKeyRaw))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-          
-          console.log('🔑 Private key for decryption:', privateKeyHex.substring(0, 20) + '...');
-          
-          // For now, let's return the export bundle and private key for manual decryption
-          // This is a temporary solution until we figure out the correct decryption method
-          return {
-            stellarPrivateKey: 'MANUAL_DECRYPTION_NEEDED',
-            stellarSAddress: 'MANUAL_DECRYPTION_NEEDED',
-            exportBundle: exportResult.exportBundle,
-            ephemeralPrivateKey: privateKeyHex,
-            needsManualDecryption: true
-          };
-        }
+             // Try different decryption approaches
+       let decryptedData;
+       try {
+                  // Method 1: Try decryptExportBundle
+          if (window.Turnkey.decryptExportBundle) {
+            console.log('🔑 Using private key for decryption:', privateKeyHex.substring(0, 20) + '...');
+            
+                        decryptedData = await window.Turnkey.decryptExportBundle({
+               exportBundle: exportResult.exportBundle,
+               privateKey: privateKeyHex,
+               organizationId: subOrgId
+             });
+                 } else {
+           throw new Error('decryptExportBundle function not available in Turnkey library');
+         }
              } catch (decryptError) {
          console.error('❌ Decryption failed:', decryptError);
          console.error('❌ Decryption error name:', decryptError.name);
