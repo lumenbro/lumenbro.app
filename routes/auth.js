@@ -7,6 +7,8 @@ const turnkeyClient = require('../turnkeyClient');
 const axios = require('axios');
 const crypto = require('crypto');
 const secp256k1 = require('secp256k1');
+const EC = require('elliptic').ec;
+const ecP256 = new EC('p256');
 
 
 // Fetch BOT_TOKEN from env for initData validation
@@ -510,51 +512,11 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     
     // Create SHA-256 hash of the payload
     const payloadHash = crypto.createHash('sha256').update(payload).digest();
-    
-    // Sign the hash using secp256k1 (correct API)
-    const signature = secp256k1.ecdsaSign(payloadHash, privateKeyBuffer);
-    
-    // Match the client-side derEncodeSignature logic exactly
-    const sigBytes = signature.signature;
-    console.log('🔍 sigBytes type:', typeof sigBytes, 'length:', sigBytes.length);
-    console.log('🔍 sigBytes slice 32-64:', sigBytes.slice(32, 64));
-    
-    // Convert Uint8Array to proper hex string
-    const sBytesArray = sigBytes.slice(32, 64);
-    const sHexString = Array.from(sBytesArray).map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log('🔍 sHexString:', sHexString);
-    
-    const rBytes = sigBytes.slice(0, 32);
-    let s = BigInt('0x' + sHexString);
-    
-    // Normalize s (ensure it's the smaller of s and n-s)
-    const n = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
-    if (s > n / 2n) {
-      s = n - s;
-    }
-    const sHex = s.toString(16).padStart(64, '0');
-    const sBytes = Buffer.from(sHex, 'hex');
 
-    // Convert to DER format (matching client logic)
-    let r = [...rBytes];
-    let sArr = [...sBytes];
-    if (r[0] > 127) r = [0, ...r];
-    if (sArr[0] > 127) sArr = [0, ...sArr];
-
-    const rLen = r.length;
-    const sLen = sArr.length;
-    const totalLen = 2 + rLen + 2 + sLen;
-    const der = Buffer.alloc(2 + totalLen);
-    der[0] = 0x30;
-    der[1] = totalLen;
-    der[2] = 0x02;
-    der[3] = rLen;
-    der.set(r, 4);
-    der[4 + rLen] = 0x02;
-    der[5 + rLen] = sLen;
-    der.set(sArr, 6 + rLen);
-    
-    const signatureHex = der.toString('hex');
+    // Sign with P-256 (secp256r1) using elliptic, enforce low-s (canonical)
+    const keyPair = ecP256.keyFromPrivate(privateKeyBuffer);
+    const sig = keyPair.sign(payloadHash, { canonical: true });
+    const signatureHex = Buffer.from(sig.toDER()).toString('hex');
 
     console.log('✅ Mobile backend signing successful');
 
