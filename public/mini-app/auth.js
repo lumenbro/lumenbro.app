@@ -245,8 +245,8 @@ async function startExport() {
             walletInfo.subOrgId,
             walletInfo.walletAccountId,
             walletInfo.stellarAddress,
-            apiKeyPair.publicKey,
-            apiKeyPair.privateKey
+            apiKeyPair.apiPublicKey,
+            apiKeyPair.apiPrivateKey
         );
         
         // Display results
