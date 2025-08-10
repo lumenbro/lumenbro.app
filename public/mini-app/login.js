@@ -429,14 +429,14 @@ async function login() {
     const { userId } = await userIdResponse.json();
 
     // Fetch email from backend
-    let email;
+    let userEmail;
     const emailResponse = await fetch(`/get-user-email?orgId=${orgId}`);
     if (!emailResponse.ok) {
       console.warn('Email fetch failed, using fallback');
-      email = 'bpeterscqa@gmail.com';
+      userEmail = 'bpeterscqa@gmail.com';
     } else {
       const emailData = await emailResponse.json() || { email: 'bpeterscqa@gmail.com' };
-      email = emailData.email;
+      userEmail = emailData.email;
     }
 
     // Generate ephemeral key for HPKE
@@ -451,7 +451,7 @@ async function login() {
       type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
       timestampMs: String(Date.now()),
       organizationId: orgId,
-      email,
+      email: userEmail,
       parameters: {
         userId,
         expirationSeconds: "7776000",
@@ -503,16 +503,24 @@ async function login() {
 
 // Continue login process after mobile password decryption
 async function continueLoginProcess() {
-  // Get the orgId and email from the original login function scope
-  const urlParams = new URLSearchParams(window.location.search);
-  const orgId = urlParams.get('orgId');
-  const email = urlParams.get('email');
-  
-  if (!orgId) {
-    document.getElementById('content').innerHTML = 'Error: Missing orgId parameter';
-    return;
-  }
   try {
+    // Get the orgId and email from the original login function scope
+    const urlParams = new URLSearchParams(window.location.search);
+    const orgId = urlParams.get('orgId');
+    const email = urlParams.get('email');
+    
+    if (!orgId) {
+      document.getElementById('content').innerHTML = 'Error: Missing orgId parameter';
+      return;
+    }
+    
+    console.log('🔍 continueLoginProcess - orgId:', orgId, 'email:', email);
+    console.log('🔍 continueLoginProcess - apiKey available:', !!apiKey);
+    
+    if (!apiKey) {
+      throw new Error('API key not available in continueLoginProcess');
+    }
+    
     // Create manual stamper using our decrypted keys (bypasses TelegramCloudStorageStamper)
     const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
 
@@ -533,14 +541,14 @@ async function continueLoginProcess() {
     const { userId } = await userIdResponse.json();
 
     // Fetch email from backend
-    let email;
+    let userEmail;
     const emailResponse = await fetch(`/get-user-email?orgId=${orgId}`);
     if (!emailResponse.ok) {
       console.warn('Email fetch failed, using fallback');
-      email = 'bpeterscqa@gmail.com';
+      userEmail = 'bpeterscqa@gmail.com';
     } else {
       const emailData = await emailResponse.json() || { email: 'bpeterscqa@gmail.com' };
-      email = emailData.email;
+      userEmail = emailData.email;
     }
 
     // Generate ephemeral key for HPKE
@@ -555,7 +563,7 @@ async function continueLoginProcess() {
       type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
       timestampMs: String(Date.now()),
       organizationId: orgId,
-      email,
+      email: userEmail,
       parameters: {
         userId,
         expirationSeconds: "7776000",

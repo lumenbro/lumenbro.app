@@ -26,17 +26,25 @@ router.post('/lookup-org-by-email', async (req, res) => {
   if (!email) return res.status(400).json({ error: "Missing email" });
   
   try {
+    console.log('🔍 Looking up org for email:', email.trim());
+    
     const userRes = await pool.query(
-      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
-      [email]
+      "SELECT tw.turnkey_sub_org_id, u.user_email FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE LOWER(u.user_email) = LOWER($1) AND tw.is_active = TRUE",
+      [email.trim()]
     );
     
     if (userRes.rows.length === 0) {
+      console.log('❌ No wallet found for email:', email.trim());
+      // Let's also check what emails exist in the database
+      const allEmails = await pool.query("SELECT DISTINCT user_email FROM users WHERE user_email IS NOT NULL");
+      console.log('📧 Available emails in database:', allEmails.rows.map(row => row.user_email));
       return res.status(404).json({ error: "No active wallet found for this email address" });
     }
     
     const orgId = userRes.rows[0].turnkey_sub_org_id;
-    res.json({ orgId, email });
+    const storedEmail = userRes.rows[0].user_email;
+    console.log('✅ Found wallet for email:', email.trim(), 'stored as:', storedEmail, 'orgId:', orgId);
+    res.json({ orgId, email: storedEmail });
     
   } catch (e) {
     console.error(`Lookup org by email failed: ${e.message}`);
@@ -53,10 +61,10 @@ router.post('/init-otp', async (req, res) => {
   }
   
   try {
-    // Find the user's sub-org by email
+    // Find the user's sub-org by email (case-insensitive)
     const userRes = await pool.query(
-      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
-      [email.trim().toLowerCase()]
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE LOWER(u.user_email) = LOWER($1) AND tw.is_active = TRUE",
+      [email.trim()]
     );
     
     if (userRes.rows.length === 0) {
@@ -118,10 +126,10 @@ router.post('/verify-otp', async (req, res) => {
   }
   
   try {
-    // Find the user's sub-org by email
+    // Find the user's sub-org by email (case-insensitive)
     const userRes = await pool.query(
-      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
-      [email.trim().toLowerCase()]
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE LOWER(u.user_email) = LOWER($1) AND tw.is_active = TRUE",
+      [email.trim()]
     );
     
     if (userRes.rows.length === 0) {
