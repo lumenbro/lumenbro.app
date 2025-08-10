@@ -399,7 +399,54 @@ router.post('/api/auto-clear-cloud-storage', async (req, res) => {
   }
 });
 
-
+// Debug endpoint to check user wallet data
+router.get('/debug/user-wallet', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    
+    try {
+      // Check if the API key exists in turnkey_wallets
+      console.log('🔍 Checking for API key: 02d3424f01c2313dc7a3420c8baf8a3fc9b809c844f5abf51d52ab5d3d7f8bd9cd');
+      
+      const walletResult = await client.query(
+        "SELECT * FROM turnkey_wallets WHERE public_key = $1",
+        ['02d3424f01c2313dc7a3420c8baf8a3fc9b809c844f5abf51d52ab5d3d7f8bd9cd']
+      );
+      
+      console.log('Wallet records found:', walletResult.rows.length);
+      
+      // Check all turnkey_wallets records
+      console.log('\n🔍 All turnkey_wallets records:');
+      const allWallets = await client.query("SELECT telegram_id, turnkey_sub_org_id, public_key, is_active FROM turnkey_wallets ORDER BY telegram_id");
+      console.log('Total wallets:', allWallets.rows.length);
+      
+      // Check users table for this email
+      console.log('\n🔍 Checking users table for email: bpeterscqa@gmail.com');
+      const userResult = await client.query(
+        "SELECT telegram_id, public_key, turnkey_user_id, user_email FROM users WHERE user_email = $1",
+        ['bpeterscqa@gmail.com']
+      );
+      
+      console.log('User records found:', userResult.rows.length);
+      
+      res.json({
+        apiKeyFound: walletResult.rows.length > 0,
+        walletData: walletResult.rows[0] || null,
+        totalWallets: allWallets.rows.length,
+        allWallets: allWallets.rows,
+        userFound: userResult.rows.length > 0,
+        userData: userResult.rows[0] || null
+      });
+      
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ Debug error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Add endpoint for mobile payload signing (fallback for mobile Web Crypto API limitations)
 router.post('/mini-app/sign-payload', async (req, res) => {
