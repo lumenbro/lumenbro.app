@@ -425,9 +425,34 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     // Sign the hash using secp256k1 (correct API)
     const signature = secp256k1.ecdsaSign(payloadHash, privateKeyBuffer);
     
-    // Convert signature to DER format
-    const derSignature = secp256k1.signatureExport(signature);
-    const signatureHex = derSignature.toString('hex');
+    // The signature object has a 'signature' property that contains the raw signature
+    // We need to convert it to DER format manually
+    const r = signature.signature.slice(0, 32);
+    const s = signature.signature.slice(32, 64);
+    
+    // Convert to DER format manually
+    let rBytes = [...r];
+    let sBytes = [...s];
+    
+    // Add padding if needed
+    if (rBytes[0] > 127) rBytes = [0, ...rBytes];
+    if (sBytes[0] > 127) sBytes = [0, ...sBytes];
+    
+    const rLen = rBytes.length;
+    const sLen = sBytes.length;
+    const totalLen = 2 + rLen + 2 + sLen;
+    
+    const der = Buffer.alloc(2 + totalLen);
+    der[0] = 0x30;
+    der[1] = totalLen;
+    der[2] = 0x02;
+    der[3] = rLen;
+    der.set(rBytes, 4);
+    der[4 + rLen] = 0x02;
+    der[5 + rLen] = sLen;
+    der.set(sBytes, 6 + rLen);
+    
+    const signatureHex = der.toString('hex');
 
     console.log('✅ Mobile backend signing successful');
 
