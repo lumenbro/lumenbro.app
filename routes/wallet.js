@@ -188,7 +188,7 @@ router.post('/export-wallet', async (req, res) => {
     console.log('🔍 Backend received export request:', {
       subOrgId,
       walletAccountId,
-      stellarAddress: stellarAddress.substring(0, 10) + '...',
+      stellarAddress,
       targetPublicKey: targetPublicKey.substring(0, 10) + '...',
       userApiPublicKey: userApiPublicKey.substring(0, 10) + '...'
     });
@@ -206,6 +206,7 @@ router.post('/export-wallet', async (req, res) => {
     const exportResult = await userClient.apiClient().exportWalletAccount({
       organizationId: subOrgId,
       walletAccountId: walletAccountId,
+      address: stellarAddress,
       targetPublicKey: targetPublicKey,
       keyFormat: "KEY_FORMAT_HEXADECIMAL"
     });

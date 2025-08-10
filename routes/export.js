@@ -39,19 +39,18 @@ router.post('/api/wallet-info', async (req, res) => {
 
         const user = userResult.rows[0];
         
-        // If API keys are provided, use them to get real wallet data from Turnkey
-        if (apiPublicKey && apiPrivateKey) {
-            try {
-                const { Turnkey } = require('@turnkey/sdk-server');
-                const userClient = new Turnkey({
-                    apiBaseUrl: "https://api.turnkey.com",
-                    apiPublicKey: apiPublicKey,
-                    apiPrivateKey: apiPrivateKey,
-                    defaultOrganizationId: user.turnkey_sub_org_id,
-                });
+        // Always use root API keys to get real wallet data from Turnkey
+        try {
+            const { Turnkey } = require('@turnkey/sdk-server');
+            const turnkeyClient = new Turnkey({
+                apiBaseUrl: "https://api.turnkey.com",
+                apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+                apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+                defaultOrganizationId: process.env.TURNKEY_ORGANIZATION_ID,
+            });
 
                 // Get wallets
-                const wallets = await userClient.apiClient().getWallets({
+                const wallets = await turnkeyClient.apiClient().getWallets({
                     organizationId: user.turnkey_sub_org_id
                 });
 
@@ -63,17 +62,9 @@ router.post('/api/wallet-info', async (req, res) => {
                 }
 
                 const wallet = wallets.wallets[0];
-                const stellarAddress = wallet.addresses?.[0];
-
-                if (!stellarAddress) {
-                    return res.status(404).json({ 
-                        success: false, 
-                        error: 'No Stellar address found' 
-                    });
-                }
 
                 // Get wallet accounts
-                const accounts = await userClient.apiClient().getWalletAccounts({
+                const accounts = await turnkeyClient.apiClient().getWalletAccounts({
                     organizationId: user.turnkey_sub_org_id,
                     walletId: wallet.walletId
                 });
@@ -86,6 +77,14 @@ router.post('/api/wallet-info', async (req, res) => {
                 }
 
                 const walletAccount = accounts.accounts[0];
+                const stellarAddress = walletAccount.address;
+
+                if (!stellarAddress) {
+                    return res.status(404).json({ 
+                        success: false, 
+                        error: 'No Stellar address found in wallet account' 
+                    });
+                }
 
                 const walletInfo = {
                     subOrgId: user.turnkey_sub_org_id,
@@ -102,11 +101,17 @@ router.post('/api/wallet-info', async (req, res) => {
 
             } catch (turnkeyError) {
                 console.error('Turnkey API error:', turnkeyError);
+                console.error('Turnkey API error details:', {
+                    message: turnkeyError.message,
+                    status: turnkeyError.status,
+                    response: turnkeyError.response?.data
+                });
                 // Fall back to database data if Turnkey API fails
             }
         }
 
         // Fallback: return basic data from database
+        console.log('⚠️ Using placeholder data - Turnkey API call failed');
         const walletInfo = {
             subOrgId: user.turnkey_sub_org_id,
             walletId: 'fbd53f01-730c-52b0-81dd-18a59940a17d', // Placeholder
