@@ -213,7 +213,7 @@ router.post('/decrypt-export', async (req, res) => {
 });
 
 // ADDED: API endpoint for wallet export
-router.post('/api/export-wallet', async (req, res) => {
+router.post('/export-wallet', async (req, res) => {
   try {
     const { subOrgId, walletAccountId, stellarAddress, targetPublicKey, userApiPublicKey, userApiPrivateKey } = req.body;
     
@@ -223,6 +223,14 @@ router.post('/api/export-wallet', async (req, res) => {
         error: 'Missing required parameters' 
       });
     }
+    
+    console.log('🔍 Backend received export request:', {
+      subOrgId,
+      walletAccountId,
+      stellarAddress: stellarAddress.substring(0, 10) + '...',
+      targetPublicKey: targetPublicKey.substring(0, 10) + '...',
+      userApiPublicKey: userApiPublicKey.substring(0, 10) + '...'
+    });
     
     // Create Turnkey client on backend
     const { Turnkey } = require('@turnkey/sdk-server');
@@ -245,23 +253,9 @@ router.post('/api/export-wallet', async (req, res) => {
     console.log('✅ Backend export successful');
     console.log('📦 Export bundle length:', exportResult.exportBundle?.length || 'N/A');
     
-    // Note: The decryption should happen on the client side with the ephemeral private key
-    // We'll return the export bundle and let the client handle decryption
-    console.log('✅ Export bundle created, returning for client-side decryption');
-    
-    console.log('✅ Bundle decrypted successfully');
-    
-    // Extract the Stellar private key
-    const stellarPrivateKey = decryptedData.privateKey;
-    console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
-    
-    // Convert to Stellar S-address format
-    const stellarSAddress = 'S' + stellarPrivateKey.substring(2); // Remove '0x' prefix and add 'S'
-    
+    // Return the export bundle for client-side decryption
     res.json({
       success: true,
-      stellarPrivateKey,
-      stellarSAddress,
       exportBundle: exportResult.exportBundle
     });
     
