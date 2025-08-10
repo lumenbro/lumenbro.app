@@ -229,7 +229,7 @@ async function showExportForm() {
                 <button onclick="startExport()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">🔐 Export Wallet Keys</button>
             </div>
             
-            <div id="exportStatus" style="display: none;"></div>
+            <div id="exportStatus" style="display: none; padding: 10px; margin: 10px 0; border-radius: 5px; font-weight: bold;"></div>
             <div id="exportResults" style="display: none;"></div>
         `;
         
@@ -247,7 +247,17 @@ async function showExportForm() {
 // ADDED: Function to start the export process
 async function startExport() {
     try {
-        const password = document.getElementById('exportPassword').value;
+        const passwordField = document.getElementById('exportPassword');
+        if (!passwordField) {
+            showExportStatus('❌ Password field not found. Please refresh the page.', 'error');
+            return;
+        }
+        
+        const password = passwordField.value;
+        console.log('🔍 Password field found, length:', password ? password.length : 0);
+        console.log('🔍 Password field value:', password ? '***' + password.substring(password.length - 2) : 'empty');
+        console.log('🔍 Password field type:', passwordField.type);
+        console.log('🔍 Password field placeholder:', passwordField.placeholder);
         
         if (!password) {
             showExportStatus('❌ Please enter your password', 'error');
@@ -257,11 +267,19 @@ async function startExport() {
         showExportStatus('🔍 Starting export process...', 'loading');
         
         // Step 1: Get user's API keys from Telegram Cloud Storage
+        console.log('🔍 Attempting to retrieve API keys with password...');
         const apiKeyPair = await EncryptionUtils.retrieveTelegramKey(password);
         if (!apiKeyPair) {
             showExportStatus('❌ No API keys found. Please check your password.', 'error');
             return;
         }
+        
+        console.log('✅ API keys retrieved successfully:', {
+            hasApiPublicKey: !!apiKeyPair.apiPublicKey,
+            hasApiPrivateKey: !!apiKeyPair.apiPrivateKey,
+            apiPublicKeyLength: apiKeyPair.apiPublicKey?.length,
+            apiPrivateKeyLength: apiKeyPair.apiPrivateKey?.length
+        });
         
         showExportStatus('✅ API keys decrypted successfully', 'success');
         
@@ -302,6 +320,12 @@ async function startExport() {
 // ADDED: Helper function to get wallet info
 async function getWalletInfo(email, apiKeyPair) {
     try {
+        console.log('🔍 Getting wallet info for email:', email);
+        console.log('🔍 API key pair structure:', {
+            hasApiPublicKey: !!apiKeyPair.apiPublicKey,
+            hasApiPrivateKey: !!apiKeyPair.apiPrivateKey
+        });
+        
         // Call backend API to get wallet information
         const response = await fetch('/api/wallet-info', {
             method: 'POST',
@@ -310,8 +334,8 @@ async function getWalletInfo(email, apiKeyPair) {
             },
             body: JSON.stringify({
                 email: email,
-                apiPublicKey: apiKeyPair.publicKey,
-                apiPrivateKey: apiKeyPair.privateKey
+                apiPublicKey: apiKeyPair.apiPublicKey,
+                apiPrivateKey: apiKeyPair.apiPrivateKey
             })
         });
 
@@ -414,9 +438,36 @@ function displayExportResults(result, stellarAddress) {
 // ADDED: Helper function to show export status
 function showExportStatus(message, type) {
     const statusDiv = document.getElementById('exportStatus');
+    if (!statusDiv) {
+        console.error('Export status div not found');
+        return;
+    }
+    
     statusDiv.textContent = message;
-    statusDiv.className = `status ${type}`;
     statusDiv.style.display = 'block';
+    
+    // Apply styling based on type
+    switch (type) {
+        case 'loading':
+            statusDiv.style.background = '#e3f2fd';
+            statusDiv.style.border = '1px solid #2196f3';
+            statusDiv.style.color = '#1976d2';
+            break;
+        case 'success':
+            statusDiv.style.background = '#e8f5e8';
+            statusDiv.style.border = '1px solid #4caf50';
+            statusDiv.style.color = '#2e7d32';
+            break;
+        case 'error':
+            statusDiv.style.background = '#ffebee';
+            statusDiv.style.border = '1px solid #f44336';
+            statusDiv.style.color = '#c62828';
+            break;
+        default:
+            statusDiv.style.background = '#fff3cd';
+            statusDiv.style.border = '1px solid #ffc107';
+            statusDiv.style.color = '#856404';
+    }
 
     if (type !== 'loading') {
         setTimeout(() => {

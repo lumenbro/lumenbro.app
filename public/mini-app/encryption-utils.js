@@ -84,8 +84,11 @@ window.EncryptionUtils = {
 
   // Retrieve and decrypt API key from Telegram Cloud Storage
   async retrieveTelegramKey(password) {
+    console.log('🔍 retrieveTelegramKey called with password length:', password ? password.length : 0);
+    
     const encryptedData = await new Promise((resolve) => {
       window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+        console.log('🔍 Cloud storage getItem result:', { error, hasValue: !!value });
         resolve(value ? JSON.parse(value) : null);
       });
     });
@@ -110,6 +113,7 @@ window.EncryptionUtils = {
     }
 
     // For encrypted format, password is required
+    console.log('🔍 Checking password requirement:', { hasPassword: !!password, passwordLength: password ? password.length : 0 });
     if (!password) {
       throw new Error('Password required for encrypted keys');
     }
