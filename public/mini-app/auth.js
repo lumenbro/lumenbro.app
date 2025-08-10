@@ -256,7 +256,12 @@ async function startExport() {
         
     } catch (error) {
         console.error('Export error:', error);
-        showExportStatus('❌ Export failed: ' + error.message, 'error');
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        showExportStatus('❌ Export failed: ' + error.message + ' (Type: ' + error.name + ')', 'error');
     }
 }
 

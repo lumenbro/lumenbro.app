@@ -100,16 +100,18 @@ window.EncryptionUtils = {
       hasIv: !!encryptedData.iv,
       hasSalt: !!encryptedData.salt,
       isLegacyFormat: !!(encryptedData.apiPublicKey && encryptedData.apiPrivateKey),
-      keys: Object.keys(encryptedData)
+      keys: Object.keys(encryptedData),
+      data: encryptedData
     });
 
-    // Check for legacy unencrypted format
+    // Check for legacy unencrypted format - these should be handled by Python bot
     if (encryptedData.apiPublicKey && encryptedData.apiPrivateKey) {
-      console.log('Legacy unencrypted key detected - returning directly');
-      return {
-        apiPublicKey: encryptedData.apiPublicKey,
-        apiPrivateKey: encryptedData.apiPrivateKey
-      };
+      throw new Error('Legacy keys detected. Please use the Python bot for legacy key export.');
+    }
+
+    // For encrypted format, password is required
+    if (!password) {
+      throw new Error('Password required for encrypted keys');
     }
 
     // Decrypt the private key
@@ -135,24 +137,5 @@ window.EncryptionUtils = {
     return !!(storedData.encryptedPrivateKey && storedData.iv && storedData.salt && storedData.publicKey);
   },
 
-  // Migrate legacy key to encrypted format
-  async migrateLegacyKey(password) {
-    const storedData = await new Promise((resolve) => {
-      window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
-        resolve(value ? JSON.parse(value) : null);
-      });
-    });
-    
-    if (!storedData || !storedData.apiPublicKey || !storedData.apiPrivateKey) {
-      throw new Error('No legacy key found to migrate');
-    }
 
-    console.log('Migrating legacy key to encrypted format...');
-    
-    // Store in new encrypted format
-    await this.storeTelegramKey(storedData.apiPublicKey, storedData.apiPrivateKey, password);
-    
-    console.log('✅ Legacy key migration complete');
-    return true;
-  }
 };
