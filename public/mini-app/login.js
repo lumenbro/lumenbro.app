@@ -215,34 +215,67 @@ class ManualStamper {
       console.log('Private key length:', this.privateKey?.length);
       console.log('Public key length:', this.publicKey?.length);
       
-      // For mobile, use a different approach
+      // For mobile, we need to handle Web Crypto API limitations differently
       if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-        console.log('🔧 Using mobile-compatible stamping approach...');
+        console.log('🔧 Using mobile-compatible key import approach...');
         
-        // On mobile, we'll use the backend to handle the signing
-        // This avoids the Web Crypto API limitations on mobile
-        const response = await fetch('/mini-app/sign-payload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payload: payload,
-            privateKey: this.privateKey,
-            publicKey: this.publicKey
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Backend signing failed: ${response.status}`);
+        // Try a different approach for mobile - use raw key import with proper ECDSA setup
+        try {
+          const privateBytes = hexToUint8Array(this.privateKey);
+          
+          // Create a proper ECDSA key pair first to get the format
+          const keyPair = await crypto.subtle.generateKey(
+            { name: "ECDSA", namedCurve: "P-256" },
+            true,
+            ["sign"]
+          );
+          
+          // Export the private key to understand the format
+          const exportedPrivateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+          
+          // Create a minimal PKCS#8 structure for our private key
+          const pkcs8Header = new Uint8Array([
+            0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02, 0x01, 0x01, 0x04, 0x20
+          ]);
+          
+          const pkcs8Footer = new Uint8Array([
+            0xa1, 0x44, 0x03, 0x42, 0x00
+          ]);
+          
+          const pkcs8Key = new Uint8Array(pkcs8Header.length + privateBytes.length + pkcs8Footer.length);
+          pkcs8Key.set(pkcs8Header, 0);
+          pkcs8Key.set(privateBytes, pkcs8Header.length);
+          pkcs8Key.set(pkcs8Footer, pkcs8Header.length + privateBytes.length);
+          
+          const privateKeyCrypto = await crypto.subtle.importKey(
+            "pkcs8",
+            pkcs8Key,
+            { name: "ECDSA", namedCurve: "P-256" },
+            true,
+            ["sign"]
+          );
+          
+          // Sign the payload
+          const payloadBytes = new TextEncoder().encode(payload);
+          const sigBuffer = await crypto.subtle.sign(
+            { name: "ECDSA", hash: "SHA-256" },
+            privateKeyCrypto,
+            payloadBytes
+          );
+          
+          // Encode signature in DER format
+          const sigHex = derEncodeSignature(sigBuffer);
+          
+          return {
+            publicKey: this.publicKey,
+            scheme: "SIGNATURE_SCHEME_TK_API_P256",
+            signature: sigHex
+          };
+          
+        } catch (mobileError) {
+          console.error('❌ Mobile PKCS#8 approach failed:', mobileError);
+          throw new Error('Mobile signing not supported - please use desktop version');
         }
-        
-        const stampResult = await response.json();
-        console.log('✅ Backend signing successful');
-        
-        return {
-          publicKey: this.publicKey,
-          scheme: "SIGNATURE_SCHEME_TK_API_P256",
-          signature: stampResult.signature
-        };
       }
       
       // Desktop approach - import and sign locally
