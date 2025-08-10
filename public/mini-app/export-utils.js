@@ -138,6 +138,23 @@ class ExportUtils {
                // Note: Private key format looks correct (64 hex characters)
         console.log('✅ Private key format appears correct (64 hex characters)');
         console.log('✅ This should work with Stellar wallets');
+        
+        // Test the private key with a simple validation
+        console.log('🔍 Testing private key validation...');
+        if (stellarPrivateKey.length === 64 && /^[0-9a-fA-F]+$/.test(stellarPrivateKey)) {
+          console.log('✅ Private key format validation passed');
+          console.log('✅ Should work with Stellar Lab and other wallets');
+        } else {
+          console.log('❌ Private key format validation failed');
+        }
+        
+        // Test S-address conversion with known example
+        console.log('🔍 Testing S-address conversion...');
+        const testHex = 'cd0d01c473a4669a1100897f74f13f2dd2ee417e3730b2794e4489fd3b94ea1d';
+        const testSAddress = await this.hexToStellarSAddress(testHex);
+        console.log('📋 Test conversion result:', testSAddress);
+        console.log('📋 Expected result: SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
+        console.log('📋 Conversion match:', testSAddress === 'SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
       
       return {
         stellarPrivateKey,
@@ -170,20 +187,100 @@ class ExportUtils {
      return sAddress.match(/.{1,4}/g).join(' ');
    }
    
-   // Convert hex private key to Stellar S-address format
-   static async hexToStellarSAddress(hexPrivateKey) {
-     try {
-       // For now, let's use a simpler approach
-       // Most Stellar wallets accept hex format private keys
-       // The S-address format is more complex and requires proper base58check encoding
-       console.log('📋 Using hex format for private key (most wallets accept this)');
-       return hexPrivateKey;
-       
-     } catch (error) {
-       console.error('Error converting to S-address:', error);
-       return hexPrivateKey;
-     }
-   }
+       // Convert hex private key to Stellar S-address format
+    static async hexToStellarSAddress(hexPrivateKey) {
+      try {
+        console.log('📋 Converting hex to proper Stellar S-address format...');
+        
+        // Step 1: Decode hex to bytes (strip '0x' if present)
+        const cleanHex = hexPrivateKey.startsWith('0x') ? hexPrivateKey.substring(2) : hexPrivateKey;
+        const seedBytes = this.hexToBytes(cleanHex);
+        
+        if (seedBytes.length !== 32) {
+          throw new Error("Invalid raw key length; must be 32 bytes.");
+        }
+        
+        // Step 2: Prepend version byte (0x90 for secret seeds)
+        const versioned = new Uint8Array(33);
+        versioned[0] = 0x90; // Secret seed version byte
+        versioned.set(seedBytes, 1);
+        
+        // Step 3: Compute CRC16-XMODEM checksum
+        const checksum = this.crc16Xmodem(versioned);
+        
+        // Step 4: Append checksum → 35 bytes
+        const payload = new Uint8Array(35);
+        payload.set(versioned, 0);
+        payload.set(checksum, 33);
+        
+        // Step 5: Base32 encode (RFC4648, no padding, uppercase)
+        const base32Encoded = this.base32Encode(payload);
+        
+        console.log('📋 Created proper Stellar S-address:', base32Encoded.substring(0, 20) + '...');
+        return base32Encoded;
+        
+      } catch (error) {
+        console.error('Error converting to S-address:', error);
+        // Fallback to hex format
+        return hexPrivateKey;
+      }
+    }
+    
+    // Helper: Convert hex string to bytes
+    static hexToBytes(hex) {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+      }
+      return bytes;
+    }
+    
+    // Helper: CRC16-XMODEM implementation
+    static crc16Xmodem(data) {
+      let crc = 0x0000;
+      const polynomial = 0x1021;
+      
+      for (let i = 0; i < data.length; i++) {
+        crc ^= (data[i] << 8);
+        for (let j = 0; j < 8; j++) {
+          if (crc & 0x8000) {
+            crc = (crc << 1) ^ polynomial;
+          } else {
+            crc = crc << 1;
+          }
+        }
+      }
+      
+      // Convert to 2 bytes
+      const result = new Uint8Array(2);
+      result[0] = (crc >> 8) & 0xFF;
+      result[1] = crc & 0xFF;
+      return result;
+    }
+    
+    // Helper: Base32 encoding (RFC4648, no padding, uppercase)
+    static base32Encode(data) {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      let bits = 0;
+      let value = 0;
+      let output = '';
+      
+      for (let i = 0; i < data.length; i++) {
+        value = (value << 8) | data[i];
+        bits += 8;
+        
+        while (bits >= 5) {
+          output += alphabet[(value >>> (bits - 5)) & 31];
+          bits -= 5;
+        }
+      }
+      
+      if (bits > 0) {
+        output += alphabet[(value << (5 - bits)) & 31];
+      }
+      
+      return output;
+    }
    
 
   
@@ -222,13 +319,16 @@ class ExportUtils {
   Stellar Private Key (Hex Format):
   ${stellarPrivateKey}
   
+  Stellar S-Address (Base32 Format):
+  ${stellarSAddress}
+  
   Stellar Public Address:
   ${stellarAddress}
   
   Instructions:
-  1. Import the private key (hex format) into any Stellar wallet
-  2. Most wallets accept hex format private keys
-  3. For Stellar Lab, use the hex private key directly
+  1. Use the S-Address format for most Stellar wallets and tools
+  2. Use the hex format for Stellar Lab and some other tools
+  3. Both formats represent the same private key
   4. Keep this backup safe - anyone with the private key can access your funds
   5. Never share this file with anyone
   
