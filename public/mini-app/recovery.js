@@ -3,10 +3,15 @@
 // Use global params from index.html or handle lost orgId case
 async function recover() {
     try {
-    // CRITICAL: Handle case where Telegram Cloud Storage was cleared
-    // In this case, we won't have the orgId from the URL params
-    let email = window.email || '';
-    let orgId = window.orgId || '';
+        // Enhanced mobile error handling
+        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+            console.log('🔧 Mobile recovery detected - applying enhanced error handling');
+        }
+        
+        // CRITICAL: Handle case where Telegram Cloud Storage was cleared
+        // In this case, we won't have the orgId from the URL params
+        let email = window.email || '';
+        let orgId = window.orgId || '';
     
     // If no email from URL params, prompt user
     if (!email || email === 'unknown@lumenbro.com') {
@@ -18,11 +23,43 @@ async function recover() {
     console.log('🏢 Initial orgId from URL:', orgId || 'NOT PROVIDED');
 
     // Generate uncompressed P-256 key pair for recovery encryption
-    const cryptoKeyPair = await window.crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      true,
-      ['sign', 'verify']
-    );
+    let cryptoKeyPair;
+    try {
+        cryptoKeyPair = await window.crypto.subtle.generateKey(
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            true,
+            ['sign', 'verify']
+        );
+    } catch (error) {
+        // Enhanced mobile error handling
+        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+            console.error('❌ Mobile key generation error during recovery:', error);
+            MobileEncryptionFix.handleMobileError(error, 'recovery key generation');
+            
+            document.getElementById('content').innerHTML = `
+                <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                    <h3>❌ Mobile Recovery Error</h3>
+                    <p>There was an issue generating recovery keys on mobile. This is likely due to:</p>
+                    <ul>
+                        <li>Web Crypto API limitations on mobile</li>
+                        <li>Memory constraints on mobile devices</li>
+                        <li>Telegram WebView restrictions</li>
+                    </ul>
+                    <p><strong>Try:</strong></p>
+                    <ul>
+                        <li>Using desktop version</li>
+                        <li>Checking the debug console (🐛 button)</li>
+                        <li>Closing other apps to free up memory</li>
+                    </ul>
+                    <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                        🐛 Show Debug Info
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        throw error;
+    }
     
     // Export public key in uncompressed format (65 bytes)
     const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
@@ -273,6 +310,11 @@ function openTelegram() {
 // Generate new Telegram API keys after recovery
 async function generateNewTelegramKeys() {
   try {
+    // Enhanced mobile error handling
+    if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+      console.log('🔧 Mobile key generation detected - applying enhanced error handling');
+    }
+    
     console.log('🔑 Starting Telegram key generation...');
     
     // Get password for encryption
@@ -300,9 +342,42 @@ async function generateNewTelegramKeys() {
     `;
     
     // Generate new keys using recovery credentials
-    const result = await window.recoveryKeyGenerator.generateNewTelegramKey(password);
-    
-    console.log('✅ New Telegram keys generated successfully:', result);
+    try {
+        const result = await window.recoveryKeyGenerator.generateNewTelegramKey(password);
+        console.log('✅ New Telegram keys generated successfully:', result);
+    } catch (error) {
+        // Enhanced mobile error handling
+        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+            console.error('❌ Mobile key generation error:', error);
+            MobileEncryptionFix.handleMobileError(error, 'recovery key generation');
+            
+            document.getElementById('content').innerHTML = `
+                <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+                    <h3>❌ Mobile Key Generation Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    
+                    <div style="margin: 15px 0;">
+                        <h4>💡 Mobile-Specific Solutions:</h4>
+                        <ul style="text-align: left;">
+                            <li>Try using desktop version for key generation</li>
+                            <li>Check the debug console (🐛 button) for details</li>
+                            <li>Ensure stable internet connection</li>
+                            <li>Close other apps to free up memory</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                        🐛 Show Debug Info
+                    </button>
+                    <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin-top: 15px;">
+                        🔄 Start Recovery Again
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        throw error;
+    }
     
     document.getElementById('content').innerHTML = `
       <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">

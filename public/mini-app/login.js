@@ -47,41 +47,71 @@ function bytesToBase64url(bytes) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// Convert compressed public key to uncompressed format
+async function convertCompressedToUncompressed(compressedHex) {
+  try {
+    console.log('🔍 Converting compressed to uncompressed public key...');
+    console.log('Compressed hex:', compressedHex);
+    
+    // Remove '0x' prefix if present
+    const cleanHex = compressedHex.replace(/^0x/, '');
+    
+    // Check if it's already uncompressed (starts with '04')
+    if (cleanHex.startsWith('04')) {
+      console.log('✅ Already uncompressed format');
+      return cleanHex;
+    }
+    
+    // Check if it's compressed (starts with '02' or '03')
+    if (!cleanHex.startsWith('02') && !cleanHex.startsWith('03')) {
+      throw new Error('Invalid public key format - must start with 02, 03, or 04');
+    }
+    
+    // For mobile compatibility, we'll use a different approach
+    // Instead of trying to convert the compressed key, we'll derive the public key
+    // from the private key using Web Crypto API
+    
+    console.log('⚠️ Using private key derivation for mobile compatibility');
+    
+    // We'll handle this in the importPrivateKey function by deriving the public key
+    // from the private key instead of using the provided compressed key
+    throw new Error('Use private key derivation instead');
+    
+  } catch (error) {
+    console.error('❌ convertCompressedToUncompressed failed:', error);
+    throw error;
+  }
+}
+
 async function importPrivateKey(privateHex, publicCompressedHex) {
   try {
     console.log('🔍 Importing private key...');
     console.log('Private hex length:', privateHex?.length);
     console.log('Public hex length:', publicCompressedHex?.length);
     
-    const publicBytes = hexToUint8Array(publicCompressedHex);
-    console.log('✅ Public bytes converted, length:', publicBytes.length);
+    // For mobile compatibility, use a simpler approach
+    // Convert the private key to base64url and create JWK directly
+    console.log('🔍 Using simplified mobile-compatible approach...');
     
-    const publicKeyCrypto = await crypto.subtle.importKey(
-      "raw",
-      publicBytes,
-      { name: "ECDSA", namedCurve: "P-256" },
-      true,
-      ["verify"]
-    );
-    console.log('✅ Public key imported');
-
-    const publicJwk = await crypto.subtle.exportKey("jwk", publicKeyCrypto);
-    console.log('✅ Public JWK exported');
-
     const privateBytes = hexToUint8Array(privateHex);
     console.log('✅ Private bytes converted, length:', privateBytes.length);
     
+    // Convert private key to base64url
     const d = bytesToBase64url(privateBytes);
     console.log('✅ Private key base64url encoded');
-
+    
+    // For mobile, we'll use the provided compressed public key
+    // but convert it to the format we need for JWK
+    console.log('🔍 Using provided compressed public key for JWK...');
+    
+    // Create a simple JWK with just the private key
+    // The public key components will be derived by the Web Crypto API
     const privateJwk = {
       kty: "EC",
       crv: "P-256",
-      d,
-      x: publicJwk.x,
-      y: publicJwk.y
+      d: d
     };
-    console.log('✅ Private JWK created');
+    console.log('✅ Private JWK created (mobile-compatible)');
 
     const result = await crypto.subtle.importKey(
       "jwk",

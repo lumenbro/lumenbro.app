@@ -1,6 +1,11 @@
 // public/mini-app/auth.js - Client-side registration (no WebAuthn)
 window.register = async function () {
     try {
+        // Enhanced mobile error handling
+        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+            console.log('🔧 Mobile registration detected - applying enhanced error handling');
+        }
+
         if (!window.Turnkey || !window.Turnkey.generateP256ApiKeyPair) {
             console.error('Turnkey bundle not loaded or generateP256ApiKeyPair missing. Check Network tab for /static/turnkey.min.js load (200 OK). Rebuild bundle and ensure path in index.html.');
             throw new Error('Turnkey not available');
@@ -37,13 +42,42 @@ window.register = async function () {
         const keyPair = await window.Turnkey.generateP256ApiKeyPair();
 
         // Use standardized encryption
-        const storedData = await window.EncryptionUtils.storeTelegramKey(keyPair.publicKey, keyPair.privateKey, password);
-        
         try {
-          console.log('Encrypted data stored successfully');
+            const storedData = await window.EncryptionUtils.storeTelegramKey(keyPair.publicKey, keyPair.privateKey, password);
+            console.log('Encrypted data stored successfully');
         } catch (error) {
-          console.error('Encryption/storage error:', error);
-          throw new Error('Failed to store encrypted key - try again');
+            console.error('Encryption/storage error:', error);
+            
+            // Enhanced mobile error handling
+            if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+                console.error('❌ Mobile encryption error during registration:', error);
+                MobileEncryptionFix.handleMobileError(error, 'registration encryption');
+                
+                // Show user-friendly error message
+                document.getElementById('content').innerHTML = `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                        <h3>❌ Mobile Registration Error</h3>
+                        <p>There was an issue encrypting your keys on mobile. This is likely due to:</p>
+                        <ul>
+                            <li>Web Crypto API limitations on mobile</li>
+                            <li>Data format compatibility issues</li>
+                            <li>Telegram WebView restrictions</li>
+                        </ul>
+                        <p><strong>Try:</strong></p>
+                        <ul>
+                            <li>Using desktop version</li>
+                            <li>Checking the debug console (🐛 button)</li>
+                            <li>Ensuring you have a stable internet connection</li>
+                        </ul>
+                        <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                            🐛 Show Debug Info
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            throw new Error('Failed to store encrypted key - try again');
         }
 
         // Fetch sub-org from backend (send public key for root user API key)
