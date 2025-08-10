@@ -91,17 +91,28 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
     console.log('Private hex length:', privateHex?.length);
     console.log('Public hex length:', publicCompressedHex?.length);
     
-    // Mobile-compatible approach - use raw key import
+    // Mobile-compatible approach - use simplified JWK import
     if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-      console.log('🔧 Using mobile-compatible raw key import...');
+      console.log('🔧 Using mobile-compatible simplified JWK import...');
       
       const privateBytes = hexToUint8Array(privateHex);
       console.log('✅ Private bytes converted, length:', privateBytes.length);
       
-      // For mobile, use raw key import instead of JWK
+      // Convert private key to base64url
+      const d = bytesToBase64url(privateBytes);
+      console.log('✅ Private key base64url encoded');
+      
+      // Create a simple JWK with just the private key (no public key components)
+      const privateJwk = {
+        kty: "EC",
+        crv: "P-256",
+        d: d
+      };
+      console.log('✅ Private JWK created (mobile-compatible)');
+
       const result = await crypto.subtle.importKey(
-        "raw",
-        privateBytes,
+        "jwk",
+        privateJwk,
         { name: "ECDSA", namedCurve: "P-256" },
         true,
         ["sign"]
@@ -153,26 +164,7 @@ async function importPrivateKey(privateHex, publicCompressedHex) {
       console.error('- Web Crypto API limitations on mobile');
       console.error('- Key format issues');
       console.error('- Memory constraints');
-      
-      // Try alternative approach for mobile
-      try {
-        console.log('🔄 Trying alternative mobile approach...');
-        const privateBytes = hexToUint8Array(privateHex);
-        
-        // Try with different key format
-        const result = await crypto.subtle.importKey(
-          "pkcs8",
-          privateBytes,
-          { name: "ECDSA", namedCurve: "P-256" },
-          true,
-          ["sign"]
-        );
-        console.log('✅ Private key imported successfully (alternative mobile approach)');
-        return result;
-      } catch (altError) {
-        console.error('❌ Alternative mobile approach also failed:', altError);
-        throw error; // Throw original error
-      }
+      console.error('- JWK import restrictions on mobile');
     }
     
     throw error;
@@ -223,7 +215,37 @@ class ManualStamper {
       console.log('Private key length:', this.privateKey?.length);
       console.log('Public key length:', this.publicKey?.length);
       
-      // Import the private key for signing
+      // For mobile, use a different approach
+      if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+        console.log('🔧 Using mobile-compatible stamping approach...');
+        
+        // On mobile, we'll use the backend to handle the signing
+        // This avoids the Web Crypto API limitations on mobile
+        const response = await fetch('/mini-app/sign-payload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: payload,
+            privateKey: this.privateKey,
+            publicKey: this.publicKey
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Backend signing failed: ${response.status}`);
+        }
+        
+        const stampResult = await response.json();
+        console.log('✅ Backend signing successful');
+        
+        return {
+          publicKey: this.publicKey,
+          scheme: "SIGNATURE_SCHEME_TK_API_P256",
+          signature: stampResult.signature
+        };
+      }
+      
+      // Desktop approach - import and sign locally
       console.log('🔍 Importing private key...');
       const privateKeyCrypto = await importPrivateKey(this.privateKey, this.publicKey);
       console.log('✅ Private key imported successfully');
