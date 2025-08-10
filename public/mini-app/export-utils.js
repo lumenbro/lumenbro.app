@@ -155,12 +155,20 @@ class ExportUtils {
         console.log('📋 Test conversion result:', testSAddress);
         console.log('📋 Expected result: SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
         console.log('📋 Conversion match:', testSAddress === 'SDGQ2AOEOOSGNGQRACEX65HRH4W5F3SBPY3TBMTZJZCIT7J3STVB27S7');
+        
+        // Debug: Test with your actual private key
+        console.log('🔍 Testing with actual private key...');
+        const actualSAddress = await this.hexToStellarSAddress(stellarPrivateKey);
+        console.log('📋 Your private key hex:', stellarPrivateKey);
+        console.log('📋 Your Stellar StrKey:', actualSAddress);
+        console.log('📋 StrKey starts with S:', actualSAddress.startsWith('S'));
+        console.log('📋 StrKey length:', actualSAddress.length);
       
-      return {
-        stellarPrivateKey,
-        stellarSAddress,
-        exportBundle: exportResult.exportBundle
-      };
+              return {
+          stellarPrivateKey,
+          stellarSAddress: actualSAddress, // Use the properly converted StrKey
+          exportBundle: exportResult.exportBundle
+        };
       
     } catch (error) {
       console.error('❌ Export failed:', error);
@@ -187,10 +195,10 @@ class ExportUtils {
      return sAddress.match(/.{1,4}/g).join(' ');
    }
    
-       // Convert hex private key to Stellar S-address format
+       // Convert hex private key to Stellar S-address format (SEP-0023 StrKey)
     static async hexToStellarSAddress(hexPrivateKey) {
       try {
-        console.log('📋 Converting hex to proper Stellar S-address format...');
+        console.log('📋 Converting hex to Stellar StrKey format (SEP-0023)...');
         
         // Step 1: Decode hex to bytes (strip '0x' if present)
         const cleanHex = hexPrivateKey.startsWith('0x') ? hexPrivateKey.substring(2) : hexPrivateKey;
@@ -200,15 +208,16 @@ class ExportUtils {
           throw new Error("Invalid raw key length; must be 32 bytes.");
         }
         
-        // Step 2: Prepend version byte (0x90 for secret seeds)
+        // Step 2: Create version byte + seed (33 bytes total)
+        // Version byte 0x90 (144) for Ed25519 secret seeds
         const versioned = new Uint8Array(33);
-        versioned[0] = 0x90; // Secret seed version byte
+        versioned[0] = 0x90; // Ed25519 secret seed version byte
         versioned.set(seedBytes, 1);
         
-        // Step 3: Compute CRC16-XMODEM checksum
+        // Step 3: Compute CRC16-XMODEM checksum over version + seed
         const checksum = this.crc16Xmodem(versioned);
         
-        // Step 4: Append checksum → 35 bytes
+        // Step 4: Append 2-byte checksum (big-endian) → 35 bytes total
         const payload = new Uint8Array(35);
         payload.set(versioned, 0);
         payload.set(checksum, 33);
@@ -216,11 +225,14 @@ class ExportUtils {
         // Step 5: Base32 encode (RFC4648, no padding, uppercase)
         const base32Encoded = this.base32Encode(payload);
         
-        console.log('📋 Created proper Stellar S-address:', base32Encoded.substring(0, 20) + '...');
+        console.log('📋 Created Stellar StrKey:', base32Encoded.substring(0, 20) + '...');
+        console.log('📋 StrKey length:', base32Encoded.length);
+        console.log('📋 Should be 56 characters and start with S');
+        
         return base32Encoded;
         
       } catch (error) {
-        console.error('Error converting to S-address:', error);
+        console.error('Error converting to Stellar StrKey:', error);
         // Fallback to hex format
         return hexPrivateKey;
       }
@@ -235,10 +247,10 @@ class ExportUtils {
       return bytes;
     }
     
-    // Helper: CRC16-XMODEM implementation
+    // Helper: CRC16-XMODEM implementation (SEP-0023 specification)
     static crc16Xmodem(data) {
       let crc = 0x0000;
-      const polynomial = 0x1021;
+      const polynomial = 0x1021; // XMODEM polynomial
       
       for (let i = 0; i < data.length; i++) {
         crc ^= (data[i] << 8);
@@ -248,13 +260,14 @@ class ExportUtils {
           } else {
             crc = crc << 1;
           }
+          crc &= 0xFFFF; // Keep 16-bit
         }
       }
       
-      // Convert to 2 bytes
+      // Return as 2 bytes (big-endian)
       const result = new Uint8Array(2);
-      result[0] = (crc >> 8) & 0xFF;
-      result[1] = crc & 0xFF;
+      result[0] = (crc >> 8) & 0xFF;  // High byte
+      result[1] = crc & 0xFF;         // Low byte
       return result;
     }
     
