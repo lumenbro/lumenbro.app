@@ -123,12 +123,30 @@ class ExportUtils {
       
       console.log('✅ Bundle decrypted successfully');
       
-      // Step 5: Extract the Stellar private key (decryptedData is the hex string directly)
-      const stellarPrivateKey = decryptedData;
-      console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
-      
-      // Step 6: Convert to Stellar S-address format
-      const stellarSAddress = 'S' + stellarPrivateKey; // Add 'S' prefix for Stellar S-address format
+             // Step 5: Extract the Stellar private key (decryptedData is the hex string directly)
+       const stellarPrivateKey = decryptedData;
+       console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
+       console.log('📋 Stellar private key length:', stellarPrivateKey.length);
+       
+       // Step 6: Convert to Stellar S-address format
+       // For Stellar, the private key should be 32 bytes (64 hex chars)
+       // S-address format is typically just the hex private key with 'S' prefix
+       const stellarSAddress = 'S' + stellarPrivateKey;
+       console.log('📋 Stellar S-address:', stellarSAddress.substring(0, 20) + '...');
+       console.log('📋 Stellar S-address length:', stellarSAddress.length);
+       
+       // Test if the private key works with Stellar SDK
+       try {
+         // Import Stellar SDK dynamically
+         const { Keypair } = await import('https://cdn.skypack.dev/@stellar/stellar-sdk');
+         const keypair = Keypair.fromSecret(stellarPrivateKey);
+         console.log('✅ Stellar keypair created successfully');
+         console.log('✅ Public key:', keypair.publicKey());
+         console.log('✅ Private key valid for Stellar');
+       } catch (stellarError) {
+         console.error('❌ Stellar keypair creation failed:', stellarError);
+         console.error('❌ This suggests the private key format is incorrect');
+       }
       
       return {
         stellarPrivateKey,
