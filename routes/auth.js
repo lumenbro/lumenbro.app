@@ -518,10 +518,14 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     const sigBytes = signature.signature;
     console.log('🔍 sigBytes type:', typeof sigBytes, 'length:', sigBytes.length);
     console.log('🔍 sigBytes slice 32-64:', sigBytes.slice(32, 64));
-    console.log('🔍 sigBytes slice 32-64 toString:', sigBytes.slice(32, 64).toString('hex'));
+    
+    // Convert Uint8Array to proper hex string
+    const sBytesArray = sigBytes.slice(32, 64);
+    const sHexString = Array.from(sBytesArray).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('🔍 sHexString:', sHexString);
     
     const rBytes = sigBytes.slice(0, 32);
-    let s = BigInt('0x' + sigBytes.slice(32, 64).toString('hex'));
+    let s = BigInt('0x' + sHexString);
     
     // Normalize s (ensure it's the smaller of s and n-s)
     const n = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
