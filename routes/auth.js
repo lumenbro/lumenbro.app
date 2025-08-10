@@ -199,10 +199,10 @@ async function handleTurnkeyPost(telegram_id, referrer_id, email, apiPublicKey) 
       }
     }
     await client.query(
-      "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, is_active) " +
-      "VALUES ($1, $2, $3, $4, TRUE) " +
-      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, is_active = TRUE",
-      [telegram_id, subOrgId, keyId, publicKey]
+      "INSERT INTO turnkey_wallets (telegram_id, turnkey_sub_org_id, turnkey_key_id, public_key, turnkey_api_public_key, is_active) " +
+      "VALUES ($1, $2, $3, $4, $5, TRUE) " +
+      "ON CONFLICT (telegram_id, turnkey_key_id) DO UPDATE SET turnkey_sub_org_id = $2, public_key = $4, turnkey_api_public_key = $5, is_active = TRUE",
+      [telegram_id, subOrgId, keyId, publicKey, apiPublicKey]
     );
     await client.query(
       "UPDATE users SET public_key = $1, user_email = $2, turnkey_user_id = $3 WHERE telegram_id = $4",
@@ -466,15 +466,15 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     // Find the correct sub-organization ID and public key for this user
     console.log('🔍 Looking up user data for Telegram Cloud Storage API key:', publicKey);
     
-    // First, try to find the user by the provided public key
+    // First, try to find the user by the provided Turnkey API public key
     let userResult = await pool.query(
-      "SELECT tw.turnkey_sub_org_id, u.user_email, tw.public_key as db_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.public_key = $1",
+      "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_api_public_key = $1",
       [publicKey]
     );
     
     // If not found, try to find by user email (fallback)
     if (userResult.rows.length === 0) {
-      console.log('🔍 API key not found in database, trying to find user by email...');
+      console.log('🔍 Turnkey API key not found in database, trying to find user by email...');
       
       // Get user email from the request or try to find it
       const emailResponse = await pool.query(
@@ -484,7 +484,7 @@ router.post('/mini-app/sign-payload', async (req, res) => {
       
       if (emailResponse.rows.length > 0) {
         userResult = await pool.query(
-          "SELECT tw.turnkey_sub_org_id, u.user_email, tw.public_key as db_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+          "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
           [emailResponse.rows[0].user_email]
         );
       }
@@ -497,10 +497,13 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     
     const subOrgId = userResult.rows[0].turnkey_sub_org_id;
     const userEmail = userResult.rows[0].user_email;
-    const dbPublicKey = userResult.rows[0].db_public_key;
+    const dbApiPublicKey = userResult.rows[0].turnkey_api_public_key;
     
     console.log('✅ Found sub-organization ID:', subOrgId, 'for user:', userEmail);
-    console.log('✅ Using database public key:', dbPublicKey, '(instead of Telegram Cloud Storage key:', publicKey, ')');
+    console.log('✅ Database Turnkey API key:', dbApiPublicKey, '(length:', dbApiPublicKey?.length, ')');
+    console.log('✅ Telegram Cloud Storage key:', publicKey, '(length:', publicKey?.length, ')');
+    console.log('🔍 Database API key format:', dbApiPublicKey?.startsWith('02') || dbApiPublicKey?.startsWith('03') ? 'Turnkey API' : 'Unknown');
+    console.log('🔍 Telegram key format:', publicKey?.startsWith('02') || publicKey?.startsWith('03') ? 'Turnkey API' : 'Unknown');
 
     // Convert hex private key to buffer (use the private key from Telegram Cloud Storage)
     const privateKeyBuffer = Buffer.from(privateKey, 'hex');
@@ -544,7 +547,7 @@ router.post('/mini-app/sign-payload', async (req, res) => {
 
     res.json({ 
       signature: signatureHex,
-      publicKey: dbPublicKey, // Return the database public key (correct one)
+      publicKey: dbApiPublicKey || publicKey, // Return the database API key or fallback to Telegram key
       subOrgId: subOrgId, // Return the correct sub-org ID
       message: 'Mobile fallback signing successful'
     });
