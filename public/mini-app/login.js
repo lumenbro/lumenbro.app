@@ -139,6 +139,11 @@ async function login() {
     return;
   }
 
+  // Enhanced mobile error handling
+  if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+    console.log('🔧 Mobile login detected - applying enhanced error handling');
+  }
+
   try {
     // Check if key is in encrypted format first
     const isEncrypted = await window.EncryptionUtils.isKeyEncrypted();
@@ -152,8 +157,40 @@ async function login() {
       password = prompt('Enter your password to decrypt key:');
       if (!password) throw new Error('Password required');
       
-      apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
-      console.log('✅ Decryption successful');
+      try {
+        apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+        console.log('✅ Decryption successful');
+      } catch (error) {
+        // Enhanced mobile error handling
+        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+          console.error('❌ Mobile decryption error:', error);
+          MobileEncryptionFix.handleMobileError(error, 'key decryption');
+          
+          // Show user-friendly error message
+          document.getElementById('content').innerHTML = `
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+              <h3>❌ Mobile Login Error</h3>
+              <p>There was an issue decrypting your key on mobile. This is likely due to:</p>
+              <ul>
+                <li>Web Crypto API limitations on mobile</li>
+                <li>Data format compatibility issues</li>
+                <li>Telegram WebView restrictions</li>
+              </ul>
+              <p><strong>Try:</strong></p>
+              <ul>
+                <li>Using desktop version</li>
+                <li>Re-registering on mobile</li>
+                <li>Checking the debug console (🐛 button)</li>
+              </ul>
+              <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                🐛 Show Debug Info
+              </button>
+            </div>
+          `;
+          return;
+        }
+        throw error;
+      }
       
     } else {
       // Handle legacy unencrypted keys
@@ -283,6 +320,15 @@ async function login() {
     document.getElementById('content').innerHTML = 'Session started! Temp keys stored.';
   } catch (error) {
     console.error('Login error:', error);
+    
+    // Enhanced mobile error handling
+    if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
+      MobileEncryptionFix.handleMobileError(error, 'login process');
+    }
+    
     document.getElementById('content').innerHTML = 'Error: ' + error.message;
   }
 };
+
+// Make login function globally available
+window.login = login;

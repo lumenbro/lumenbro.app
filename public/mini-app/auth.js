@@ -592,7 +592,10 @@ function showExportResults(exportResult) {
     const formattedSAddress = ExportUtils.formatSAddressForDisplay(exportResult.stellarSAddress);
     
     modal.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative;">
+            <button onclick="closeExportModal()" style="position: absolute; top: 15px; right: 20px; background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; z-index: 1001;">
+                ✕ Close
+            </button>
             <h2 style="color: #d32f2f; margin-top: 0;">🔐 Stellar Wallet Backup</h2>
             
             <div style="background: #fff3e0; border: 1px solid #ff9800; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
@@ -677,6 +680,71 @@ function toggleKeyVisibility(elementId) {
         button.textContent = '👁️ Show';
     }
 }
+
+// Function to close export modal
+function closeExportModal() {
+    const modal = document.querySelector('div[style*="position: fixed"][style*="z-index: 10000"]');
+    if (modal) {
+        modal.remove();
+        showStatus('Export modal closed', 'info');
+    }
+}
+
+// Function to automatically clear cloud storage
+async function autoClearCloudStorage() {
+    try {
+        console.log('🧹 Auto-clearing cloud storage...');
+        
+        // Clear all stored data
+        await new Promise((resolve, reject) => {
+            Telegram.WebApp.CloudStorage.removeItem('TURNKEY_API_KEY', (error) => {
+                if (error) {
+                    console.error('Error clearing TURNKEY_API_KEY:', error);
+                    reject(error);
+                } else {
+                    console.log('✅ TURNKEY_API_KEY cleared');
+                    resolve();
+                }
+            });
+        });
+
+        await new Promise((resolve, reject) => {
+            Telegram.WebApp.CloudStorage.removeItem('ENCRYPTED_API_KEYS', (error) => {
+                if (error) {
+                    console.error('Error clearing ENCRYPTED_API_KEYS:', error);
+                    reject(error);
+                } else {
+                    console.log('✅ ENCRYPTED_API_KEYS cleared');
+                    resolve();
+                }
+            });
+        });
+
+        // Show success message
+        document.getElementById('content').innerHTML = `
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>✅ Cloud Storage Cleared Successfully!</h3>
+                <p>All stored API keys and session data have been removed from your Telegram Cloud Storage.</p>
+                <p>You can now close this window and return to the bot.</p>
+            </div>
+        `;
+
+        console.log('✅ Auto-clear completed successfully');
+        
+    } catch (error) {
+        console.error('❌ Error during auto-clear:', error);
+        document.getElementById('content').innerHTML = `
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h3>❌ Error Clearing Cloud Storage</h3>
+                <p>There was an error clearing your stored data: ${error.message}</p>
+                <p>You may need to manually clear your data later.</p>
+            </div>
+        `;
+    }
+}
+
+// Make autoClearCloudStorage globally available
+window.autoClearCloudStorage = autoClearCloudStorage;
 
 // Function to copy text to clipboard (for direct text copying)
 async function copyToClipboard(text) {

@@ -326,5 +326,76 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
+// Add this new endpoint for automated cloud storage clearing
+router.post('/api/clear-user-data', async (req, res) => {
+  try {
+    const { telegram_id } = req.body;
+    
+    if (!telegram_id) {
+      return res.status(400).json({ success: false, error: 'telegram_id is required' });
+    }
+
+    console.log(`🧹 Automated clearing of user data for telegram_id: ${telegram_id}`);
+
+    // Clear database session data (same as unregister)
+    const result = await pool.query(`
+      UPDATE users SET 
+        turnkey_session_id = NULL, 
+        temp_api_public_key = NULL, 
+        temp_api_private_key = NULL, 
+        kms_encrypted_session_key = NULL,
+        kms_key_id = NULL,
+        session_expiry = NULL,
+        session_created_at = NULL,
+        turnkey_user_id = NULL,
+        user_email = NULL
+      WHERE telegram_id = $1
+    `, [telegram_id]);
+
+    if (result.rowCount === 0) {
+      console.log(`⚠️ No user found with telegram_id: ${telegram_id}`);
+      return res.json({ success: true, message: 'No user data found to clear' });
+    }
+
+    console.log(`✅ Successfully cleared session data for telegram_id: ${telegram_id}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'User session data cleared successfully',
+      telegram_id: telegram_id
+    });
+
+  } catch (error) {
+    console.error('❌ Error clearing user data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add endpoint for automated cloud storage clearing
+router.post('/api/auto-clear-cloud-storage', async (req, res) => {
+  try {
+    const { telegram_id } = req.body;
+    
+    if (!telegram_id) {
+      return res.status(400).json({ success: false, error: 'telegram_id is required' });
+    }
+
+    console.log(`🧹 Automated cloud storage clearing for telegram_id: ${telegram_id}`);
+
+    // This endpoint just returns a success response
+    // The actual clearing will be done by the mini-app when it opens
+    res.json({ 
+      success: true, 
+      message: 'Cloud storage clearing initiated',
+      telegram_id: telegram_id,
+      mini_app_url: `https://lumenbro.com/mini-app/index.html?action=auto-clear&telegram_id=${telegram_id}`
+    });
+
+  } catch (error) {
+    console.error('❌ Error initiating cloud storage clear:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.handleTurnkeyPost = handleTurnkeyPost;

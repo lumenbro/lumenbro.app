@@ -26,6 +26,8 @@
     <script src="/mini-app/login.js"></script>
     <script src="/mini-app/recovery.js"></script>
     <script src="/mini-app/clear.js"></script>  <!-- New script for clear -->
+    <script src="/mini-app/mobile-debug.js"></script>  <!-- Mobile debugging -->
+    <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
     <style>
         .status {
             padding: 15px;
@@ -70,6 +72,8 @@
                 window.recover();
             } else if (action === 'export') {
                 window.showExportForm();
+            } else if (action === 'auto-clear') {
+                window.autoClearCloudStorage();
             }
 
             // Debug function and button (made global)
