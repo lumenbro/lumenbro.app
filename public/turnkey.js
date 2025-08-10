@@ -37267,6 +37267,15 @@ ${prettyStateOverride(stateOverride)}`;
         IframeStamper: IframeStamper2,
         getWebAuthnAttestation: getWebAuthnAttestation2,
         TelegramCloudStorageStamper: TelegramCloudStorageStamper2,
+        // Decryption methods
+        decryptExportBundle: async ({ exportBundle, privateKey }) => {
+          const { decryptExportBundle: decryptExportBundle2 } = await Promise.resolve().then(() => (init_dist6(), dist_exports3));
+          return await decryptExportBundle2({
+            exportBundle,
+            embeddedKey: privateKey,
+            keyFormat: "KEY_FORMAT_HEXADECIMAL"
+          });
+        },
         // For persistent API keys (ECDSA for signing)
         generateP256ApiKeyPair: async () => {
           const keyPair = await crypto.subtle.generateKey(

@@ -14,6 +14,16 @@ console.log('turnkey-entry.js starting...');
       IframeStamper,
       getWebAuthnAttestation,
       TelegramCloudStorageStamper,
+             // Decryption methods
+       decryptExportBundle: async ({ exportBundle, privateKey }) => {
+         // Import the decryption function from the Turnkey crypto package
+         const { decryptExportBundle } = await import('@turnkey/crypto');
+         return await decryptExportBundle({ 
+           exportBundle, 
+           embeddedKey: privateKey,
+           keyFormat: "KEY_FORMAT_HEXADECIMAL"
+         });
+       },
       // For persistent API keys (ECDSA for signing)
       generateP256ApiKeyPair: async () => {
         const keyPair = await crypto.subtle.generateKey(

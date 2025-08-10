@@ -125,10 +125,73 @@ class ExportUtils {
       console.log('📦 Export bundle length:', exportResult.exportBundle?.length || 'N/A');
       
       // Step 4: Decrypt the export bundle on client side
-      const decryptedData = await window.Turnkey.decryptExportBundle({
-        exportBundle: exportResult.exportBundle,
-        privateKey: keyPair.privateKey
-      });
+      console.log('🔍 Available Turnkey methods for decryption:', Object.keys(window.Turnkey));
+      
+      // Try different decryption approaches
+      let decryptedData;
+      try {
+                 // Method 1: Try decryptExportBundle
+         if (window.Turnkey.decryptExportBundle) {
+           // Export the private key in raw format for decryption
+           const privateKeyRaw = await window.crypto.subtle.exportKey(
+             'raw',
+             keyPair.privateKey
+           );
+           
+           // Convert to hex
+           const privateKeyHex = Array.from(new Uint8Array(privateKeyRaw))
+             .map(b => b.toString(16).padStart(2, '0'))
+             .join('');
+           
+           console.log('🔑 Using private key for decryption:', privateKeyHex.substring(0, 20) + '...');
+           
+           decryptedData = await window.Turnkey.decryptExportBundle({
+             exportBundle: exportResult.exportBundle,
+             privateKey: privateKeyHex
+           });
+        } else if (window.Turnkey.decryptBundle) {
+          // Method 2: Try decryptBundle
+          decryptedData = await window.Turnkey.decryptBundle({
+            exportBundle: exportResult.exportBundle,
+            privateKey: keyPair.privateKey
+          });
+        } else if (window.Turnkey.decrypt) {
+          // Method 3: Try generic decrypt
+          decryptedData = await window.Turnkey.decrypt({
+            exportBundle: exportResult.exportBundle,
+            privateKey: keyPair.privateKey
+          });
+        } else {
+          // Method 4: Manual decryption using the ephemeral private key
+          console.log('🔍 Attempting manual decryption...');
+          
+          // Export the private key in raw format
+          const privateKeyRaw = await window.crypto.subtle.exportKey(
+            'raw',
+            keyPair.privateKey
+          );
+          
+          // Convert to hex
+          const privateKeyHex = Array.from(new Uint8Array(privateKeyRaw))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          
+          console.log('🔑 Private key for decryption:', privateKeyHex.substring(0, 20) + '...');
+          
+          // For now, let's return the export bundle and private key for manual decryption
+          // This is a temporary solution until we figure out the correct decryption method
+          return {
+            stellarPrivateKey: 'MANUAL_DECRYPTION_NEEDED',
+            stellarSAddress: 'MANUAL_DECRYPTION_NEEDED',
+            exportBundle: exportResult.exportBundle,
+            ephemeralPrivateKey: privateKeyHex,
+            needsManualDecryption: true
+          };
+        }
+      } catch (decryptError) {
+        console.error('❌ Decryption failed:', decryptError);
+        throw new Error('Failed to decrypt export bundle: ' + decryptError.message);
+      }
       
       console.log('✅ Bundle decrypted successfully');
       
