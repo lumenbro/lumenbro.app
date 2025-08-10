@@ -108,7 +108,6 @@ router.post('/api/wallet-info', async (req, res) => {
                 });
                 // Fall back to database data if Turnkey API fails
             }
-        }
 
         // Fallback: return basic data from database
         console.log('⚠️ Using placeholder data - Turnkey API call failed');
