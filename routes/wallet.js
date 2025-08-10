@@ -206,7 +206,6 @@ router.post('/export-wallet', async (req, res) => {
     const exportResult = await userClient.apiClient().exportWalletAccount({
       organizationId: subOrgId,
       walletAccountId: walletAccountId,
-      address: stellarAddress,
       targetPublicKey: targetPublicKey,
       keyFormat: "KEY_FORMAT_HEXADECIMAL"
     });
