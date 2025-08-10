@@ -58,15 +58,35 @@ class ExportUtils {
       console.log('🔍 Turnkey availability check:', {
         hasTurnkey: !!window.Turnkey,
         turnkeyType: typeof window.Turnkey,
-        turnkeyKeys: window.Turnkey ? Object.keys(window.Turnkey) : 'N/A'
+        turnkeyKeys: window.Turnkey ? Object.keys(window.Turnkey) : 'N/A',
+        turnkeyConstructor: window.Turnkey?.constructor?.name,
+        turnkeyPrototype: window.Turnkey?.prototype ? 'Has prototype' : 'No prototype'
       });
       
-      const userClient = new window.Turnkey({
-        apiBaseUrl: "https://api.turnkey.com",
-        apiPublicKey: userApiPublicKey,
-        apiPrivateKey: userApiPrivateKey,
-        defaultOrganizationId: subOrgId,
-      });
+      // Try different ways to create Turnkey client
+      let userClient;
+      try {
+        userClient = new window.Turnkey({
+          apiBaseUrl: "https://api.turnkey.com",
+          apiPublicKey: userApiPublicKey,
+          apiPrivateKey: userApiPrivateKey,
+          defaultOrganizationId: subOrgId,
+        });
+      } catch (error) {
+        console.log('❌ Failed with new window.Turnkey():', error.message);
+        // Try without new
+        try {
+          userClient = window.Turnkey({
+            apiBaseUrl: "https://api.turnkey.com",
+            apiPublicKey: userApiPublicKey,
+            apiPrivateKey: userApiPrivateKey,
+            defaultOrganizationId: subOrgId,
+          });
+        } catch (error2) {
+          console.log('❌ Failed with window.Turnkey():', error2.message);
+          throw new Error(`Cannot create Turnkey client: ${error.message}`);
+        }
+      }
       
       console.log('✅ Initialized user Turnkey client');
       
