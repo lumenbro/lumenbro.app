@@ -164,7 +164,7 @@ async function continueRegistration() {
 }
 
 // ADDED: Function to handle export from mini-app
-async function exportWallet() {
+async function showExportForm() {
     try {
         console.log('🔍 Starting export from mini-app...');
         
