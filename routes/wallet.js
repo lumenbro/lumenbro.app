@@ -92,46 +92,7 @@ const router = express.Router();
 //   }
 // });
 
-// Export wallet private keys
-router.post('/export-wallet', async (req, res) => {
-  try {
-    const { organizationId, walletId, apiKeyId, apiPrivateKey } = req.body;
-    
-    if (!organizationId || !walletId || !apiKeyId || !apiPrivateKey) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-
-    console.log('Exporting wallet:', { organizationId, walletId, apiKeyId });
-
-    // Create Turnkey client with user's API keys
-    const turnkeyClient = new Turnkey({
-      apiBaseUrl: "https://api.turnkey.com",
-      apiPublicKey: apiKeyId,
-      apiPrivateKey: apiPrivateKey,
-      defaultOrganizationId: organizationId,
-    });
-
-    // Export the wallet
-    const exportResult = await turnkeyClient.apiClient().exportWallet({
-      walletId: walletId,
-      keyFormat: "KEY_FORMAT_HEXADECIMAL"
-    });
-
-    console.log('Export successful for wallet:', walletId);
-    res.json({ 
-      success: true, 
-      exportBundle: exportResult.exportBundle,
-      message: 'Wallet exported successfully' 
-    });
-
-  } catch (error) {
-    console.error('Export wallet error:', error);
-    res.status(500).json({ 
-      error: 'Failed to export wallet', 
-      details: error.message 
-    });
-  }
-});
+// OLD ENDPOINT REMOVED - Using new export-wallet endpoint below
 
 // Export specific wallet account
 router.post('/export-account', async (req, res) => {
