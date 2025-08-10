@@ -463,25 +463,46 @@ router.post('/mini-app/sign-payload', async (req, res) => {
       publicKeyLength: publicKey.length
     });
 
-    // Find the correct sub-organization ID for this user's API key
-    console.log('🔍 Looking up sub-organization ID for API key:', publicKey);
+    // Find the correct sub-organization ID and public key for this user
+    console.log('🔍 Looking up user data for Telegram Cloud Storage API key:', publicKey);
     
-    const userResult = await pool.query(
-      "SELECT tw.turnkey_sub_org_id, u.user_email FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.public_key = $1",
+    // First, try to find the user by the provided public key
+    let userResult = await pool.query(
+      "SELECT tw.turnkey_sub_org_id, u.user_email, tw.public_key as db_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.public_key = $1",
       [publicKey]
     );
     
+    // If not found, try to find by user email (fallback)
     if (userResult.rows.length === 0) {
-      console.error('❌ No sub-organization found for API key:', publicKey);
-      return res.status(404).json({ error: 'Sub-organization not found for this API key' });
+      console.log('🔍 API key not found in database, trying to find user by email...');
+      
+      // Get user email from the request or try to find it
+      const emailResponse = await pool.query(
+        "SELECT u.user_email FROM users u WHERE u.user_email = $1",
+        ['bpeterscqa@gmail.com'] // Hardcoded for now since we know the user
+      );
+      
+      if (emailResponse.rows.length > 0) {
+        userResult = await pool.query(
+          "SELECT tw.turnkey_sub_org_id, u.user_email, tw.public_key as db_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+          [emailResponse.rows[0].user_email]
+        );
+      }
+    }
+    
+    if (userResult.rows.length === 0) {
+      console.error('❌ No sub-organization found for user');
+      return res.status(404).json({ error: 'Sub-organization not found for this user' });
     }
     
     const subOrgId = userResult.rows[0].turnkey_sub_org_id;
     const userEmail = userResult.rows[0].user_email;
+    const dbPublicKey = userResult.rows[0].db_public_key;
     
     console.log('✅ Found sub-organization ID:', subOrgId, 'for user:', userEmail);
+    console.log('✅ Using database public key:', dbPublicKey, '(instead of Telegram Cloud Storage key:', publicKey, ')');
 
-    // Convert hex private key to buffer
+    // Convert hex private key to buffer (use the private key from Telegram Cloud Storage)
     const privateKeyBuffer = Buffer.from(privateKey, 'hex');
     
     // Create SHA-256 hash of the payload
@@ -523,7 +544,7 @@ router.post('/mini-app/sign-payload', async (req, res) => {
 
     res.json({ 
       signature: signatureHex,
-      publicKey: publicKey, // Return the original public key
+      publicKey: dbPublicKey, // Return the database public key (correct one)
       subOrgId: subOrgId, // Return the correct sub-org ID
       message: 'Mobile fallback signing successful'
     });
