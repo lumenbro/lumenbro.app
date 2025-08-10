@@ -89,8 +89,10 @@ class ExportUtils {
         turnkeyPrototype: window.Turnkey?.prototype ? 'Has prototype' : 'No prototype'
       });
       
-      // Check what Turnkey methods are available
-      console.log('🔍 Available Turnkey methods:', Object.keys(window.Turnkey));
+             // Check what Turnkey methods are available
+       console.log('🔍 Available Turnkey methods:', Object.keys(window.Turnkey));
+       console.log('🔍 Turnkey.decryptExportBundle exists:', !!window.Turnkey.decryptExportBundle);
+       console.log('🔍 Turnkey.decryptExportBundle type:', typeof window.Turnkey.decryptExportBundle);
       
       // Use the backend API instead of client-side SDK
       console.log('🔄 Using backend API for export...');
@@ -124,8 +126,10 @@ class ExportUtils {
       console.log('✅ Backend export successful');
       console.log('📦 Export bundle length:', exportResult.exportBundle?.length || 'N/A');
       
-      // Step 4: Decrypt the export bundle on client side
-      console.log('🔍 Available Turnkey methods for decryption:', Object.keys(window.Turnkey));
+             // Step 4: Decrypt the export bundle on client side
+       console.log('🔍 Available Turnkey methods for decryption:', Object.keys(window.Turnkey));
+       console.log('🔍 Before decryption - decryptExportBundle exists:', !!window.Turnkey.decryptExportBundle);
+       console.log('🔍 Before decryption - decryptExportBundle type:', typeof window.Turnkey.decryptExportBundle);
       
       // Try different decryption approaches
       let decryptedData;
