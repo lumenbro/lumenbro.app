@@ -13,9 +13,15 @@ console.log('turnkey-entry.js starting...');
       TurnkeyBrowserClient,
       IframeStamper,
       getWebAuthnAttestation,
-      TelegramCloudStorageStamper,
-             // Decryption methods
-       decryptExportBundle: async ({ exportBundle, privateKey, organizationId }) => {
+             TelegramCloudStorageStamper,
+       // Key generation methods
+       generateP256KeyPair: async () => {
+         // Import the key generation function from the Turnkey crypto package
+         const { generateP256KeyPair } = await import('@turnkey/crypto');
+         return generateP256KeyPair();
+       },
+              // Decryption methods
+        decryptExportBundle: async ({ exportBundle, privateKey, organizationId }) => {
          // Import the decryption function from the Turnkey crypto package
          const { decryptExportBundle } = await import('@turnkey/crypto');
          return await decryptExportBundle({ 

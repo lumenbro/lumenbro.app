@@ -3,9 +3,9 @@ class ExportUtils {
   
      // Generate ephemeral key pair for HPKE encryption using Turnkey library
    static async generateEphemeralKeyPair() {
-     try {
-       // Use Turnkey's generateP256KeyPair function
-       const turnkeyKeyPair = window.Turnkey.generateP256KeyPair();
+           try {
+        // Use Turnkey's generateP256KeyPair function
+        const turnkeyKeyPair = await window.Turnkey.generateP256KeyPair();
        
        console.log('🔑 Generated Turnkey key pair:', {
          privateKeyLength: turnkeyKeyPair.privateKey.length,

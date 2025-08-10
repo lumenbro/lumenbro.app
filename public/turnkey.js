@@ -37267,6 +37267,11 @@ ${prettyStateOverride(stateOverride)}`;
         IframeStamper: IframeStamper2,
         getWebAuthnAttestation: getWebAuthnAttestation2,
         TelegramCloudStorageStamper: TelegramCloudStorageStamper2,
+        // Key generation methods
+        generateP256KeyPair: async () => {
+          const { generateP256KeyPair: generateP256KeyPair2 } = await Promise.resolve().then(() => (init_dist6(), dist_exports3));
+          return generateP256KeyPair2();
+        },
         // Decryption methods
         decryptExportBundle: async ({ exportBundle, privateKey, organizationId }) => {
           const { decryptExportBundle: decryptExportBundle2 } = await Promise.resolve().then(() => (init_dist6(), dist_exports3));
