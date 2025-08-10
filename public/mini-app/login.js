@@ -240,27 +240,19 @@ class ManualStamper {
           
           // Try to derive public key components from private key
           try {
-            // Create a temporary key pair to get the curve parameters
-            const tempKeyPair = await crypto.subtle.generateKey(
-              { name: "ECDSA", namedCurve: "P-256" },
-              true,
-              ["sign", "verify"]
-            );
+            // Use the raw key import approach directly (simpler and more reliable)
+            const privateKeyBuffer = hexToUint8Array(this.privateKey);
             
-            // Export the public key to get the format
-            const exportedPublicKey = await crypto.subtle.exportKey("jwk", tempKeyPair.publicKey);
-            console.log('✅ Got public key format from temp key');
-            
-            // Now try to import our private key with the same format
+            // Create a CryptoKey from the private key bytes
             const privateKeyCrypto = await crypto.subtle.importKey(
-              "jwk",
-              privateJwk,
+              "raw",
+              privateKeyBuffer,
               { name: "ECDSA", namedCurve: "P-256" },
               true,
               ["sign"]
             );
             
-            console.log('✅ Private key imported successfully for mobile');
+            console.log('✅ Private key imported successfully for mobile (raw approach)');
             
             // Sign the payload
             const payloadBytes = new TextEncoder().encode(payload);
