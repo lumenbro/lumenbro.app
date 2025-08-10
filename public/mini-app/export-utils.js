@@ -151,7 +151,8 @@ class ExportUtils {
            
                        decryptedData = await window.Turnkey.decryptExportBundle({
               exportBundle: exportResult.exportBundle,
-              privateKey: privateKeyHex
+              privateKey: privateKeyHex,
+              organizationId: subOrgId
             });
         } else if (window.Turnkey.decryptBundle) {
           // Method 2: Try decryptBundle
@@ -192,10 +193,14 @@ class ExportUtils {
             needsManualDecryption: true
           };
         }
-      } catch (decryptError) {
-        console.error('❌ Decryption failed:', decryptError);
-        throw new Error('Failed to decrypt export bundle: ' + decryptError.message);
-      }
+             } catch (decryptError) {
+         console.error('❌ Decryption failed:', decryptError);
+         console.error('❌ Decryption error name:', decryptError.name);
+         console.error('❌ Decryption error stack:', decryptError.stack);
+         console.error('❌ Private key used:', privateKeyHex.substring(0, 20) + '...');
+         console.error('❌ Private key length:', privateKeyHex.length);
+         throw new Error('Failed to decrypt export bundle: ' + decryptError.message);
+       }
       
       console.log('✅ Bundle decrypted successfully');
       

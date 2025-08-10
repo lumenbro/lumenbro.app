@@ -37268,12 +37268,13 @@ ${prettyStateOverride(stateOverride)}`;
         getWebAuthnAttestation: getWebAuthnAttestation2,
         TelegramCloudStorageStamper: TelegramCloudStorageStamper2,
         // Decryption methods
-        decryptExportBundle: async ({ exportBundle, privateKey }) => {
+        decryptExportBundle: async ({ exportBundle, privateKey, organizationId }) => {
           const { decryptExportBundle: decryptExportBundle2 } = await Promise.resolve().then(() => (init_dist6(), dist_exports3));
           return await decryptExportBundle2({
             exportBundle,
             embeddedKey: privateKey,
-            keyFormat: "KEY_FORMAT_HEXADECIMAL"
+            organizationId,
+            keyFormat: "HEXADECIMAL"
           });
         },
         // For persistent API keys (ECDSA for signing)

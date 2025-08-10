@@ -15,13 +15,14 @@ console.log('turnkey-entry.js starting...');
       getWebAuthnAttestation,
       TelegramCloudStorageStamper,
              // Decryption methods
-       decryptExportBundle: async ({ exportBundle, privateKey }) => {
+       decryptExportBundle: async ({ exportBundle, privateKey, organizationId }) => {
          // Import the decryption function from the Turnkey crypto package
          const { decryptExportBundle } = await import('@turnkey/crypto');
          return await decryptExportBundle({ 
            exportBundle, 
            embeddedKey: privateKey,
-           keyFormat: "KEY_FORMAT_HEXADECIMAL"
+           organizationId: organizationId,
+           keyFormat: "HEXADECIMAL"
          });
        },
       // For persistent API keys (ECDSA for signing)
