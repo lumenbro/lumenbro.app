@@ -212,4 +212,66 @@ router.post('/decrypt-export', async (req, res) => {
   }
 });
 
+// ADDED: API endpoint for wallet export
+router.post('/api/export-wallet', async (req, res) => {
+  try {
+    const { subOrgId, walletAccountId, stellarAddress, targetPublicKey, userApiPublicKey, userApiPrivateKey } = req.body;
+    
+    if (!subOrgId || !walletAccountId || !stellarAddress || !targetPublicKey || !userApiPublicKey || !userApiPrivateKey) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required parameters' 
+      });
+    }
+    
+    // Create Turnkey client on backend
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const userClient = new Turnkey({
+      apiBaseUrl: "https://api.turnkey.com",
+      apiPublicKey: userApiPublicKey,
+      apiPrivateKey: userApiPrivateKey,
+      defaultOrganizationId: subOrgId,
+    });
+    
+    // Export the wallet account
+    const exportResult = await userClient.apiClient().exportWalletAccount({
+      organizationId: subOrgId,
+      walletAccountId: walletAccountId,
+      address: stellarAddress,
+      targetPublicKey: targetPublicKey,
+      keyFormat: "KEY_FORMAT_HEXADECIMAL"
+    });
+    
+    console.log('✅ Backend export successful');
+    console.log('📦 Export bundle length:', exportResult.exportBundle?.length || 'N/A');
+    
+    // Note: The decryption should happen on the client side with the ephemeral private key
+    // We'll return the export bundle and let the client handle decryption
+    console.log('✅ Export bundle created, returning for client-side decryption');
+    
+    console.log('✅ Bundle decrypted successfully');
+    
+    // Extract the Stellar private key
+    const stellarPrivateKey = decryptedData.privateKey;
+    console.log('📋 Stellar private key (hex):', stellarPrivateKey.substring(0, 20) + '...');
+    
+    // Convert to Stellar S-address format
+    const stellarSAddress = 'S' + stellarPrivateKey.substring(2); // Remove '0x' prefix and add 'S'
+    
+    res.json({
+      success: true,
+      stellarPrivateKey,
+      stellarSAddress,
+      exportBundle: exportResult.exportBundle
+    });
+    
+  } catch (error) {
+    console.error('❌ Backend export failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

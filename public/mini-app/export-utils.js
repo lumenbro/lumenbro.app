@@ -63,46 +63,42 @@ class ExportUtils {
         turnkeyPrototype: window.Turnkey?.prototype ? 'Has prototype' : 'No prototype'
       });
       
-      // Try different ways to create Turnkey client
-      let userClient;
-      try {
-        userClient = new window.Turnkey({
-          apiBaseUrl: "https://api.turnkey.com",
-          apiPublicKey: userApiPublicKey,
-          apiPrivateKey: userApiPrivateKey,
-          defaultOrganizationId: subOrgId,
-        });
-      } catch (error) {
-        console.log('❌ Failed with new window.Turnkey():', error.message);
-        // Try without new
-        try {
-          userClient = window.Turnkey({
-            apiBaseUrl: "https://api.turnkey.com",
-            apiPublicKey: userApiPublicKey,
-            apiPrivateKey: userApiPrivateKey,
-            defaultOrganizationId: subOrgId,
-          });
-        } catch (error2) {
-          console.log('❌ Failed with window.Turnkey():', error2.message);
-          throw new Error(`Cannot create Turnkey client: ${error.message}`);
-        }
-      }
+      // Check what Turnkey methods are available
+      console.log('🔍 Available Turnkey methods:', Object.keys(window.Turnkey));
       
-      console.log('✅ Initialized user Turnkey client');
+      // Use the backend API instead of client-side SDK
+      console.log('🔄 Using backend API for export...');
       
-      // Step 3: Export the wallet account
-      const exportResult = await userClient.apiClient().exportWalletAccount({
-        organizationId: subOrgId,
-        walletAccountId: walletAccountId,
-        address: stellarAddress,
-        targetPublicKey: targetPublicKey,
-        keyFormat: "KEY_FORMAT_HEXADECIMAL"
+      const response = await fetch('/api/export-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subOrgId: subOrgId,
+          walletAccountId: walletAccountId,
+          stellarAddress: stellarAddress,
+          targetPublicKey: targetPublicKey,
+          userApiPublicKey: userApiPublicKey,
+          userApiPrivateKey: userApiPrivateKey
+        })
       });
       
-      console.log('✅ Export successful');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+      }
+      
+      const exportResult = await response.json();
+      
+      if (!exportResult.success) {
+        throw new Error(exportResult.error || 'Export failed');
+      }
+      
+      console.log('✅ Backend export successful');
       console.log('📦 Export bundle length:', exportResult.exportBundle?.length || 'N/A');
       
-      // Step 4: Decrypt the export bundle
+      // Step 4: Decrypt the export bundle on client side
       const decryptedData = await window.Turnkey.decryptExportBundle({
         exportBundle: exportResult.exportBundle,
         privateKey: keyPair.privateKey
