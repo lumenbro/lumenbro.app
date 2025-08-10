@@ -4,42 +4,245 @@
 
 ## Overview
 
-LumenBro is a Telegram bot (@lumenbrobot) and companion web app for seamless trading on the Stellar network. It enables users to buy/sell assets, copy trade wallets, manage withdrawals, earn referrals, and handle wallet authentication securely using Turnkey's embedded wallets with passkeys. The system integrates Telegram Mini Apps for client-side key storage via Turnkey's Telegram Cloud Storage Stamper, ensuring gated access tied to Telegram accounts. The bot (Python) runs on one EC2 instance for automation (e.g., copy trading), while the web backend (Node.js/Express) on another handles user auth, sessions, and recovery, sharing a common RDS database.
+LumenBro is a **secure, non-custodial** Telegram bot (@lumenbrobot) and companion web app for seamless trading on the Stellar network. The system features **end-to-end encryption**, **multi-layered security architecture**, and **automated trading capabilities** while maintaining user control over their private keys.
 
-Key goals: Non-custodial wallets, automated trading without per-action auth, and secure key persistence in Telegram Cloud for mobile-first users.
+### Architecture
+- **Python Bot**: Handles Telegram interactions, automated trading, and Stellar transactions
+- **Node.js Web Backend**: Manages user authentication, sessions, and Mini App functionality
+- **Shared Database**: Coordinates between bot and web backend
+- **Telegram Mini Apps**: Secure client-side key management with encrypted storage
+
+### Key Security Features
+- 🔐 **Non-custodial wallets** via Turnkey's embedded wallet infrastructure
+- 🔑 **Client-side key encryption** with AES-256-GCM and PBKDF2
+- ☁️ **Telegram Cloud Storage** for persistent, encrypted key storage
+- 🔒 **KMS integration** for session key encryption (AWS KMS)
+- 🛡️ **Multi-device compatibility** with secure mobile/desktop flows
+- 🔄 **Automated session management** for trading without per-action authentication
+- 📱 **Mobile-first design** with enhanced security for Telegram WebView
+
+## Security Architecture
+
+### 1. Key Storage & Encryption
+```
+User Password → PBKDF2 (100,000 iterations) → AES-256-GCM → Telegram Cloud Storage
+```
+- **Client-side encryption**: All private keys encrypted before storage
+- **Password-based derivation**: PBKDF2 with high iteration count
+- **Persistent storage**: Encrypted keys stored in Telegram Cloud Storage
+- **Cross-device sync**: Keys follow user across devices securely
+
+### 2. Session Management
+```
+Session Creation → HPKE Encryption → KMS Storage → Database
+```
+- **HPKE (Hybrid Public Key Encryption)**: Secure session key exchange
+- **AWS KMS integration**: Server-side session key encryption
+- **Temporary API keys**: Short-lived credentials for automated trading
+- **Automatic expiration**: Sessions expire after 90 days
+
+### 3. Mobile Security Enhancements
+- **Backend signing**: Mobile devices use server-side ECDSA signing
+- **Web Crypto API compatibility**: Fallback mechanisms for mobile limitations
+- **Enhanced error handling**: Graceful degradation for security operations
+- **Debug logging**: Comprehensive security event tracking
+
+### 4. Integration Security
+- **initData validation**: HMAC verification for all Mini App requests
+- **Database consistency**: Coordinated schema between Python bot and Node.js backend
+- **Legacy user protection**: Safety checks prevent accidental data loss
+- **Automated clearing**: Secure data deletion with confirmation dialogs
+
+## Python Bot Integration
+
+### Shared Database Schema
+The Node.js backend and Python bot share the same PostgreSQL database with coordinated schema:
+
+```sql
+-- Users table (shared between bot and web)
+CREATE TABLE users (
+    telegram_id BIGINT PRIMARY KEY,
+    public_key TEXT,
+    referral_code TEXT,
+    turnkey_user_id TEXT,
+    turnkey_session_id TEXT,
+    temp_api_public_key TEXT,
+    temp_api_private_key TEXT,
+    session_expiry TIMESTAMP,
+    kms_encrypted_session_key TEXT,
+    kms_key_id TEXT,
+    user_email TEXT,
+    session_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    source_old_db TEXT,
+    encrypted_s_address_secret TEXT,
+    migration_date TIMESTAMP,
+    pioneer_status BOOLEAN DEFAULT FALSE,
+    migration_notified BOOLEAN DEFAULT FALSE,
+    migration_notified_at TIMESTAMP,
+    legacy_public_key TEXT
+);
+
+-- Turnkey wallets table (shared)
+CREATE TABLE turnkey_wallets (
+    id BIGSERIAL PRIMARY KEY,
+    telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+    turnkey_sub_org_id TEXT NOT NULL,
+    turnkey_key_id TEXT NOT NULL,
+    public_key TEXT NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(telegram_id, turnkey_key_id)
+);
+```
+
+### Workflow Integration
+1. **Registration**: Node.js creates Turnkey sub-org, Python bot validates
+2. **Session Creation**: Node.js creates encrypted sessions, Python bot decrypts for trading
+3. **Trading**: Python bot uses decrypted session keys for automated transactions
+4. **Recovery**: Node.js handles email verification, Python bot updates user state
+
+### KMS Coordination
+- **Shared KMS configuration**: Both services use the same AWS KMS key for session encryption
+- **Node.js**: Encrypts session keys before database storage
+- **Python**: Decrypts session keys for trading operations
 
 ## Features
 
-- **Telegram Bot (@lumenbrobot)**:
-  - Buy/Sell assets on Stellar (SDEX/Soroban fallback).
-  - Copy trading: Stream and replicate trades from watched wallets with multipliers/slippage.
-  - Balance checks, withdrawals, trustline management.
-  - Referrals: Earn rewards with discounts for referred users.
-  - Pioneer program (limited to 25 users).
-  - Commands: /start, /register, /balance, /unregister, etc.
+### Telegram Bot (@lumenbrobot)
+- **Secure Trading**: Buy/sell assets on Stellar (SDEX/Soroban fallback)
+- **Copy Trading**: Stream and replicate trades from watched wallets
+- **Balance Management**: Real-time balance checks and withdrawals
+- **Trustline Management**: Automated asset trustline setup
+- **Referral System**: Earn rewards with secure referral tracking
+- **Pioneer Program**: Limited access for early adopters
 
-- **Web App (lumenbro.com)**:
-  - /turnkey-auth: Register sub-org, setup passkey.
-  - /login: Start sessions, store temp keys.
-  - /recovery: Email-based recovery with policy updates.
-  - Mini App integration: /mini-app for Telegram-gated flows (auth/login/recovery), using stamper for API key storage in Cloud Storage.
+### Web App (lumenbro.com)
+- **Secure Registration**: `/turnkey-auth` for sub-org creation and passkey setup
+- **Session Management**: `/login` for secure session creation
+- **Account Recovery**: `/recovery` with email-based verification
+- **Mini App Integration**: Telegram-gated flows with encrypted storage
 
-- **Chart Data API**:
-  - Centralized chart data aggregation from Stellar Horizon
-  - Real-time WebSocket streaming for live updates
-  - Batch API for multiple asset pairs
-  - Caching with Redis for performance
-  - Background sync service for data collection
+### Chart Data API
+- **Real-time Data**: WebSocket streaming for live market updates
+- **Batch Processing**: Efficient multi-asset data retrieval
+- **Caching**: Redis-based performance optimization
+- **Background Sync**: Automated data collection and updates
 
-- **Security & Automation**:
-  - Turnkey sub-orgs per user for isolated wallets.
-  - Sessions (up to 1 year) for bot-automated signing (e.g., copy trades without user clicks).
-  - Hybrid key storage: Client-side in Telegram Cloud, synced to DB for server access.
-  - Validation: initData HMAC for Mini App requests.
+## Recent Improvements & Changelog
 
-- **Backend**:
-  - Node.js/Express: Handles Turnkey API calls, JWT for legacy auth, DB interactions.
-  - Python Bot: Aiogram for Telegram handling, Stellar SDK for transactions.
+### v2.1.0 (Current) - Mobile Security & Export
+- ✅ **Mobile Login Fix**: Backend signing endpoint for mobile compatibility
+- ✅ **Wallet Export**: Secure Stellar private key export with StrKey format
+- ✅ **Enhanced Security**: Auto-clear sensitive data after 5 minutes
+- ✅ **Export Safety**: Confirmation dialogs and secure data handling
+- ✅ **Mobile Compatibility**: Improved Web Crypto API handling
+
+### v2.0.0 - Security Overhaul
+- ✅ **Client-side Encryption**: AES-256-GCM with PBKDF2 key derivation
+- ✅ **KMS Integration**: AWS KMS for session key encryption
+- ✅ **Legacy Migration**: Safe migration from unencrypted to encrypted keys
+- ✅ **Mobile Support**: Enhanced mobile compatibility with fallback mechanisms
+- ✅ **Database Coordination**: Synchronized schema between Python bot and Node.js
+
+### v1.5.0 - Mini App & Recovery
+- ✅ **Telegram Mini Apps**: Secure client-side key management
+- ✅ **Cloud Storage**: Persistent encrypted key storage
+- ✅ **Email Recovery**: Secure account recovery with verification
+- ✅ **Session Management**: Automated trading session creation
+
+### v1.0.0 - Core Features
+- ✅ **Turnkey Integration**: Non-custodial wallet infrastructure
+- ✅ **Automated Trading**: Copy trading and automated transactions
+- ✅ **Stellar Integration**: SDEX and Soroban trading support
+- ✅ **Referral System**: Secure referral tracking and rewards
+
+## Tech Stack
+
+### Backend Services
+- **Node.js/Express**: Web backend, Mini App API, session management
+- **Python/Aiogram**: Telegram bot, automated trading, Stellar transactions
+- **PostgreSQL**: Shared database with coordinated schema
+- **Redis**: Caching and real-time data management
+- **AWS KMS**: Session key encryption and management
+
+### Security Libraries
+- **secp256k1**: Server-side ECDSA signing for mobile compatibility
+- **crypto-js**: Client-side encryption utilities
+- **Turnkey SDK**: Non-custodial wallet infrastructure
+- **Web Crypto API**: Browser-based cryptographic operations
+
+### Frontend
+- **Telegram Mini Apps**: Secure client-side interface
+- **WebSocket**: Real-time data streaming
+- **Webpack**: Bundled Turnkey SDK for browser compatibility
+
+## Installation & Setup
+
+### Prerequisites
+- Node.js (v18+), npm
+- Python 3.12+
+- PostgreSQL database
+- AWS KMS access
+- Turnkey API credentials
+- Telegram Bot Token
+
+### Environment Variables
+```bash
+# Database
+DB_HOST=<your-rds-endpoint>
+DB_PORT=5434
+DB_NAME=postgres
+DB_USER=<database-user>
+DB_PASSWORD=<database-password>
+
+# AWS
+AWS_REGION=<your-aws-region>
+KMS_KEY_ID=<your-kms-key-id>
+
+# Telegram
+TELEGRAM_BOT_TOKEN=<your-bot-token>
+
+# Turnkey
+TURNKEY_API_PUBLIC_KEY=<your-public-key>
+TURNKEY_API_PRIVATE_KEY=<your-private-key>
+TURNKEY_ORGANIZATION_ID=<your-org-id>
+```
+
+### Deployment
+1. **Node.js Backend**:
+   ```bash
+   npm install
+   npm run build-turnkey
+   pm2 start ecosystem.config.js
+   ```
+
+2. **Python Bot**:
+   ```bash
+   pip install -r requirements.txt
+   python main.py
+   ```
+
+3. **Database Migration**:
+   ```bash
+   # Run schema.sql on your database instance
+   psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f db/schema.sql
+   ```
+
+## Security Best Practices
+
+### For Developers
+- **Never commit sensitive data**: Use environment variables for all secrets
+- **Validate all inputs**: Implement proper input validation and sanitization
+- **Use HTTPS only**: All communications must be encrypted
+- **Regular security audits**: Review code for potential vulnerabilities
+- **Monitor logs**: Track security events and suspicious activities
+
+### For Users
+- **Strong passwords**: Use unique, complex passwords for encryption
+- **Secure devices**: Ensure devices are protected with biometrics/passcodes
+- **Regular backups**: Export and securely store wallet keys
+- **Monitor activity**: Regularly check trading activity and balances
+- **Report issues**: Immediately report any suspicious activity
 
 ## API Documentation
 
@@ -51,44 +254,10 @@ Base URL: `https://lumenbro.com/api/charts`
 ```bash
 GET /health
 ```
-**Response:**
-```json
-{
-  "success": true,
-  "status": "healthy",
-  "timestamp": "2025-08-05T23:52:30.329Z",
-  "services": {
-    "database": "connected",
-    "redis": "connected"
-  }
-}
-```
 
 #### Single Chart Data
 ```bash
 GET /single?baseAsset=XLM&counterAsset=USDC&resolution=1h&hours=24
-```
-**Parameters:**
-- `baseAsset`: Base asset (e.g., "XLM")
-- `counterAsset`: Counter asset (e.g., "USDC", "USDT")
-- `resolution`: Time interval ("1m", "5m", "15m", "1h", "4h", "1d")
-- `hours`: Number of hours to fetch (1-168)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "timestamp": "2025-08-05T00:00:00Z",
-      "open": "0.12345678",
-      "high": "0.12345678",
-      "low": "0.12345678",
-      "close": "0.12345678",
-      "volume": "1000.00000000"
-    }
-  ]
-}
 ```
 
 #### Batch Chart Data
@@ -103,46 +272,8 @@ Content-Type: application/json
       "counterAsset": "USDC",
       "resolution": "1h",
       "hours": 24
-    },
-    {
-      "baseAsset": "XLM", 
-      "counterAsset": "USDT",
-      "resolution": "1h",
-      "hours": 24
     }
   ]
-}
-```
-
-#### Popular Pairs
-```bash
-GET /popular
-```
-**Response:**
-```json
-{
-  "success": true,
-  "pairs": [
-    {
-      "baseAsset": {"isNative": true},
-      "counterAsset": {"isNative": false, "code": "USDC"},
-      "popularityScore": 100
-    }
-  ],
-  "count": 7
-}
-```
-
-#### Sync Status
-```bash
-GET /sync-status
-```
-**Response:**
-```json
-{
-  "success": true,
-  "syncStatus": [],
-  "count": 0
 }
 ```
 
@@ -150,104 +281,24 @@ GET /sync-status
 ```bash
 wss://lumenbro.com/api/charts/stream
 ```
-**Subscribe to updates:**
-```json
-{
-  "action": "subscribe",
-  "pairs": [
-    {
-      "baseAsset": "XLM",
-      "counterAsset": "USDC",
-      "resolution": "1h"
-    }
-  ]
-}
-```
-
-**Unsubscribe:**
-```json
-{
-  "action": "unsubscribe",
-  "pairs": [...]
-}
-```
-
-### Asset Format
-
-Assets are formatted as:
-- **Native XLM**: `{"isNative": true}`
-- **Credit Assets**: `{"isNative": false, "code": "USDC", "issuer": "GA5ZSEJYB37JRC5AVCIA5MOP4RHTG335Z6RGBAOQTUBO3BCRK4TTKZ7F"}`
-
-### Error Responses
-
-```json
-{
-  "error": "Invalid asset format. Expected JSON string.",
-  "success": false
-}
-```
-
-## Tech Stack
-
-- **Backend (Node.js)**: Express, JWT, PG (for RDS), Turnkey SDK, Webpack for bundling.
-- **Bot (Python)**: Aiogram, AsyncPG, Stellar SDK, Turnkey HTTP client, Sessions for HPKE decryption.
-- **Database**: PostgreSQL (RDS) with tables for users, wallets, referrals, trades, etc.
-- **Frontend/Mini App**: HTML/JS/CSS, Telegram WebApp API, Turnkey browser SDK (bundled as turnkey.min.js).
-- **Deployment**: EC2 (separate for bot/web), PM2 for process management, HTTPS via Let's Encrypt.
-- **Tools**: Turnkey for wallets/passkeys/sessions, Telegram Cloud Storage for stamper-based key persistence.
-
-## Installation & Setup
-
-### Prerequisites
-- Node.js (v18+), npm.
-- Python 3.12+.
-- PostgreSQL RDS instance (configure .env with DB creds).
-- Turnkey API keys (TURNKEY_ORG_ID, etc.) in .env.
-- Telegram Bot Token (TELEGRAM_BOT_TOKEN) from @BotFather.
-- JWT_SECRET for auth.
-
-### Node.js Backend (Web/Mini App)
-1. Clone repo: `git clone https://github.com/lumenbro/lumenbro.app`
-2. Navigate: `cd lumenbro.app`
-3. Install deps: `npm install`
-4. Build bundle: `npm run build-turnkey` (for turnkey.min.js with stamper).
-5. Configure .env (DB_HOST, TURNKEY keys, etc.).
-6. Run: `pm2 start ecosystem.config.js` (or `node app.js` for dev).
-
-### Python Bot
-1. Clone/setup bot repo (separate; integrate as needed).
-2. Install deps: `pip install -r requirements.txt` (aiogram, asyncpg, stellar-sdk, etc.).
-3. Configure .env (same DB creds, TELEGRAM_TOKEN).
-4. Run: `python main.py`
-
-### Database
-- Run migrations (from bot's init_db_pool in main.py) to create tables.
-
-### Mini App
-- In @BotFather: Set Mini App URL to https://lumenbro.com/mini-app/index.html.
-- Test: Bot sends buttons to open /mini-app?mode=auth (pre-fills telegram_id).
-
-## Usage
-
-1. **Registration**:
-   - Bot: /register → Opens Mini App for sub-org creation/passkey setup.
-   - Keys stored in Telegram Cloud via stamper.
-
-2. **Login/Session**:
-   - Bot: /login → Mini App creates session, syncs temp keys to DB.
-
-3. **Trading**:
-   - Bot commands for buy/sell/copy; uses DB sessions for automated signing.
-
-4. **Recovery**:
-   - Bot: Sends Mini App link for email/passkey recovery.
 
 ## Testing
 
-- **Local**: Use ngrok for HTTPS tunneling (e.g., ngrok http 3000), set in @BotFather.
-- **Direct Mini App**: https://lumenbro.com/mini-app/index.html?mode=auth (partial; no Cloud Storage).
-- **Full**: Telegram app → Bot button → WebView; check DB for sub-org/keys.
-- **Debug**: Console logs in Mini App JS; PM2 logs for backend.
+### Security Testing
+- **Encryption validation**: Verify client-side encryption/decryption
+- **Session testing**: Test session creation and expiration
+- **Mobile compatibility**: Test on various mobile devices and browsers
+- **Recovery flows**: Test account recovery and key export
+- **Integration testing**: Verify Python bot and Node.js coordination
+
+### Local Development
+```bash
+# Use ngrok for HTTPS tunneling
+ngrok http 3000
+
+# Test Mini App
+https://lumenbro.com/mini-app/index.html?mode=auth
+```
 
 ## License
 
@@ -255,6 +306,15 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-Pull requests welcome! Focus on security (e.g., initData validation) and Stellar integrations.
+We welcome contributions focused on:
+- **Security improvements**: Encryption, authentication, validation
+- **Stellar integrations**: New trading features and asset support
+- **Mobile compatibility**: Enhanced mobile user experience
+- **Performance optimization**: Database queries, caching, API efficiency
 
-For issues: Open GitHub issue with logs/errors.
+### Security Reporting
+For security issues, please contact us directly rather than opening public issues.
+
+---
+
+**⚠️ Security Notice**: This application handles financial transactions and private keys. Always verify the source and review security measures before use.
