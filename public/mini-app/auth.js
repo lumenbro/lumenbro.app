@@ -614,7 +614,7 @@ function showExportResults(exportResult) {
                         👁️ Show
                     </button>
                 </div>
-                <button onclick="copyToClipboard('privateKeyDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                <button onclick="copyElementToClipboard('privateKeyDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
                     📋 Copy Private Key
                 </button>
             </div>
@@ -628,7 +628,7 @@ function showExportResults(exportResult) {
                         👁️ Show
                     </button>
                 </div>
-                <button onclick="copyToClipboard('sAddressDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                <button onclick="copyElementToClipboard('sAddressDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
                     📋 Copy S-Address
                 </button>
             </div>
@@ -678,21 +678,40 @@ function toggleKeyVisibility(elementId) {
     }
 }
 
-function copyToClipboard(elementId) {
+// Function to copy text to clipboard (for direct text copying)
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showStatus('✅ Copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        showStatus('❌ Copy failed', 'error');
+    }
+}
+
+// Function to copy from input element (for element-based copying)
+function copyElementToClipboard(elementId) {
     const element = document.getElementById(elementId);
+    if (!element) {
+        console.error('Element not found:', elementId);
+        return;
+    }
+    
     element.select();
     document.execCommand('copy');
     
     // Show feedback
     const button = element.parentElement.nextElementSibling;
-    const originalText = button.textContent;
-    button.textContent = '✅ Copied!';
-    button.style.background = '#4CAF50';
-    
-    setTimeout(() => {
-        button.textContent = originalText;
+    if (button) {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
         button.style.background = '#4CAF50';
-    }, 2000);
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '#4CAF50';
+        }, 2000);
+    }
 }
 
 function confirmExportBackup() {
