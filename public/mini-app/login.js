@@ -212,8 +212,6 @@ class ManualStamper {
   async stamp(payload) {
     try {
       console.log('🔍 Starting manual stamping process...');
-      console.log('Private key length:', this.privateKey?.length);
-      console.log('Public key length:', this.publicKey?.length);
       
       // For mobile, we need to handle Web Crypto API limitations differently
       if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {

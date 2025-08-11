@@ -82,9 +82,9 @@ router.post('/mini-app/create-session', async (req, res) => {
 
   try {
     console.log('Validated initData. Sending to Turnkey...');
-    console.log('Body sent to Turnkey:', bodyStr);
-    console.log('Stamp sent to Turnkey:', stampStr);
-    console.log('EphemeralPrivateKey received:', ephemeralPrivateKey, 'type:', typeof ephemeralPrivateKey);
+    console.log('Body sent to Turnkey: [redacted length=%d]', bodyStr.length);
+    console.log('Stamp sent to Turnkey: [redacted base64 length=%d]', stampStr.length);
+    console.log('EphemeralPrivateKey received: [redacted] type:', typeof ephemeralPrivateKey);
 
     // Proxy to Turnkey
     const turnkeyRes = await fetch('https://api.turnkey.com/public/v1/submit/create_read_write_session', {
@@ -101,7 +101,7 @@ router.post('/mini-app/create-session', async (req, res) => {
     console.log('Turnkey raw response:', responseText);
 
     if (!turnkeyRes.ok) {
-      throw new Error(`Turnkey error: ${responseText}`);
+      throw new Error(`Turnkey error: [redacted]`);
     }
 
     const data = JSON.parse(responseText);

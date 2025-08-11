@@ -42,10 +42,10 @@ Session Creation → HPKE Encryption → KMS Storage → Database
 - **Automatic expiration**: Sessions expire after 90 days
 
 ### 3. Mobile Security Enhancements
-- **Backend signing**: Mobile devices use server-side ECDSA signing
-- **Web Crypto API compatibility**: Fallback mechanisms for mobile limitations
-- **Enhanced error handling**: Graceful degradation for security operations
-- **Debug logging**: Comprehensive security event tracking
+- **Backend signing**: Mobile devices can use server-side ECDSA (P‑256) when Web Crypto is constrained
+- **Sub‑org enforcement**: All signatures originate from the user’s sub‑organization
+- **HPKE handling**: Recovery decrypts credential bundles server-side to avoid WebView limitations
+- **Minimal logging**: Sensitive values (keys, stamps, bundles) are redacted in logs
 
 ### 4. Integration Security
 - **initData validation**: HMAC verification for all Mini App requests
@@ -131,11 +131,11 @@ CREATE TABLE turnkey_wallets (
 ## Recent Improvements & Changelog
 
 ### v2.1.0 (Current) - Mobile Security & Export
-- ✅ **Mobile Login Fix**: Backend signing endpoint for mobile compatibility
-- ✅ **Wallet Export**: Secure Stellar private key export with StrKey format
-- ✅ **Enhanced Security**: Auto-clear sensitive data after 5 minutes
-- ✅ **Export Safety**: Confirmation dialogs and secure data handling
-- ✅ **Mobile Compatibility**: Improved Web Crypto API handling
+- ✅ **Mobile Login**: DER/low‑s P‑256 signing with sub‑org enforcement
+- ✅ **Recovery**: Server‑side OTP verify + decrypt; create API keys with sub‑org session key
+- ✅ **Wallet Export**: HPKE with uncompressed target key; Stellar StrKey conversion
+- ✅ **Data Hygiene**: Sensitive logs redacted; client storage auto‑clearing
+- ✅ **Compatibility**: Robust fallbacks for Telegram WebView
 
 ### v2.0.0 - Security Overhaul
 - ✅ **Client-side Encryption**: AES-256-GCM with PBKDF2 key derivation
