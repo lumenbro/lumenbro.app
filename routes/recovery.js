@@ -262,7 +262,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
     
     // First, verify this is a legitimate recovery by checking the database
     const userRes = await pool.query(
-      "SELECT u.telegram_id, u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1 AND LOWER(u.user_email) = LOWER($2) AND tw.is_active = TRUE",
+      "SELECT u.telegram_id, u.turnkey_user_id, tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE (tw.turnkey_sub_org_id = $1 OR LOWER(u.user_email) = LOWER($2)) AND LOWER(u.user_email) = LOWER($2) AND tw.is_active = TRUE",
       [orgId, email.trim().toLowerCase()]
     );
     
@@ -270,7 +270,9 @@ router.post('/create-recovery-api-key', async (req, res) => {
       return res.status(404).json({ error: "No matching user found for this email and organization" });
     }
     
-    let { telegram_id: telegramId, turnkey_user_id: userId } = userRes.rows[0];
+    let { telegram_id: telegramId, turnkey_user_id: userId, turnkey_sub_org_id: dbSubOrgId } = userRes.rows[0];
+    // Force orgId to DB-derived sub-org to avoid mismatches
+    const effectiveOrgId = dbSubOrgId || orgId;
     if (!userId && userIdFromClient) {
       console.log('ℹ️ Using userId from client recovery credentials');
       userId = userIdFromClient;
@@ -309,7 +311,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
       // Build request body
       const bodyObj = {
         type: 'ACTIVITY_TYPE_CREATE_API_KEYS',
-        organizationId: orgId,
+        organizationId: effectiveOrgId,
         parameters: {
           userId: userId,
           apiKeys: [{
@@ -357,7 +359,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
       const client = turnkey.apiClient();
 
       response = await client.createApiKeys({
-        organizationId: orgId,
+        organizationId: effectiveOrgId,
         userId: userId,
         apiKeys: [{
           apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
