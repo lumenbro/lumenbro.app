@@ -247,7 +247,7 @@ router.post('/complete-otp-recovery', async (req, res) => {
 
 // POST /create-recovery-api-key - Create new API key using root organization permissions
 router.post('/create-recovery-api-key', async (req, res) => {
-  const { email, orgId, publicKey, apiKeyName } = req.body;
+  const { email, orgId, publicKey, apiKeyName, userId: userIdFromClient } = req.body;
   
   if (!email || !orgId || !publicKey) {
     return res.status(400).json({ error: "Missing required fields: email, orgId, publicKey" });
@@ -262,7 +262,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
     
     // First, verify this is a legitimate recovery by checking the database
     const userRes = await pool.query(
-      "SELECT u.telegram_id, u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1 AND u.user_email = $2 AND tw.is_active = TRUE",
+      "SELECT u.telegram_id, u.turnkey_user_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_sub_org_id = $1 AND LOWER(u.user_email) = LOWER($2) AND tw.is_active = TRUE",
       [orgId, email.trim().toLowerCase()]
     );
     
@@ -270,7 +270,14 @@ router.post('/create-recovery-api-key', async (req, res) => {
       return res.status(404).json({ error: "No matching user found for this email and organization" });
     }
     
-    const { telegram_id: telegramId, turnkey_user_id: userId } = userRes.rows[0];
+    let { telegram_id: telegramId, turnkey_user_id: userId } = userRes.rows[0];
+    if (!userId && userIdFromClient) {
+      console.log('ℹ️ Using userId from client recovery credentials');
+      userId = userIdFromClient;
+    }
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId for createApiKeys" });
+    }
     
     // Use root organization credentials to create API key in user's sub-org
     const { Turnkey } = require('@turnkey/sdk-server');

@@ -42,6 +42,7 @@ class RecoveryKeyGenerator {
         body: JSON.stringify({
           email: this.credentials.email,
           orgId: this.credentials.orgId,
+          userId: this.credentials.userId,
           publicKey: newKeyPair.publicKey,
           apiKeyName: `Recovery Telegram Key - ${this.credentials.email}`
         })
