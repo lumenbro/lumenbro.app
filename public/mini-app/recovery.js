@@ -134,15 +134,17 @@ async function completeRecovery() {
 
     document.getElementById('content').innerHTML = 'Verifying OTP code...';
 
-    // Step 3: Verify OTP and get session credentials
-    const verifyResponse = await fetch('/verify-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+    // Step 3: Verify OTP and decrypt on server (bypass WebView HPKE)
+    const verifyResponse = await fetch('/verify-otp-decrypt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         otpId,
         otpCode,
         targetPublicKey: targetKeyPair.publicKey,
-        email
+        targetPrivateKey: targetKeyPair.privateKey,
+        email,
+        initData: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ? window.Telegram.WebApp.initData : ''
       })
     });
 
@@ -152,35 +154,15 @@ async function completeRecovery() {
     }
 
     const result = await verifyResponse.json();
-
-    // Properly decrypt the credential bundle using Turnkey SDK in browser
-    let decryptedCredentials;
-    try {
-      decryptedCredentials = await window.Turnkey.decryptExportBundle({
-        exportBundle: result.credentialBundle,
-        privateKey: targetKeyPair.privateKey,
-        organizationId: orgId
-      });
-    } catch (e) {
-      console.error('❌ decryptExportBundle failed. This indicates wrong organizationId or key format:', e);
-      document.getElementById('content').innerHTML = `
-        <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
-          <h3>❌ Recovery Decryption Failed</h3>
-          <p>We couldn't decrypt the recovery session on this device. This usually means:</p>
-          <ul>
-            <li>The organization ID is not your sub-organization</li>
-            <li>The ephemeral private key is not 32-byte hex</li>
-          </ul>
-          <p>Please retry recovery. If this persists, finish on desktop.</p>
-        </div>`;
-      return;
+    // Use server-decrypted session key
+    const serverSessionKey = result.sessionPrivateKey;
+    if (!serverSessionKey || !/^[0-9a-fA-F]{64}$/.test(serverSessionKey)) {
+      throw new Error('Invalid session key from server');
     }
     
     // Set recovery credentials for key generation
     // Normalize to sessionPrivateKey hex
-    const sessionPrivateKey = (typeof decryptedCredentials === 'string')
-      ? decryptedCredentials
-      : decryptedCredentials?.privateKey;
+    const sessionPrivateKey = serverSessionKey;
     if (!sessionPrivateKey || !/^[0-9a-fA-F]{64}$/.test(sessionPrivateKey)) {
       console.error('❌ Invalid sessionPrivateKey from decrypted credentials');
       document.getElementById('content').innerHTML = `
@@ -194,7 +176,7 @@ async function completeRecovery() {
     window.recoveryKeyGenerator.setRecoveryCredentials({
       userId: result.userId,
       apiKeyId: result.apiKeyId,
-      orgId: orgId,
+      orgId: result.orgId || orgId,
       email: email,
       sessionPrivateKey,
       expiresAt: Date.now() + (3600 * 1000) // 1 hour
