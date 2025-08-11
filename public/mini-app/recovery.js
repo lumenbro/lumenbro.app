@@ -162,9 +162,18 @@ async function completeRecovery() {
         organizationId: orgId
       });
     } catch (e) {
-      console.error('Turnkey.decryptExportBundle failed, falling back:', e);
-      // Fallback to legacy parser if SDK method unavailable
-      decryptedCredentials = await decryptCredentialBundle(result.credentialBundle, targetKeyPair.privateKey);
+      console.error('❌ decryptExportBundle failed. This indicates wrong organizationId or key format:', e);
+      document.getElementById('content').innerHTML = `
+        <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+          <h3>❌ Recovery Decryption Failed</h3>
+          <p>We couldn't decrypt the recovery session on this device. This usually means:</p>
+          <ul>
+            <li>The organization ID is not your sub-organization</li>
+            <li>The ephemeral private key is not 32-byte hex</li>
+          </ul>
+          <p>Please retry recovery. If this persists, finish on desktop.</p>
+        </div>`;
+      return;
     }
     
     // Set recovery credentials for key generation
@@ -172,6 +181,15 @@ async function completeRecovery() {
     const sessionPrivateKey = (typeof decryptedCredentials === 'string')
       ? decryptedCredentials
       : decryptedCredentials?.privateKey;
+    if (!sessionPrivateKey || !/^[0-9a-fA-F]{64}$/.test(sessionPrivateKey)) {
+      console.error('❌ Invalid sessionPrivateKey from decrypted credentials');
+      document.getElementById('content').innerHTML = `
+        <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+          <h3>❌ Recovery Failed</h3>
+          <p>Recovered session key invalid. Please retry recovery.</p>
+        </div>`;
+      return;
+    }
 
     window.recoveryKeyGenerator.setRecoveryCredentials({
       userId: result.userId,
