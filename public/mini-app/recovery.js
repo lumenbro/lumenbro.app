@@ -168,12 +168,17 @@ async function completeRecovery() {
     }
     
     // Set recovery credentials for key generation
+    // Normalize to sessionPrivateKey hex
+    const sessionPrivateKey = (typeof decryptedCredentials === 'string')
+      ? decryptedCredentials
+      : decryptedCredentials?.privateKey;
+
     window.recoveryKeyGenerator.setRecoveryCredentials({
-      ...decryptedCredentials,
       userId: result.userId,
       apiKeyId: result.apiKeyId,
       orgId: orgId,
       email: email,
+      sessionPrivateKey,
       expiresAt: Date.now() + (3600 * 1000) // 1 hour
     });
 

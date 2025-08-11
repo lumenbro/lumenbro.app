@@ -247,7 +247,7 @@ router.post('/complete-otp-recovery', async (req, res) => {
 
 // POST /create-recovery-api-key - Create new API key using root organization permissions
 router.post('/create-recovery-api-key', async (req, res) => {
-  const { email, orgId, publicKey, apiKeyName, userId: userIdFromClient } = req.body;
+  const { email, orgId, publicKey, apiKeyName, userId: userIdFromClient, sessionPrivateKey } = req.body;
   
   if (!email || !orgId || !publicKey) {
     return res.status(400).json({ error: "Missing required fields: email, orgId, publicKey" });
@@ -280,25 +280,74 @@ router.post('/create-recovery-api-key', async (req, res) => {
     }
     
     // Use root organization credentials to create API key in user's sub-org
-    const { Turnkey } = require('@turnkey/sdk-server');
-    const turnkey = new Turnkey({
-      apiBaseUrl: 'https://api.turnkey.com',
-      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
-      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
-      defaultOrganizationId: process.env.TURNKEY_ORG_ID
-    });
-    const client = turnkey.apiClient();
+    // If we have a recovered sessionPrivateKey, stamp with sub-org key (P-256) instead of root org
+    let response;
+    if (sessionPrivateKey && /^[0-9a-fA-F]{64}$/.test(sessionPrivateKey)) {
+      const crypto = require('crypto');
+      const EC = require('elliptic').ec;
+      const ecP256 = new EC('p256');
+      const keyPair = ecP256.keyFromPrivate(Buffer.from(sessionPrivateKey, 'hex'));
 
-    // Create new API key for the user
-    const response = await client.createApiKeys({
-      organizationId: orgId, // User's sub-org
-      userId: userId,
-      apiKeys: [{
-        apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
-        publicKey: publicKey,
-        curveType: "API_KEY_CURVE_SECP256K1"
-      }]
-    });
+      // Build request body
+      const bodyObj = {
+        type: 'ACTIVITY_TYPE_CREATE_API_KEYS',
+        organizationId: orgId,
+        parameters: {
+          userId: userId,
+          apiKeys: [{
+            apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
+            publicKey: publicKey,
+            curveType: 'API_KEY_CURVE_SECP256K1'
+          }]
+        },
+        timestampMs: Date.now().toString()
+      };
+      const bodyStr = JSON.stringify(bodyObj);
+
+      // Stamp
+      const payloadHash = crypto.createHash('sha256').update(bodyStr).digest();
+      const sig = keyPair.sign(payloadHash, { canonical: true });
+      const signatureHex = Buffer.from(sig.toDER()).toString('hex');
+
+      const stamp = Buffer.from(JSON.stringify({
+        publicKey: keyPair.getPublic(true, 'hex'),
+        scheme: 'SIGNATURE_SCHEME_TK_API_P256',
+        signature: signatureHex
+      })).toString('base64');
+
+      // Submit via HTTP directly
+      const fetch = require('node-fetch');
+      const tkRes = await fetch('https://api.turnkey.com/public/v1/submit/create_api_keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Stamp': stamp },
+        body: bodyStr
+      });
+      const text = await tkRes.text();
+      if (!tkRes.ok) {
+        throw new Error(`Turnkey error: ${text}`);
+      }
+      response = JSON.parse(text);
+    } else {
+      // Root org path (older fallback) – will fail for org mismatch; kept for completeness
+      const { Turnkey } = require('@turnkey/sdk-server');
+      const turnkey = new Turnkey({
+        apiBaseUrl: 'https://api.turnkey.com',
+        apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+        apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+        defaultOrganizationId: process.env.TURNKEY_ORG_ID
+      });
+      const client = turnkey.apiClient();
+
+      response = await client.createApiKeys({
+        organizationId: orgId,
+        userId: userId,
+        apiKeys: [{
+          apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
+          publicKey: publicKey,
+          curveType: 'API_KEY_CURVE_SECP256K1'
+        }]
+      });
+    }
     
     console.log('✅ Created new API key via root org:', response);
     
