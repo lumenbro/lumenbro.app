@@ -22,63 +22,15 @@ async function recover() {
     console.log('🔍 Starting recovery for email:', email);
     console.log('🏢 Initial orgId from URL:', orgId || 'NOT PROVIDED');
 
-    // Generate uncompressed P-256 key pair for recovery encryption
-    let cryptoKeyPair;
+    // Generate P-256 key pair using Turnkey helpers to match expected formats
     try {
-        cryptoKeyPair = await window.crypto.subtle.generateKey(
-            { name: 'ECDSA', namedCurve: 'P-256' },
-            true,
-            ['sign', 'verify']
-        );
-    } catch (error) {
-        // Enhanced mobile error handling
-        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-            console.error('❌ Mobile key generation error during recovery:', error);
-            MobileEncryptionFix.handleMobileError(error, 'recovery key generation');
-            
-            document.getElementById('content').innerHTML = `
-                <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                    <h3>❌ Mobile Recovery Error</h3>
-                    <p>There was an issue generating recovery keys on mobile. This is likely due to:</p>
-                    <ul>
-                        <li>Web Crypto API limitations on mobile</li>
-                        <li>Memory constraints on mobile devices</li>
-                        <li>Telegram WebView restrictions</li>
-                    </ul>
-                    <p><strong>Try:</strong></p>
-                    <ul>
-                        <li>Using desktop version</li>
-                        <li>Checking the debug console (🐛 button)</li>
-                        <li>Closing other apps to free up memory</li>
-                    </ul>
-                    <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
-                        🐛 Show Debug Info
-                    </button>
-                </div>
-            `;
-            return;
-        }
-        throw error;
-    }
-    
-    // Export public key in uncompressed format (65 bytes)
-    const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
-    const targetPublicKey = Array.from(new Uint8Array(publicKeyBuffer))
-      .map(byte => byte.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Export private key for later decryption
-    const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
-    const targetPrivateKey = Array.from(new Uint8Array(privateKeyBuffer))
-      .map(byte => byte.toString(16).padStart(2, '0'))
-      .join('');
-    
-    const targetKeyPair = {
-      publicKey: targetPublicKey,
-      privateKey: targetPrivateKey
-    };
-    
-    console.log('Target public key length:', targetPublicKey.length, 'bytes:', targetPublicKey.length / 2);
+      const keyPair = await window.Turnkey.generateP256KeyPair();
+      const targetKeyPair = {
+        publicKey: keyPair.publicKeyUncompressed, // 04 + X + Y (65 bytes, hex length 130)
+        privateKey: keyPair.privateKey            // 32-byte hex (length 64)
+      };
+
+      console.log('Target public key length:', targetKeyPair.publicKey.length, 'bytes:', targetKeyPair.publicKey.length / 2);
 
     // Step 1: First lookup orgId by email if we don't have it
     document.getElementById('content').innerHTML = 'Looking up your wallet...';
@@ -144,6 +96,10 @@ async function recover() {
     
     // Store data for completion step
     window.recoveryData = { orgId: responseOrgId, email, targetKeyPair, otpId };
+    } catch (error) {
+      // fallthrough to existing catch
+      throw error;
+    }
 
   } catch (error) {
     console.error('Recovery error:', error);
@@ -197,8 +153,19 @@ async function completeRecovery() {
 
     const result = await verifyResponse.json();
 
-    // Parse the recovery credentials from the credential bundle
-    const decryptedCredentials = await decryptCredentialBundle(result.credentialBundle, targetKeyPair.privateKey);
+    // Properly decrypt the credential bundle using Turnkey SDK in browser
+    let decryptedCredentials;
+    try {
+      decryptedCredentials = await window.Turnkey.decryptExportBundle({
+        exportBundle: result.credentialBundle,
+        privateKey: targetKeyPair.privateKey,
+        organizationId: orgId
+      });
+    } catch (e) {
+      console.error('Turnkey.decryptExportBundle failed, falling back:', e);
+      // Fallback to legacy parser if SDK method unavailable
+      decryptedCredentials = await decryptCredentialBundle(result.credentialBundle, targetKeyPair.privateKey);
+    }
     
     // Set recovery credentials for key generation
     window.recoveryKeyGenerator.setRecoveryCredentials({

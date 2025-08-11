@@ -164,10 +164,17 @@ router.post('/verify-otp', async (req, res) => {
     });
     console.log('OTP verified successfully:', response);
     
+    // Return raw credentialBundle (string) to let client decrypt using Turnkey.decryptExportBundle
+    const credentialBundle = response.activity?.result?.otpAuthResult?.credentialBundle;
+    const userId = response.activity?.result?.otpAuthResult?.userId;
+    const apiKeyId = response.activity?.result?.otpAuthResult?.apiKeyId;
+
     res.json({ 
       success: true, 
       message: "Recovery successful!",
-      credential: response.activity?.result?.otpAuthResult?.credential,
+      credentialBundle,
+      userId,
+      apiKeyId,
       orgId: orgId
     });
     
