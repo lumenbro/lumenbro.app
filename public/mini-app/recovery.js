@@ -314,8 +314,9 @@ async function generateNewTelegramKeys() {
     `;
     
     // Generate new keys using recovery credentials
+    let result;
     try {
-        const result = await window.recoveryKeyGenerator.generateNewTelegramKey(password);
+        result = await window.recoveryKeyGenerator.generateNewTelegramKey(password);
         console.log('✅ New Telegram keys generated successfully:', result);
     } catch (error) {
         // Enhanced mobile error handling
@@ -351,6 +352,7 @@ async function generateNewTelegramKeys() {
         throw error;
     }
     
+    if (!result) return;
     document.getElementById('content').innerHTML = `
       <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
         <h3>🎉 Recovery Complete!</h3>
