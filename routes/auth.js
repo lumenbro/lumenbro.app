@@ -470,7 +470,7 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     
     // First, try to find the user by the provided Turnkey API public key
     let userResult = await pool.query(
-      "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_api_public_key = $1",
+      "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key, tw.telegram_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE tw.turnkey_api_public_key = $1",
       [publicKey]
     );
     
@@ -486,7 +486,7 @@ router.post('/mini-app/sign-payload', async (req, res) => {
       
       if (emailResponse.rows.length > 0) {
         userResult = await pool.query(
-          "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
+          "SELECT tw.turnkey_sub_org_id, u.user_email, tw.turnkey_api_public_key, tw.telegram_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE u.user_email = $1 AND tw.is_active = TRUE",
           [emailResponse.rows[0].user_email]
         );
       }
@@ -499,7 +499,24 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     
     const subOrgId = userResult.rows[0].turnkey_sub_org_id;
     const userEmail = userResult.rows[0].user_email;
-    const dbApiPublicKey = userResult.rows[0].turnkey_api_public_key;
+    let dbApiPublicKey = userResult.rows[0].turnkey_api_public_key;
+    const telegramIdForUpdate = userResult.rows[0].telegram_id;
+
+    // If DB key differs or is null, adopt the client key and persist for future
+    if (!dbApiPublicKey || dbApiPublicKey !== publicKey) {
+      dbApiPublicKey = publicKey;
+      if (telegramIdForUpdate) {
+        try {
+          await pool.query(
+            "UPDATE turnkey_wallets SET turnkey_api_public_key = $1 WHERE telegram_id = $2 AND is_active = TRUE",
+            [dbApiPublicKey, telegramIdForUpdate]
+          );
+          console.log('🔧 Updated DB turnkey_api_public_key for telegram_id', telegramIdForUpdate);
+        } catch (e) {
+          console.warn('⚠️ Failed to update DB turnkey_api_public_key:', e.message);
+        }
+      }
+    }
     
     console.log('✅ Found sub-organization ID:', subOrgId, 'for user:', userEmail);
     console.log('✅ Database Turnkey API key:', dbApiPublicKey, '(length:', dbApiPublicKey?.length, ')');
@@ -522,8 +539,8 @@ router.post('/mini-app/sign-payload', async (req, res) => {
 
     res.json({ 
       signature: signatureHex,
-      publicKey: dbApiPublicKey || publicKey, // Return the database API key or fallback to Telegram key
-      subOrgId: subOrgId, // Return the correct sub-org ID
+      publicKey: dbApiPublicKey, // ensure we return the active API key used
+      subOrgId: subOrgId,
       message: 'Mobile fallback signing successful'
     });
     
