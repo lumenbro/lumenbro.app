@@ -187,6 +187,77 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// Server-side OTP verify + decrypt (bypasses browser HPKE issues)
+router.post('/verify-otp-decrypt', async (req, res) => {
+  const { otpId, otpCode, targetPublicKey, targetPrivateKey, email, initData } = req.body;
+  if (!otpId || !otpCode || !targetPublicKey || !targetPrivateKey || !email) {
+    return res.status(400).json({ error: "Missing required fields: otpId, otpCode, targetPublicKey, targetPrivateKey, email" });
+  }
+
+  try {
+    // Resolve user's sub-org by email
+    const userRes = await pool.query(
+      "SELECT tw.turnkey_sub_org_id FROM turnkey_wallets tw JOIN users u ON tw.telegram_id = u.telegram_id WHERE LOWER(u.user_email) = LOWER($1) AND tw.is_active = TRUE",
+      [email.trim()]
+    );
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "No wallet found for this email address" });
+    }
+    const orgId = userRes.rows[0].turnkey_sub_org_id;
+
+    // Validate Telegram initData to bind to device/session if provided
+    if (initData) {
+      const crypto = require('crypto');
+      const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+      const parsed = new URLSearchParams(initData);
+      const hash = parsed.get('hash');
+      parsed.delete('hash');
+      const dataCheckString = Array.from(parsed.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([k, v]) => `${k}=${v}`)
+        .join('\n');
+      const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+      const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+      if (computedHash !== hash) {
+        return res.status(403).json({ error: 'Invalid initData' });
+      }
+    }
+
+    // OTP verify via SDK
+    const { Turnkey } = require('@turnkey/sdk-server');
+    const turnkey = new Turnkey({
+      apiBaseUrl: 'https://api.turnkey.com',
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+      defaultOrganizationId: process.env.TURNKEY_ORG_ID
+    });
+    const client = turnkey.apiClient();
+    const response = await client.otpAuth({
+      organizationId: orgId,
+      otpId: otpId,
+      otpCode: otpCode.toString(),
+      targetPublicKey: targetPublicKey,
+      apiKeyName: `Recovery Session - ${email}`,
+      expirationSeconds: "3600"
+    });
+
+    const credentialBundle = response.activity?.result?.otpAuthResult?.credentialBundle;
+    const userId = response.activity?.result?.otpAuthResult?.userId;
+    const apiKeyId = response.activity?.result?.otpAuthResult?.apiKeyId;
+
+    // Decrypt using official SDK (server-side)
+    if (!/^[0-9a-fA-F]{64}$/.test(targetPrivateKey)) {
+      return res.status(400).json({ error: 'Invalid targetPrivateKey format' });
+    }
+    const sessionPrivateKey = decryptCredentialBundle(credentialBundle, targetPrivateKey);
+
+    return res.json({ success: true, orgId, credentialBundle, sessionPrivateKey, userId, apiKeyId });
+  } catch (error) {
+    console.error(`OTP verify/decrypt failed: ${error.message}`);
+    return res.status(500).json({ error: 'OTP verify/decrypt failed', details: error.message });
+  }
+});
+
 // New endpoint for OTP completion and passkey addition
 router.post('/complete-otp-recovery', async (req, res) => {
   const { orgId, email, otpCode, newPasskey } = req.body;
