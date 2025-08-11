@@ -1,0 +1,165 @@
+{
+  "id": "0198955c-697e-76da-9130-cc8ec5e68c4c",
+  "fingerprint": "sha256:bde2608c4a8f46bf0c44903003cbe6c15e5b93312df85da6e3d63020f0358ae7",
+  "voteList": [
+    {
+      "id": "99c0a7ac-7bb2-4b2d-a8ed-837000ba788e",
+      "userId": "32d8fa24-2355-4970-a737-22bd5ecc8c82",
+      "user": {
+        "userId": "32d8fa24-2355-4970-a737-22bd5ecc8c82",
+        "userName": "Root user",
+        "userEmail": "info@lumenbro.com",
+        "authenticators": [
+          {
+            "transports": [],
+            "attestationType": "fido-u2f",
+            "aaguid": "AAAAAAAAAAAAAAAAAAAAAA",
+            "credentialId": "vrDa0RPtBpvRhdHbt9CK80pgLN7ZuRfv1teajNboQ8epacdC3EG0ac2qVCNYLP-gjRgCyeb9RDgb6VL5omcpFg",
+            "model": "Security key",
+            "credential": {
+              "publicKey": "pQECAyYgASFYIC6nM1HL7TIIuMX1w5C2ONc1qrkaO45ZcAWzhJJu9pxiIlggqwAD-znvtiMlTgNJ5MjtPjE7ZddQaapGp4tt4Mtyq6A",
+              "type": "CREDENTIAL_TYPE_WEBAUTHN_AUTHENTICATOR"
+            },
+            "authenticatorId": "c7484b0d-81b7-4934-b40d-133a7c4877ba",
+            "authenticatorName": "trezor",
+            "createdAt": {
+              "seconds": "1749010294",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1749010294",
+              "nanos": "0"
+            }
+          }
+        ],
+        "apiKeys": [
+          {
+            "credential": {
+              "publicKey": "03719f57abe45f06323134067bb921a340e60a6092a8455e1bfaba4ff65ec0fcc3",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "c6914e78-760b-49d3-a1f2-61b65fb1f4f8",
+            "apiKeyName": "testing",
+            "createdAt": {
+              "seconds": "1749013040",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1749013040",
+              "nanos": "0"
+            }
+          },
+          {
+            "credential": {
+              "publicKey": "03a6e9853ed0d0ac91ae7aff7d06e9ac5956c9a3c0fe80693352ca64cbedbf3637",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "e59d203e-5a5b-4873-a44c-6cae9e5f4ca0",
+            "apiKeyName": "test 2",
+            "createdAt": {
+              "seconds": "1752358977",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1752358977",
+              "nanos": "0"
+            }
+          },
+          {
+            "credential": {
+              "publicKey": "02f3d35c9cec70909d801a07e9cb805c1e2fcb731ab380d2a2bbda9b71215b1444",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "5f96d6f9-f95c-4b6a-aa2e-e51f224dc4ce",
+            "apiKeyName": "delete this after testing",
+            "createdAt": {
+              "seconds": "1754686862",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754686862",
+              "nanos": "0"
+            }
+          }
+        ],
+        "userTags": [],
+        "oauthProviders": [],
+        "createdAt": {
+          "seconds": "1749010294",
+          "nanos": "0"
+        },
+        "updatedAt": {
+          "seconds": "1749010294",
+          "nanos": "0"
+        }
+      },
+      "activityId": "0198955c-697e-76da-9130-cc8ec5e68c4c",
+      "selection": "VOTE_SELECTION_APPROVED",
+      "message": "{\"parameters\":{\"subOrganizationName\":\"User 5014800072\",\"rootQuorumThreshold\":1,\"rootUsers\":[{\"userName\":\"bpeterscqa@gmail.com\",\"userEmail\":\"bpeterscqa@gmail.com\",\"apiKeys\":[{\"apiKeyName\":\"API Key - bpeterscqa@gmail.com\",\"publicKey\":\"02d3424f01c2313dc7a3420c8baf8a3fc9b809c844f5abf51d52ab5d3d7f8bd9cd\",\"curveType\":\"API_KEY_CURVE_SECP256K1\"}],\"authenticators\":[],\"oauthProviders\":[]}],\"wallet\":{\"walletName\":\"Stellar-Wallet-5014800072\",\"accounts\":[{\"curve\":\"CURVE_ED25519\",\"pathFormat\":\"PATH_FORMAT_BIP32\",\"path\":\"m/44'/148'/0'\",\"addressFormat\":\"ADDRESS_FORMAT_XLM\"}]}},\"organizationId\":\"e48316d7-5d2a-4b0b-a14f-3a95169579e6\",\"timestampMs\":\"1754852518152\",\"type\":\"ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7\"}",
+      "publicKey": "03a6e9853ed0d0ac91ae7aff7d06e9ac5956c9a3c0fe80693352ca64cbedbf3637",
+      "signature": "30450220284c2244519e80874a086eb9d0b8fab48badf6a35705523c146100b488a47c4e022100c3d791a17768635a50f9a43bd8061fb0b838af9c55294307219ac31428f99e7b",
+      "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+      "createdAt": {
+        "seconds": "1754852518",
+        "nanos": "0"
+      }
+    }
+  ],
+  "permission": {
+    "canApprove": true,
+    "canReject": true
+  },
+  "createdAt": {
+    "seconds": "1754852518",
+    "nanos": "0"
+  },
+  "updatedAt": {
+    "seconds": "1754852518",
+    "nanos": "0"
+  },
+  "status": "ACTIVITY_STATUS_COMPLETED",
+  "failure": null,
+  "type": "ACTIVITY_TYPE_CREATE_SUB_ORGANIZATION_V7",
+  "intent": {
+    "subOrganizationName": "User 5014800072",
+    "rootUsers": [
+      {
+        "userName": "bpeterscqa@gmail.com",
+        "userEmail": "bpeterscqa@gmail.com",
+        "apiKeys": [
+          {
+            "apiKeyName": "API Key - bpeterscqa@gmail.com",
+            "publicKey": "02d3424f01c2313dc7a3420c8baf8a3fc9b809c844f5abf51d52ab5d3d7f8bd9cd",
+            "curveType": "API_KEY_CURVE_SECP256K1"
+          }
+        ],
+        "authenticators": [],
+        "oauthProviders": []
+      }
+    ],
+    "rootQuorumThreshold": 1,
+    "wallet": {
+      "walletName": "Stellar-Wallet-5014800072",
+      "accounts": [
+        {
+          "curve": "CURVE_ED25519",
+          "pathFormat": "PATH_FORMAT_BIP32",
+          "path": "m/44'/148'/0'",
+          "addressFormat": "ADDRESS_FORMAT_XLM"
+        }
+      ]
+    }
+  },
+  "result": {
+    "subOrganizationId": "7997e541-d441-460f-8c4a-5f7fcb919cc8",
+    "wallet": {
+      "walletId": "e7654211-b9fc-5111-bd11-535b6dcbdf05",
+      "addresses": [
+        "GBBR73HIBBG6RYEMYE2X6WYO4UATPXVDGJJZP4A3PPISZPXMPDQS65FY"
+      ]
+    },
+    "rootUserIds": [
+      "e90a63a7-76f9-4f04-aebf-967f2e88f436"
+    ]
+  }
+}

@@ -1,18 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>LumenBro</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LumenBro — Trade on Stellar via Telegram</title>
+  <meta name="description" content="LumenBro is a Telegram bot for easy trading on the Stellar network: buy/sell assets, copy trading with streaming, referral rewards, and Turnkey Passkeys (coming soon)." />
+  <meta name="theme-color" content="#0b1225" />
+  <meta property="og:title" content="LumenBro — Trade on Stellar via Telegram" />
+  <meta property="og:description" content="Trade on the Stellar network directly from Telegram. Simple, fast, and secure." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://lumenbro.com/" />
+  <link rel="stylesheet" href="/styles/site.css" />
 </head>
 <body>
-    <h1>Welcome to LumenBro</h1>
-    <p>LumenBro is a Telegram bot for easy trading on the Stellar network. This is a work in progress and use at your own risk, test with small amount of funds! Features include:</p>
-    <ul>
-        <li>Buy/sell assets</li>
-        <li>Copy trading with streaming</li>
-        <li>Referral rewards</li>
-        <li>COMING SOON: Extra secure wallet management with Turnkey Passkeys</li>
-    </ul>
-    <p>Get started: <a href="https://t.me/lumenbrobot">Join the bot</a></p>
-    <p>For wallet setup/login, use the links from Telegram.</p>
+  <div class="starfield"></div>
+  <header class="site-header">
+    <div class="container">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <!-- Simple inline icon hinting at Stellar without external assets -->
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+            <path d="M4 14c4-4 12-4 16 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M6 17c4-3 8-3 12 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+          </svg>
+        </span>
+        <span class="brand-text">LumenBro</span>
+      </div>
+      <nav class="nav">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="https://t.me/lumenbrobot" class="nav-link cta-link">Open in Telegram</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <h1 class="hero-title">Trade Stellar. Simply.</h1>
+          <p class="hero-subtitle">A Telegram bot for seamless trading on the Stellar network. Non‑custodial wallets with Turnkey passkeys, fast execution, copy trading, and rewards — right from your chat.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://t.me/lumenbrobot" rel="noopener" target="_blank">Join the bot</a>
+            <a class="btn btn-ghost" href="#features">Learn more</a>
+          </div>
+          <p class="disclaimer">Use at your own risk. Test with small amounts of funds.</p>
+        </div>
+        <div class="hero-visual">
+          <div class="orb">
+            <div class="glow"></div>
+            <div class="ring"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="container">
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="icon">💱</div>
+            <h3>Buy & sell assets</h3>
+            <p>Execute trades on Stellar directly from Telegram with clear confirmations and helpful prompts.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">📡</div>
+            <h3>Copy trading with streaming</h3>
+            <p>Follow strategies in real-time. Stream updates and mirror moves with precision.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">🎁</div>
+            <h3>Referral rewards</h3>
+            <p>Invite friends and earn rewards as they trade. Simple and transparent.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">🔐</div>
+            <h3>Turnkey Passkeys <span class="badge live">Integrated</span></h3>
+            <p>Extra-secure, non‑custodial wallet management using passkeys and sub‑org isolation.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" aria-labelledby="security-heading">
+      <div class="container">
+        <h2 id="security-heading" class="section-title" style="margin:0 0 14px; font-size:20px;">Security & Architecture</h2>
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="icon">🗝️</div>
+            <h3>Non‑custodial by design</h3>
+            <p>Passkey‑backed wallets via Turnkey. Each user operates in an isolated sub‑organization for controlled signing.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">🛡️</div>
+            <h3>Encrypted sessions</h3>
+            <p>Sessions created with HPKE and encrypted at rest using AWS KMS. Python bot decrypts for trading; sessions auto‑expire.</p>
+          </article>
+          <article class="feature-card">
+            <div class="icon">✅</div>
+            <h3>Verified Mini App</h3>
+            <p>Telegram initData HMAC validation, minimal sensitive logging, and legacy safety checks to prevent duplicate wallets.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <div class="cta-box">
+          <h2>Ready to get started?</h2>
+          <p>Open LumenBro in Telegram and complete wallet setup and login using the links from the bot.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://t.me/lumenbrobot" rel="noopener" target="_blank">Open Telegram</a>
+            <a class="btn btn-outline" href="/mini-app/index.html">Open mini app</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <p class="footnote">© <span id="year"></span> LumenBro. Trade responsibly.</p>
+      <p class="footnote"><a href="/terms-privacy.html">Terms & Privacy</a> · For wallet setup/login, use the links from Telegram.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Keep year current without additional assets
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

@@ -1,0 +1,268 @@
+{
+  "id": "01989786-be43-777c-9f8e-3950358efa35",
+  "fingerprint": "sha256:73eff893e1170ace41b2b6e637ce01b289bb538691e32b237079b5ce2470bc45",
+  "voteList": [
+    {
+      "id": "e3024883-6a34-41b7-9478-eb54bc89fc84",
+      "userId": "e90a63a7-76f9-4f04-aebf-967f2e88f436",
+      "user": {
+        "userId": "e90a63a7-76f9-4f04-aebf-967f2e88f436",
+        "userName": "bpeterscqa@gmail.com",
+        "userEmail": "bpeterscqa@gmail.com",
+        "authenticators": [],
+        "apiKeys": [
+          {
+            "credential": {
+              "publicKey": "0200f57363af5d7bf6646f60d99365472b264a2d5c08414d06c4bb0b911475936d",
+              "type": "CREDENTIAL_TYPE_READ_WRITE_SESSION_KEY_P256"
+            },
+            "apiKeyId": "3b52a18b-1a2b-412c-9eb8-4edccfb7c10e",
+            "apiKeyName": "Read Write Session - 2025-08-10 23:58:35",
+            "createdAt": {
+              "seconds": "1754870315",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754870315",
+              "nanos": "0"
+            },
+            "expirationSeconds": "7776000"
+          },
+          {
+            "credential": {
+              "publicKey": "021e7dd202c39f2f35d1e28bfef6d31c01ac24fae78d30597286d954a9338a8398",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "96d51e11-dfc8-401e-8621-7aa4b1599a01",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754885549",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754885549",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "0385cdfb7a572e92bed6c3b1d3ec5252428661dc4b9dc51a3a066454e3094a45b7",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "35d37dd9-5b67-405e-9041-25f0e809c6a1",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754886369",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754886369",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "031f9fcad7ebf3da250d9acf7bab639e3f2309b75172e0caafd6bb7ba1687c943b",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "f64f1e14-e5b1-4b50-8f6f-92ef15ae714e",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754886888",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754886888",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "0348b24a7e0039b53661a6a000aa0f4cd61b2762e1c74c1f4b8fdc4a0a6c6f16ff",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "055a715a-87f2-4775-9978-bf09caa30c90",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754886941",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754886941",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "03873670969daecf0312c9d54d6ddc6de33002baf410a2b9f0239176f7fad77129",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "77a04f09-e3b1-4f29-961c-54bc33f59e7e",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754887446",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754887446",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "025d9fa500cb31d0cd2e57ae76f8c6c21ae3400b6a135b2d4a0747b9f120f8422f",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "0a18d501-6c05-49b3-8947-74587dcfdedb",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754887943",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754887943",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "028ddf97ad72d54975268da585a48d8eff82cddd115eac626688ef0b66bf04fecb",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "53e51ed6-22a2-445b-9cdd-14fb9a3a681c",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754888301",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754888301",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "03e9f2754570c893e467f203de1534e92eb0b1c64d370bdc4783f8d72999feebbe",
+              "type": "CREDENTIAL_TYPE_OTP_AUTH_KEY_P256"
+            },
+            "apiKeyId": "c0155c81-3470-4de0-bad7-098c37bdf577",
+            "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754888833",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754888833",
+              "nanos": "0"
+            },
+            "expirationSeconds": "3600"
+          },
+          {
+            "credential": {
+              "publicKey": "02d3424f01c2313dc7a3420c8baf8a3fc9b809c844f5abf51d52ab5d3d7f8bd9cd",
+              "type": "CREDENTIAL_TYPE_API_KEY_SECP256K1"
+            },
+            "apiKeyId": "782e6fa5-168f-4f9e-a75e-4464ea3c0bdf",
+            "apiKeyName": "API Key - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754852518",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754852518",
+              "nanos": "0"
+            }
+          },
+          {
+            "credential": {
+              "publicKey": "03086a6069fc7114fee82dbfc337dafaf87c7889cef7cfd9a318e5374abd0f2f99",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "339b3618-4bdb-44c4-96ab-eb6f05e566b7",
+            "apiKeyName": "Recovery Telegram Key - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754888313",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754888313",
+              "nanos": "0"
+            }
+          },
+          {
+            "credential": {
+              "publicKey": "0384cce05da165e87d9340283a9d706e57bae677095b9e74f75f4cafad02d92a25",
+              "type": "CREDENTIAL_TYPE_API_KEY_P256"
+            },
+            "apiKeyId": "06eea0ee-eee9-40eb-9ee4-31d893f0ce54",
+            "apiKeyName": "Recovery Telegram Key - bpeterscqa@gmail.com",
+            "createdAt": {
+              "seconds": "1754888846",
+              "nanos": "0"
+            },
+            "updatedAt": {
+              "seconds": "1754888846",
+              "nanos": "0"
+            }
+          }
+        ],
+        "userTags": [],
+        "oauthProviders": [],
+        "createdAt": {
+          "seconds": "1754852518",
+          "nanos": "0"
+        },
+        "updatedAt": {
+          "seconds": "1754852518",
+          "nanos": "0"
+        }
+      },
+      "activityId": "01989786-be43-777c-9f8e-3950358efa35",
+      "selection": "VOTE_SELECTION_APPROVED",
+      "message": "{\"type\":\"ACTIVITY_TYPE_CREATE_API_KEYS\",\"organizationId\":\"7997e541-d441-460f-8c4a-5f7fcb919cc8\",\"parameters\":{\"userId\":\"e90a63a7-76f9-4f04-aebf-967f2e88f436\",\"apiKeys\":[{\"apiKeyName\":\"Recovery Telegram Key - bpeterscqa@gmail.com\",\"publicKey\":\"0384cce05da165e87d9340283a9d706e57bae677095b9e74f75f4cafad02d92a25\",\"curveType\":\"API_KEY_CURVE_SECP256K1\"}]},\"timestampMs\":\"1754888846809\"}",
+      "publicKey": "03e9f2754570c893e467f203de1534e92eb0b1c64d370bdc4783f8d72999feebbe",
+      "signature": "30440220642d490ecc00ec9dbdb7b41e5e488a106d1f1724f6fd4b85835cf46e18af7ae902204209b800e507a0874a0ed7b10dd6d59a6f2200d6c0c31c8f9cfd4ce6461b14a0",
+      "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+      "createdAt": {
+        "seconds": "1754888846",
+        "nanos": "0"
+      }
+    }
+  ],
+  "permission": {
+    "canApprove": true,
+    "canReject": true
+  },
+  "createdAt": {
+    "seconds": "1754888846",
+    "nanos": "0"
+  },
+  "updatedAt": {
+    "seconds": "1754888846",
+    "nanos": "0"
+  },
+  "status": "ACTIVITY_STATUS_COMPLETED",
+  "failure": null,
+  "type": "ACTIVITY_TYPE_CREATE_API_KEYS",
+  "intent": {
+    "apiKeys": [
+      {
+        "apiKeyName": "Recovery Telegram Key - bpeterscqa@gmail.com",
+        "publicKey": "0384cce05da165e87d9340283a9d706e57bae677095b9e74f75f4cafad02d92a25"
+      }
+    ],
+    "userId": "e90a63a7-76f9-4f04-aebf-967f2e88f436"
+  },
+  "result": {
+    "apiKeyIds": [
+      "06eea0ee-eee9-40eb-9ee4-31d893f0ce54"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "id": "01989778-f35d-7778-a76a-6c2faa8b1ff0",
+  "fingerprint": "sha256:cfa0ac3a242cc87aa50af080e9455c3cd30c42ae446d51de6de35b3d3b1637a8",
+  "voteList": [
+    {
+      "id": "050255e3-a960-479a-86b2-21cc7c15831e",
+      "userId": "32d8fa24-2355-4970-a737-22bd5ecc8c82",
+      "user": null,
+      "activityId": "01989778-f35d-7778-a76a-6c2faa8b1ff0",
+      "selection": "VOTE_SELECTION_APPROVED",
+      "message": "{\"parameters\":{\"otpId\":\"c0f52c17-4e76-4696-803d-8c08617db08e\",\"otpCode\":\"6P648M\",\"targetPublicKey\":\"042ccdc6a2e449cb47f8deca065ad22df2524837428488106172cbf3647c40b6fabf1f6bafda37cc787924b9cca7e9a13ebc5c0d3c93e3b7b4830601acd70736db\",\"apiKeyName\":\"Recovery Session - bpeterscqa@gmail.com\",\"expirationSeconds\":\"3600\"},\"organizationId\":\"7997e541-d441-460f-8c4a-5f7fcb919cc8\",\"timestampMs\":\"1754887942892\",\"type\":\"ACTIVITY_TYPE_OTP_AUTH\"}",
+      "publicKey": "03a6e9853ed0d0ac91ae7aff7d06e9ac5956c9a3c0fe80693352ca64cbedbf3637",
+      "signature": "3046022100c5ead16e8d43f3a46a7a1ff0372bd6d91c818b498ca98f42b34765430b344a8a022100dcd2e1dbf4d30694d69fdd4bb5a9973572c54d20e2c0a6e88b75e66911a53e5a",
+      "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+      "createdAt": {
+        "seconds": "1754887943",
+        "nanos": "0"
+      }
+    }
+  ],
+  "permission": {
+    "canApprove": false,
+    "canReject": true
+  },
+  "createdAt": {
+    "seconds": "1754887943",
+    "nanos": "0"
+  },
+  "updatedAt": {
+    "seconds": "1754887943",
+    "nanos": "0"
+  },
+  "status": "ACTIVITY_STATUS_COMPLETED",
+  "failure": null,
+  "type": "ACTIVITY_TYPE_OTP_AUTH",
+  "intent": {
+    "otpId": "c0f52c17-4e76-4696-803d-8c08617db08e",
+    "otpCode": "6P648M",
+    "targetPublicKey": "042ccdc6a2e449cb47f8deca065ad22df2524837428488106172cbf3647c40b6fabf1f6bafda37cc787924b9cca7e9a13ebc5c0d3c93e3b7b4830601acd70736db",
+    "apiKeyName": "Recovery Session - bpeterscqa@gmail.com",
+    "expirationSeconds": "3600"
+  },
+  "result": {
+    "userId": "e90a63a7-76f9-4f04-aebf-967f2e88f436",
+    "apiKeyId": "0a18d501-6c05-49b3-8947-74587dcfdedb",
+    "credentialBundle": "gbuwJcrVURrmZuGPi9e61c8CUm7LxBAP4m1aFuEY71rCQzb4Rnunvtg7SDQ9y6sxtToTfr777Z5MwiD6TsoaVWCUuQBbhnphAhGxogRXFPDAPECnGZY"
+  }
+}
