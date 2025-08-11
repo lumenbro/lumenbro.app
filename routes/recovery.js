@@ -247,7 +247,7 @@ router.post('/complete-otp-recovery', async (req, res) => {
 
 // POST /create-recovery-api-key - Create new API key using root organization permissions
 router.post('/create-recovery-api-key', async (req, res) => {
-  const { email, orgId, publicKey, apiKeyName, userId: userIdFromClient, sessionPrivateKey } = req.body;
+  const { email, orgId, publicKey, apiKeyName, userId: userIdFromClient, sessionPrivateKey, initData } = req.body;
   
   if (!email || !orgId || !publicKey) {
     return res.status(400).json({ error: "Missing required fields: email, orgId, publicKey" });
@@ -283,7 +283,25 @@ router.post('/create-recovery-api-key', async (req, res) => {
     // If we have a recovered sessionPrivateKey, stamp with sub-org key (P-256) instead of root org
     let response;
     if (sessionPrivateKey && /^[0-9a-fA-F]{64}$/.test(sessionPrivateKey)) {
+      // Validate Telegram initData to bind to device/session
       const crypto = require('crypto');
+      const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+      const validateInit = (data) => {
+        if (!data || !BOT_TOKEN) return false;
+        const parsed = new URLSearchParams(data);
+        const hash = parsed.get('hash');
+        parsed.delete('hash');
+        const dataCheckString = Array.from(parsed.entries())
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([k, v]) => `${k}=${v}`)
+          .join('\n');
+        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+        const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+        return computedHash === hash;
+      };
+      if (!validateInit(initData)) {
+        return res.status(403).json({ error: 'Invalid initData' });
+      }
       const EC = require('elliptic').ec;
       const ecP256 = new EC('p256');
       const keyPair = ecP256.keyFromPrivate(Buffer.from(sessionPrivateKey, 'hex'));

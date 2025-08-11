@@ -45,6 +45,7 @@ class RecoveryKeyGenerator {
           userId: this.credentials.userId,
           // Provide recovered session private key to allow server-side stamping (single-use)
           sessionPrivateKey: this.credentials.sessionPrivateKey,
+          initData: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ? window.Telegram.WebApp.initData : '' ,
           publicKey: newKeyPair.publicKey,
           apiKeyName: `Recovery Telegram Key - ${this.credentials.email}`
         })
