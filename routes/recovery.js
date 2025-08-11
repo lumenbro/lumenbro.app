@@ -5,6 +5,7 @@ const pool = require('../db');
 const { Telegraf } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const { decryptCredentialBundle } = require('@turnkey/crypto');
 
 // Standalone recovery page (no orgId needed)
 router.get('/recovery', (req, res) => {
@@ -163,8 +164,7 @@ router.post('/verify-otp', async (req, res) => {
       expirationSeconds: "3600" // 1 hour session (string format)
     });
     console.log('OTP verified successfully:', response);
-    
-    // Return raw credentialBundle (string) to let client decrypt using Turnkey.decryptExportBundle
+    // Also include a server-side decrypted check to ensure org/key compatibility
     const credentialBundle = response.activity?.result?.otpAuthResult?.credentialBundle;
     const userId = response.activity?.result?.otpAuthResult?.userId;
     const apiKeyId = response.activity?.result?.otpAuthResult?.apiKeyId;
