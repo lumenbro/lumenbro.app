@@ -203,6 +203,12 @@ async function completeRecovery() {
           </button>
           <p style="font-size: 0.9em; color: #666;">Use web interface (temporary 1-hour session)</p>
         </div>
+        <div style="margin-top:8px;">
+          <span class="tk-badge">
+            <img src="/media/Turnkey%20-%20gray.svg" alt="Turnkey" />
+            Wallets secured by Turnkey
+          </span>
+        </div>
       </div>
     `;
 

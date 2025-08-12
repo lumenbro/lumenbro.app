@@ -128,6 +128,10 @@ window.register = async function () {
                 <p>Your email <strong>${email}</strong> has been registered with your wallet.</p>
                 <p>If you lose access to Telegram, you can recover using: <a href="/recovery" target="_blank">Email Recovery</a></p>
                 <p><strong>Keep safe:</strong> Your password and this email access!</p>
+                <div class="tk-badge" style="margin-top:8px;">
+                  <img src="/media/Turnkey%20-%20gray.svg" alt="Turnkey" />
+                  Wallets powered by Turnkey
+                </div>
             </div>
         `;
 

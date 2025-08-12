@@ -16,3 +16,19 @@ button {
     padding: 10px 20px;
     font-size: 16px;
 }
+
+/* Turnkey badge for mini-app modals */
+.tk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f3f5;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.tk-badge img { height: 14px; display: inline-block; vertical-align: middle; }

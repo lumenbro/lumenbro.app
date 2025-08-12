@@ -45,7 +45,10 @@
             <a class="btn btn-ghost" href="#features">Learn more</a>
           </div>
           <% if (ALLOW_TURNKEY_BRAND) { %>
-          <div class="partner-badge" aria-label="Integration badge">Integrated with <%= walletProviderName %></div>
+          <div class="partner-badge" aria-label="Integration badge">
+            <img src="/media/Turnkey%20-%20gray.svg" alt="Turnkey" class="partner-logo" />
+            Wallets powered by <%= walletProviderName %>
+          </div>
           <% } %>
           <p class="disclaimer">Use at your own risk. Test with small amounts of funds.</p>
         </div>
@@ -78,10 +81,16 @@
             <p>Invite friends and earn rewards as they trade. Simple and transparent.</p>
           </article>
           <article class="feature-card">
-            <div class="icon">🔐</div>
+            <div class="icon">
+              <% if (ALLOW_TURNKEY_BRAND) { %>
+                <img src="/media/Turnkey%20-%20gray.svg" alt="Turnkey" class="feature-logo" />
+              <% } else { %>
+                🔐
+              <% } %>
+            </div>
             <h3>
               <% if (ALLOW_TURNKEY_BRAND) { %>
-                <%= walletProviderName %> Embedded Wallets <span class="badge live">Integrated</span>
+                Embedded Wallets <span class="badge live">Powered by <%= walletProviderName %></span>
               <% } else { %>
                 Embedded Wallets
               <% } %>
