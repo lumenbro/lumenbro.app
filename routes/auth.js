@@ -330,6 +330,59 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
+// DB session-only logout (idempotent, does not touch email or wallet data)
+router.post('/api/session/logout', async (req, res) => {
+  try {
+    const { telegram_id } = req.body;
+    if (!telegram_id) {
+      return res.status(400).json({ success: false, error: 'telegram_id is required' });
+    }
+
+    await pool.query(`
+      UPDATE users SET 
+        turnkey_session_id = NULL, 
+        temp_api_public_key = NULL, 
+        temp_api_private_key = NULL, 
+        kms_encrypted_session_key = NULL,
+        kms_key_id = NULL,
+        session_expiry = NULL,
+        session_created_at = NULL
+      WHERE telegram_id = $1
+    `, [telegram_id]);
+
+    const check = await pool.query(`
+      SELECT turnkey_session_id, temp_api_public_key, temp_api_private_key,
+             kms_encrypted_session_key, kms_key_id, session_expiry, session_created_at
+      FROM users WHERE telegram_id = $1
+    `, [telegram_id]);
+
+    const row = check.rows[0] || null;
+    const allNull = row ? Object.values(row).every(v => v === null) : true;
+    return res.json({ success: allNull, telegram_id, session_fields: row });
+  } catch (error) {
+    console.error('❌ session/logout error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Inspect current session field state
+router.get('/api/session/status/:telegram_id', async (req, res) => {
+  try {
+    const { telegram_id } = req.params;
+    const check = await pool.query(`
+      SELECT turnkey_session_id, temp_api_public_key, temp_api_private_key,
+             kms_encrypted_session_key, kms_key_id, session_expiry, session_created_at
+      FROM users WHERE telegram_id = $1
+    `, [telegram_id]);
+    const row = check.rows[0] || null;
+    const allNull = row ? Object.values(row).every(v => v === null) : true;
+    res.json({ telegram_id, session_fields: row, session_empty: allNull });
+  } catch (error) {
+    console.error('❌ session/status error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Add this new endpoint for automated cloud storage clearing
 router.post('/api/clear-user-data', async (req, res) => {
   try {
