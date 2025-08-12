@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LumenBro — Trade on Stellar via Telegram</title>
-  <meta name="description" content="LumenBro is a Telegram bot for easy trading on the Stellar network: buy/sell assets, copy trading with streaming, referral rewards, and Turnkey Passkeys (coming soon)." />
+  <meta name="description" content="LumenBro is a Telegram bot for easy trading on the Stellar network: buy/sell assets, copy trading with streaming, referral rewards, and embedded non-custodial wallets." />
   <meta name="theme-color" content="#0b1225" />
   <meta property="og:title" content="LumenBro — Trade on Stellar via Telegram" />
   <meta property="og:description" content="Trade on the Stellar network directly from Telegram. Simple, fast, and secure." />
@@ -39,11 +39,14 @@
       <div class="container hero-grid">
         <div class="hero-copy">
           <h1 class="hero-title">Trade Stellar. Simply.</h1>
-          <p class="hero-subtitle">A Telegram bot for seamless trading on the Stellar network. Non‑custodial wallets with Turnkey passkeys, fast execution, copy trading, and rewards — right from your chat.</p>
+          <p class="hero-subtitle">A Telegram bot for seamless trading on the Stellar network. Non‑custodial <%= walletProviderDescriptor %>, fast execution, copy trading, and rewards — right from your chat.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="https://t.me/lumenbrobot" rel="noopener" target="_blank">Join the bot</a>
             <a class="btn btn-ghost" href="#features">Learn more</a>
           </div>
+          <% if (ALLOW_TURNKEY_BRAND) { %>
+          <div class="partner-badge" aria-label="Integration badge">Integrated with <%= walletProviderName %></div>
+          <% } %>
           <p class="disclaimer">Use at your own risk. Test with small amounts of funds.</p>
         </div>
         <div class="hero-visual">
@@ -76,8 +79,14 @@
           </article>
           <article class="feature-card">
             <div class="icon">🔐</div>
-            <h3>Turnkey Passkeys <span class="badge live">Integrated</span></h3>
-            <p>Extra-secure, non‑custodial wallet management using passkeys and sub‑org isolation.</p>
+            <h3>
+              <% if (ALLOW_TURNKEY_BRAND) { %>
+                <%= walletProviderName %> Embedded Wallets <span class="badge live">Integrated</span>
+              <% } else { %>
+                Embedded Wallets
+              <% } %>
+            </h3>
+            <p>Extra‑secure, non‑custodial wallet management using embedded wallets and sub‑org isolation.</p>
           </article>
         </div>
       </div>
@@ -90,7 +99,7 @@
           <article class="feature-card">
             <div class="icon">🗝️</div>
             <h3>Non‑custodial by design</h3>
-            <p>Passkey‑backed wallets via Turnkey. Each user operates in an isolated sub‑organization for controlled signing.</p>
+            <p>Embedded, non‑custodial wallets<% if (ALLOW_TURNKEY_BRAND) { %> via <%= walletProviderName %><% } %>. Each user operates in an isolated sub‑organization for controlled signing.</p>
           </article>
           <article class="feature-card">
             <div class="icon">🛡️</div>
@@ -123,7 +132,14 @@
   <footer class="site-footer">
     <div class="container footer-grid">
       <p class="footnote">© <span id="year"></span> LumenBro. Trade responsibly.</p>
-      <p class="footnote"><a href="/terms-privacy.html">Terms & Privacy</a> · For wallet setup/login, use the links from Telegram.</p>
+      <p class="footnote">
+        <% if (ALLOW_TURNKEY_BRAND) { %>
+          <a href="/terms-privacy.html">Terms & Privacy</a>
+        <% } else { %>
+          <a href="/terms-privacy-generic.html">Terms & Privacy</a>
+        <% } %>
+         · For wallet setup/login, use the links from Telegram.
+      </p>
     </div>
   </footer>
 

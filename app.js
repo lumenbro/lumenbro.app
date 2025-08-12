@@ -38,6 +38,11 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// Public branding toggles (legal compliance)
+app.locals.ALLOW_TURNKEY_BRAND = process.env.ALLOW_TURNKEY_BRAND === 'true';
+app.locals.walletProviderName = app.locals.ALLOW_TURNKEY_BRAND ? 'Turnkey' : '';
+app.locals.walletProviderDescriptor = app.locals.ALLOW_TURNKEY_BRAND ? 'Turnkey embedded wallets' : 'embedded wallets';
+
 app.use(authRoutes);
 app.use(loginRoutes);
 app.use(recoveryRoutes);

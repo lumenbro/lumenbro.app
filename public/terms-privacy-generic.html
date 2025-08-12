@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LumenBro Terms and Privacy Policy</title>
-  <meta name="description" content="Terms of Service and Privacy Policy for LumenBro, a Telegram bot for trading on the Stellar network." />
+  <title>Terms and Privacy Policy</title>
+  <meta name="description" content="Terms of Service and Privacy Policy for the LumenBro Telegram trading bot." />
   <meta name="theme-color" content="#0b1225" />
   <link rel="stylesheet" href="/styles/site.css" />
 </head>
@@ -32,7 +32,7 @@
   <main class="legal">
     <div class="container">
       <article class="doc">
-        <h1>LumenBro Terms and Privacy Policy</h1>
+        <h1>Terms and Privacy Policy</h1>
         <p class="footnote">Last Updated: June 8, 2025</p>
 
         <h2>Terms of Service</h2>
@@ -70,7 +70,7 @@
         <p>We may collect:</p>
         <ul>
           <li><strong>Wallet Data:</strong> Public Stellar wallet addresses and trade metrics (e.g., XLM transaction hashes and volume) for referral program purposes. Wallet rankings are generated using on-chain data, not user-submitted data.</li>
-          <li><strong>Turnkey Wallet Data:</strong> Turnkey sub-organization identifiers, key identifiers, public keys, and status flags stored in our shared PostgreSQL database, used for secure wallet management. Session keys are encrypted with AWS KMS before storage; plaintext session keys are never stored.</li>
+          <li><strong>Embedded Wallet Data:</strong> Sub-organization identifiers, key identifiers, public keys, and status flags stored in our shared PostgreSQL database, used for secure wallet management. Session keys are encrypted with AWS KMS before storage; plaintext session keys are never stored.</li>
           <li><strong>Usage Data:</strong> IP addresses, browser information, and interaction logs when you access our website or Telegram bot.</li>
           <li><strong>Contact Data:</strong> Telegram ID, email addresses, or X handles provided for feedback or inquiries.</li>
         </ul>
@@ -79,7 +79,7 @@
         <p>Your data is used to:</p>
         <ul>
           <li>Provide and improve the Service, including calculating referral program credits and monitoring system performance.</li>
-          <li>Manage wallets and sessions, including passkey-based Turnkey operations consistent with our shared KMS configuration.</li>
+          <li>Manage wallets and sessions, including session creation consistent with our shared KMS configuration.</li>
           <li>Respond to your inquiries or feedback.</li>
           <li>Monitor and prevent unauthorized access or abuse of the Service.</li>
         </ul>
@@ -87,8 +87,8 @@
         <h3>4. Data Storage and Security</h3>
         <ul>
           <li><strong>Seed Phrases:</strong> Generated and displayed once during registration; we do not store or access your seed phrases. Users can export their private keys at any time from the Wallet Management tab. Exports display the Stellar S‑address and allow viewing upon registration with Export Wallet.</li>
-          <li><strong>Private Keys (via Turnkey):</strong> Private keys are stored within Turnkey’s audited, secure infrastructure. Keys are never exposed to LumenBro servers; signing operations are performed through Turnkey APIs on your behalf.</li>
-          <li><strong>Turnkey Sessions:</strong> Session keys are encrypted via AWS KMS (Key ID 27958fe3-0f3f-44d4-b21d-9d820d5ad96c, Region us-west-1) prior to database storage and are decrypted only by authorized services.</li>
+          <li><strong>Private Keys (via provider):</strong> Private keys are stored within an audited, secure infrastructure operated by the embedded wallet provider. Keys are never exposed to LumenBro servers; signing operations are performed through provider APIs on your behalf.</li>
+          <li><strong>Sessions:</strong> Session keys are encrypted via AWS KMS (Key ID 27958fe3-0f3f-44d4-b21d-9d820d5ad96c, Region us-west-1) prior to database storage and are decrypted only by authorized services.</li>
           <li><strong>Data Storage:</strong> Usage and contact data are stored securely on AWS infrastructure, with access restricted to authorized personnel.</li>
           <li><strong>Retention:</strong> We retain data only as long as necessary for the purposes outlined or as required by law.</li>
         </ul>
@@ -97,7 +97,7 @@
         <p>We do not sell or share your personal data with third parties, except:</p>
         <ul>
           <li>To comply with legal obligations.</li>
-          <li>With service providers (e.g., AWS, Turnkey) under strict confidentiality and security obligations.</li>
+          <li>With service providers (e.g., AWS, embedded wallet providers) under strict confidentiality and security obligations.</li>
         </ul>
 
         <h3>6. Your Rights</h3>
@@ -125,7 +125,7 @@
   <footer class="site-footer">
     <div class="container footer-grid">
       <p class="footnote">© <span id="year"></span> LumenBro. Trade responsibly.</p>
-      <p class="footnote"><a href="/terms-privacy.html">Terms & Privacy</a></p>
+      <p class="footnote"><a href="/terms-privacy-generic.html">Terms & Privacy</a></p>
     </div>
   </footer>
 
