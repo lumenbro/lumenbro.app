@@ -367,6 +367,14 @@ async function getWalletInfo(email, apiKeyPair) {
 // ADDED: Helper function to display export results
 function displayExportResults(result, stellarAddress) {
     const resultsDiv = document.getElementById('exportResults');
+    // Store values for download handlers
+    try {
+        window.currentExportData = {
+            stellarPrivateKey: result.needsManualDecryption ? '' : (result.stellarPrivateKey || ''),
+            stellarSAddress: result.needsManualDecryption ? '' : (result.stellarSAddress || ''),
+            stellarAddress: stellarAddress || ''
+        };
+    } catch (e) {}
     
     if (result.needsManualDecryption) {
         // Show manual decryption info
@@ -408,7 +416,7 @@ function displayExportResults(result, stellarAddress) {
             </div>
         `;
     } else {
-        // Show normal export results
+        // Show normal export results (adds encrypted download option)
         resultsDiv.innerHTML = `
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px solid #e9ecef; margin-top: 20px;">
                 <h3>✅ Export Successful!</h3>
@@ -439,7 +447,10 @@ function displayExportResults(result, stellarAddress) {
                     <button onclick="copyToClipboard('${stellarAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Public Address</button>
                 </div>
 
-                <button onclick="downloadBackup('${result.stellarPrivateKey}', '${result.stellarSAddress}', '${stellarAddress}')" style="background: #27ae60; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 20px; width: 100%;">💾 Download Backup File</button>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 16px;">
+                    <button onclick="downloadPlainBackupFromResults()" style="background: #27ae60; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">💾 Download Plaintext Backup (.txt)</button>
+                    <button onclick="downloadEncryptedBackupFromResults()" style="background: #6c63ff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">🔐 Download Encrypted Backup (.lbk)</button>
+                </div>
             </div>
         `;
     }
@@ -513,6 +524,43 @@ function downloadBackup(stellarPrivateKey, stellarSAddress, stellarAddress) {
     } catch (error) {
         console.error('Download error:', error);
         showExportStatus('❌ Download failed: ' + error.message, 'error');
+    }
+}
+
+// Plaintext download from results panel
+function downloadPlainBackupFromResults() {
+    try {
+        const data = window.currentExportData || {};
+        const content = ExportUtils.createBackupFileContent(
+            data.stellarPrivateKey || '',
+            data.stellarSAddress || '',
+            data.stellarAddress || ''
+        );
+        ExportUtils.downloadAsFile(content, `lumenbro-wallet-backup-${Date.now()}.txt`);
+        showExportStatus('✅ Plaintext backup downloaded!', 'success');
+    } catch (e) {
+        console.error('Plaintext backup download error:', e);
+        showExportStatus('❌ Download failed: ' + e.message, 'error');
+    }
+}
+
+// Encrypted download from results panel
+async function downloadEncryptedBackupFromResults() {
+    try {
+        const data = window.currentExportData || {};
+        const ok = await ExportUtils.downloadEncryptedBackupFile(
+            data.stellarPrivateKey || '',
+            data.stellarSAddress || '',
+            data.stellarAddress || ''
+        );
+        if (ok) {
+            showExportStatus('✅ Encrypted backup downloaded!', 'success');
+        } else {
+            showExportStatus('❌ Encrypted backup cancelled or failed', 'error');
+        }
+    } catch (e) {
+        console.error('Encrypted backup download error:', e);
+        showExportStatus('❌ Encrypted backup failed: ' + e.message, 'error');
     }
 }
 
