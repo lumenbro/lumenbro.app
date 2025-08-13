@@ -71,6 +71,9 @@
             } else if (action === 'recover') {
                 window.recover();
             } else if (action === 'export') {
+                // Ensure orgId/email are available to the export form
+                window.orgId = window.params.get('orgId') || window.orgId || '';
+                window.email = window.params.get('email') || window.email || '';
                 window.showExportForm();
             } else if (action === 'auto-clear') {
                 window.autoClearCloudStorage();

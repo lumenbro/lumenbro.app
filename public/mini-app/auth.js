@@ -171,7 +171,15 @@ window.register = async function () {
             console.log('  Wallet ID:', walletId);
         }
         
-        // Add export wallet option
+        // Compute subOrgId for export redirect (fallback to result.subOrgId)
+        const computedSubOrgId = (
+            result.subOrgId ||
+            (result.activity && result.activity.result && result.activity.result.createSubOrganizationResultV7
+                ? result.activity.result.createSubOrganizationResultV7.subOrganizationId
+                : '')
+        );
+
+        // Add export wallet option (redirect to unified export flow)
         const exportSection = document.createElement('div');
         exportSection.innerHTML = `
             <div class="export-section" style="margin-top: 20px; padding: 15px; border: 2px solid #4CAF50; border-radius: 8px; background: #f0f8f0;">
@@ -179,7 +187,7 @@ window.register = async function () {
                 <p style="margin-bottom: 15px; color: #555;">
                     <strong>Important:</strong> Export your wallet keys for backup. You'll need these if you lose access to Telegram.
                 </p>
-                <button onclick="exportWallet()" class="btn btn-warning" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                <button onclick="window.location.href='/mini-app/index.html?action=export&orgId=' + (sessionStorage.getItem('subOrgId') || '${computedSubOrgId}') + '&email=${encodeURIComponent(email)}'" class="btn btn-warning" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
                     📤 Export Wallet Keys
                 </button>
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
