@@ -447,10 +447,7 @@ function displayExportResults(result, stellarAddress) {
                     <button onclick="copyToClipboard('${stellarAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Public Address</button>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 16px;">
-                    <button onclick="downloadEncryptedBackupFromResults()" style="background: #6c63ff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">🔐 Download Encrypted Backup (.lbk)</button>
-                    <button onclick="copyEncryptedBackupJsonFromResults()" style="background: #4caf50; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">📋 Copy Encrypted Backup (JSON)</button>
-                </div>
+                <!-- Download/JSON options removed per mobile constraints -->
             </div>
         `;
     }
@@ -759,12 +756,12 @@ function showExportResults(exportResult) {
                 <label style="font-weight: bold; display: block; margin-bottom: 5px;">Stellar Private Key (Hex):</label>
                 <div style="position: relative;">
                     <input type="password" id="privateKeyDisplay" value="${exportResult.stellarPrivateKey}" 
-                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px;">
-                    <button onclick="toggleKeyVisibility('privateKeyDisplay')" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px; letter-spacing: 2px;">
+                    <button onclick="toggleKeyVisibility('privateKeyDisplay', this)" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
                         👁️ Show
                     </button>
                 </div>
-                <button onclick="copyElementToClipboard('privateKeyDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                <button onclick="copyMaskedInput('privateKeyDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
                     📋 Copy Private Key
                 </button>
             </div>
@@ -773,12 +770,12 @@ function showExportResults(exportResult) {
                 <label style="font-weight: bold; display: block; margin-bottom: 5px;">Stellar S-Address:</label>
                 <div style="position: relative;">
                     <input type="password" id="sAddressDisplay" value="${exportResult.stellarSAddress}" 
-                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px;">
-                    <button onclick="toggleKeyVisibility('sAddressDisplay')" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                           readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 12px; letter-spacing: 1px;">
+                    <button onclick="toggleKeyVisibility('sAddressDisplay', this)" style="position: absolute; right: 5px; top: 5px; background: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
                         👁️ Show
                     </button>
                 </div>
-                <button onclick="copyElementToClipboard('sAddressDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                <button onclick="copyMaskedInput('sAddressDisplay')" style="margin-top: 5px; background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
                     📋 Copy S-Address
                 </button>
             </div>
@@ -793,20 +790,7 @@ function showExportResults(exportResult) {
                 </div>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Download Backup File:</label>
-                <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                    <button onclick="downloadBackupFile()" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
-                        💾 Download Plaintext Backup (.txt)
-                    </button>
-                    <button onclick="downloadEncryptedBackupFile()" style="background: #6c63ff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
-                        🔐 Download Encrypted Backup (.lbk)
-                    </button>
-                </div>
-                <p style="font-size: 12px; color: #666; margin-top: 5px;">
-                    Save securely offline. Prefer the encrypted backup on mobile.
-                </p>
-            </div>
+            <!-- Download options removed per mobile constraints -->
             
             <div style="text-align: center; margin-top: 30px;">
                 <button onclick="confirmExportBackup()" style="background: #d32f2f; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px;">
@@ -826,16 +810,15 @@ function showExportResults(exportResult) {
 }
 
 // Helper functions for export modal
-function toggleKeyVisibility(elementId) {
+function toggleKeyVisibility(elementId, btnEl) {
     const element = document.getElementById(elementId);
-    const button = element.nextElementSibling;
-    
+    const button = btnEl || element.nextElementSibling;
     if (element.type === 'password') {
         element.type = 'text';
-        button.textContent = '🙈 Hide';
+        if (button) button.textContent = '🙈 Hide';
     } else {
         element.type = 'password';
-        button.textContent = '👁️ Show';
+        if (button) button.textContent = '👁️ Show';
     }
 }
 
@@ -877,6 +860,18 @@ function closeExportModal() {
         modal.remove();
         showStatus('Export modal closed', 'info');
     }
+}
+
+// Copy input value regardless of masking
+function copyMaskedInput(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const prevType = el.type;
+    el.type = 'text';
+    el.select();
+    document.execCommand('copy');
+    el.type = prevType;
+    showStatus('✅ Copied to clipboard!', 'success');
 }
 
 // Function to automatically clear cloud storage
