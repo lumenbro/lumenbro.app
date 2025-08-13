@@ -745,11 +745,16 @@ function showExportResults(exportResult) {
             
             <div style="margin-bottom: 20px;">
                 <label style="font-weight: bold; display: block; margin-bottom: 5px;">Download Backup File:</label>
-                <button onclick="downloadBackupFile()" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
-                    💾 Download Backup File
-                </button>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                    <button onclick="downloadBackupFile()" style="background: #FF9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
+                        💾 Download Plaintext Backup (.txt)
+                    </button>
+                    <button onclick="downloadEncryptedBackupFile()" style="background: #6c63ff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">
+                        🔐 Download Encrypted Backup (.lbk)
+                    </button>
+                </div>
                 <p style="font-size: 12px; color: #666; margin-top: 5px;">
-                    Save this file securely offline. It contains all your wallet information.
+                    Save securely offline. Prefer the encrypted backup on mobile.
                 </p>
             </div>
             
@@ -966,5 +971,28 @@ function downloadBackupFile() {
     } catch (error) {
         console.error('Download error:', error);
         showStatus('❌ Download failed: ' + error.message, 'error');
+    }
+}
+
+// Download encrypted backup file function
+async function downloadEncryptedBackupFile() {
+    try {
+        const privateKeyInput = document.getElementById('privateKeyDisplay');
+        const sAddressInput = document.getElementById('sAddressDisplay');
+        if (!privateKeyInput || !sAddressInput) {
+            throw new Error('Export data not found');
+        }
+        const stellarPrivateKey = privateKeyInput.value;
+        const stellarSAddress = sAddressInput.value;
+        const stellarAddress = sessionStorage.getItem('stellarAddress') || 'GCRIE4GIELZQT6E2LWY7NIAG3WOEFA7ZV7ZVKKDON7XQ7AZJ37B3RFHI';
+        const ok = await ExportUtils.downloadEncryptedBackupFile(stellarPrivateKey, stellarSAddress, stellarAddress);
+        if (ok) {
+            showStatus('✅ Encrypted backup downloaded!', 'success');
+        } else {
+            showStatus('❌ Encrypted backup download cancelled or failed', 'error');
+        }
+    } catch (error) {
+        console.error('Encrypted backup download error:', error);
+        showStatus('❌ Encrypted backup failed: ' + error.message, 'error');
     }
 }
