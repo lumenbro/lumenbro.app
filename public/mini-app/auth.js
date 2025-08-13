@@ -448,8 +448,8 @@ function displayExportResults(result, stellarAddress) {
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 16px;">
-                    <button onclick="downloadPlainBackupFromResults()" style="background: #27ae60; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">💾 Download Plaintext Backup (.txt)</button>
                     <button onclick="downloadEncryptedBackupFromResults()" style="background: #6c63ff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">🔐 Download Encrypted Backup (.lbk)</button>
+                    <button onclick="copyEncryptedBackupJsonFromResults()" style="background: #4caf50; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">📋 Copy Encrypted Backup (JSON)</button>
                 </div>
             </div>
         `;
@@ -528,22 +528,6 @@ function downloadBackup(stellarPrivateKey, stellarSAddress, stellarAddress) {
 }
 
 // Plaintext download from results panel
-function downloadPlainBackupFromResults() {
-    try {
-        const data = window.currentExportData || {};
-        const content = ExportUtils.createBackupFileContent(
-            data.stellarPrivateKey || '',
-            data.stellarSAddress || '',
-            data.stellarAddress || ''
-        );
-        ExportUtils.downloadAsFile(content, `lumenbro-wallet-backup-${Date.now()}.txt`);
-        showExportStatus('✅ Plaintext backup downloaded!', 'success');
-    } catch (e) {
-        console.error('Plaintext backup download error:', e);
-        showExportStatus('❌ Download failed: ' + e.message, 'error');
-    }
-}
-
 // Encrypted download from results panel
 async function downloadEncryptedBackupFromResults() {
     try {
@@ -562,6 +546,23 @@ async function downloadEncryptedBackupFromResults() {
         console.error('Encrypted backup download error:', e);
         // If crash/black screen occurs in WebView, suggest external decrypt page
         showExportStatus('❌ Encrypted backup failed. Use /tools/decrypt-backup.html with the .lbk later.', 'error');
+    }
+}
+
+// Copy encrypted backup JSON (clipboard)
+async function copyEncryptedBackupJsonFromResults() {
+    try {
+        const data = window.currentExportData || {};
+        const content = await ExportUtils.promptEncryptedBackupJson(
+            data.stellarPrivateKey || '',
+            data.stellarSAddress || '',
+            data.stellarAddress || ''
+        );
+        await navigator.clipboard.writeText(content);
+        showExportStatus('✅ Encrypted backup JSON copied. You can paste into a secure note or /tools/decrypt-backup.html later.', 'success');
+    } catch (e) {
+        console.error('Copy encrypted JSON error:', e);
+        showExportStatus('❌ Copy failed: ' + e.message, 'error');
     }
 }
 

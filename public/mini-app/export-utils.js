@@ -444,6 +444,14 @@ class ExportUtils {
       return false;
     }
   }
+
+  // Prompt for password and return encrypted backup JSON (for clipboard)
+  static async promptEncryptedBackupJson(stellarPrivateKey, stellarSAddress, stellarAddress, suggestedPassword) {
+    const password = suggestedPassword || prompt('Enter a password to encrypt your backup (same as login password):');
+    if (!password) throw new Error('Password required to encrypt backup');
+    const content = await this.createEncryptedBackupFileContent(stellarPrivateKey, stellarSAddress, stellarAddress, password);
+    return content;
+  }
 }
 
 // Make available globally
