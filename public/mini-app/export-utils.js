@@ -322,15 +322,35 @@ class ExportUtils {
 
   // Download as binary (octet-stream) file
   static downloadBinary(content, filename) {
-    const blob = new Blob([content], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Prefer server-assisted download for mobile WebView stability
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(content)));
+      fetch('/api/temp-backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, mime: 'application/octet-stream', base64 })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.url) throw new Error('Temp upload failed');
+        // Open download URL to force attachment via Content-Disposition
+        window.location.href = data.url;
+      })
+      .catch(err => {
+        console.error('Server-assisted download failed, falling back to blob:', err);
+        const blob = new Blob([content], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    } catch (e) {
+      console.error('downloadBinary error:', e);
+    }
   }
   
            // Create backup file content

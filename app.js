@@ -27,6 +27,7 @@ const recoveryRoutes = require('./routes/recovery');
 const chartsRoutes = require('./routes/charts');
 const exportRoutes = require('./routes/export');
 const walletRoutes = require('./routes/wallet');
+const backupRoutes = require('./routes/backup');
 
 // Add cache-busting for development
 if (process.env.NODE_ENV !== 'production') {
@@ -49,6 +50,7 @@ app.use(recoveryRoutes);
 app.use('/api/charts', chartsRoutes);
 app.use(exportRoutes);
 app.use('/api', walletRoutes);
+app.use(backupRoutes);
 
 // Landing
 app.get('/', (req, res) => {

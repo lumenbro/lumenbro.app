@@ -560,7 +560,8 @@ async function downloadEncryptedBackupFromResults() {
         }
     } catch (e) {
         console.error('Encrypted backup download error:', e);
-        showExportStatus('❌ Encrypted backup failed: ' + e.message, 'error');
+        // If crash/black screen occurs in WebView, suggest external decrypt page
+        showExportStatus('❌ Encrypted backup failed. Use /tools/decrypt-backup.html with the .lbk later.', 'error');
     }
 }
 
