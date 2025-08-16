@@ -1,4 +1,57 @@
 // public/mini-app/clear.js - Client-side clear (Cloud Storage only)
+
+// Show warning before clearing data
+window.showClearWarning = function() {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); z-index: 10000; display: flex;
+        align-items: center; justify-content: center; padding: 20px;
+    `;
+    
+    warningDiv.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+            <h3 style="color: #dc3545; margin-bottom: 15px;">Clear All Data?</h3>
+            <p style="color: #666; margin-bottom: 20px; line-height: 1.5;">
+                This will remove all stored keys and data from your device. 
+                You'll need to log in again to access your wallet.
+            </p>
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <h4 style="color: #856404; margin-top: 0; font-size: 14px;">What will be cleared:</h4>
+                <ul style="text-align: left; margin: 0; padding-left: 20px; font-size: 13px; color: #666;">
+                    <li>Encrypted API keys</li>
+                    <li>Session data</li>
+                    <li>Wallet credentials</li>
+                    <li>Local storage data</li>
+                </ul>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="this.closest('div[style*=\'position: fixed\']').remove()" 
+                        style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                    Cancel
+                </button>
+                <button onclick="window.confirmClear()" 
+                        style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                    Yes, Clear Data
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(warningDiv);
+};
+
+// Confirm clear action
+window.confirmClear = function() {
+    // Remove warning modal
+    const warningModal = document.querySelector('div[style*="position: fixed"]');
+    if (warningModal) warningModal.remove();
+    
+    // Proceed with clearing
+    window.unregister();
+};
+
 window.unregister = async function () {
     try {
         showStatus('Clearing local data...', 'loading');

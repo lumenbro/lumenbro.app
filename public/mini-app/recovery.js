@@ -117,9 +117,14 @@ async function recover() {
           </ul>
         </div>
         
-        <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-top: 15px;">
-          Try Again
-        </button>
+        <div style="margin-top: 15px;">
+          <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+            🔄 Try Again
+          </button>
+          <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+            ← Back to Main Menu
+          </button>
+        </div>
       </div>
     `;
   }
@@ -197,12 +202,22 @@ async function completeRecovery() {
           <p style="font-size: 0.9em; color: #666;">Recommended: Create new encrypted keys for Telegram bot access</p>
         </div>
 
-        <div style="margin: 15px 0;">
-          <button onclick="accessWallet('${orgId}')" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
-            💰 Access Wallet Directly
+        <div style="margin: 15px 0; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #dee2e6;">
+          <h4 style="margin-top: 0; color: #6c757d;">🚧 Wallet Access (Coming Soon)</h4>
+          <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+            Direct wallet access is currently under development. For now, please use the Telegram bot for trading.
+          </p>
+          <button onclick="setupBot()" style="background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 0.9em;">
+            🤖 Setup Bot Access
           </button>
-          <p style="font-size: 0.9em; color: #666;">Use web interface (temporary 1-hour session)</p>
         </div>
+        
+        <div style="margin: 15px 0;">
+          <button onclick="goBackToMain()" style="background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 0.9em;">
+            ← Back to Main Menu
+          </button>
+        </div>
+        
         <div style="margin-top:8px;">
           <span class="tk-badge">
             <img src="/media/Turnkey%20-%20gray.svg" alt="Turnkey" />
@@ -214,7 +229,30 @@ async function completeRecovery() {
 
   } catch (error) {
     console.error('Recovery completion error:', error);
-    document.getElementById('content').innerHTML = 'Recovery completion failed: ' + error.message;
+    document.getElementById('content').innerHTML = `
+      <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+        <h3>❌ Recovery Completion Failed</h3>
+        <p><strong>Error:</strong> ${error.message}</p>
+        
+        <div style="margin-top: 15px;">
+          <h4>💡 Possible Solutions:</h4>
+          <ul style="text-align: left;">
+            <li>The OTP code may have expired - try recovery again</li>
+            <li>Make sure you entered the 6-digit code correctly</li>
+            <li>Check your email for the recovery code</li>
+          </ul>
+        </div>
+        
+        <div style="margin-top: 15px;">
+          <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+            🔄 Start Recovery Again
+          </button>
+          <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+            ← Back to Main Menu
+          </button>
+        </div>
+      </div>
+    `;
   }
 }
 
@@ -253,15 +291,45 @@ function accessWallet() {
 function setupBot() {
   // Guide user to bot setup
   document.getElementById('content').innerHTML = `
-    <h3>🤖 Bot Trading Setup</h3>
-    <p>Your wallet is now recovered! To enable bot trading:</p>
-    <ol>
-      <li>Open Telegram and find the LumenBro bot</li>
-      <li>Send /start to the bot</li>
-      <li>Your recovered wallet will be automatically detected</li>
-      <li>You can now use copy trading features</li>
-    </ol>
-    <button onclick="openTelegram()">Open Telegram Bot</button>
+    <div style="background: #e7f3ff; border: 1px solid #b3d7ff; padding: 20px; margin: 10px 0; border-radius: 5px;">
+      <h3>🤖 Bot Trading Setup</h3>
+      <p>Your wallet is now recovered! To enable bot trading:</p>
+      <ol style="text-align: left;">
+        <li>Open Telegram and find the LumenBro bot</li>
+        <li>Send /start to the bot</li>
+        <li>Your recovered wallet will be automatically detected</li>
+        <li>You can now use copy trading features</li>
+      </ol>
+      
+      <div style="margin: 15px 0;">
+        <button onclick="openTelegram()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+          📱 Open Telegram Bot
+        </button>
+        <button onclick="goBackToMain()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+          ← Back to Main Menu
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function goBackToMain() {
+  // Return to the main mini-app interface
+  document.getElementById('content').innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <h1>Welcome to LumenBro Trading Bot</h1>
+      <div style="margin: 20px 0;">
+        <button onclick="window.register()" style="background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
+          📝 Register
+        </button>
+        <button onclick="window.login()" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
+          🔐 Login
+        </button>
+        <button onclick="window.recover()" style="background: #ffc107; color: #212529; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
+          🔑 Recover
+        </button>
+      </div>
+    </div>
   `;
 }
 
@@ -345,12 +413,17 @@ async function generateNewTelegramKeys() {
                         </ul>
                     </div>
                     
-                    <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                        🐛 Show Debug Info
-                    </button>
-                    <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin-top: 15px;">
-                        🔄 Start Recovery Again
-                    </button>
+                    <div style="margin-top: 15px;">
+                        <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px;">
+                            🐛 Show Debug Info
+                        </button>
+                        <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin: 5px;">
+                            🔄 Start Recovery Again
+                        </button>
+                        <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin: 5px;">
+                            ← Back to Main Menu
+                        </button>
+                    </div>
                 </div>
             `;
             return;
@@ -390,28 +463,33 @@ async function generateNewTelegramKeys() {
       </div>
     `;
     
-  } catch (error) {
-    console.error('❌ Failed to generate new Telegram keys:', error);
-    document.getElementById('content').innerHTML = `
-      <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
-        <h3>❌ Key Generation Failed</h3>
-        <p><strong>Error:</strong> ${error.message}</p>
-        
-        <div style="margin: 15px 0;">
-          <h4>💡 Possible Solutions:</h4>
-          <ul style="text-align: left;">
-            <li>Your recovery session may have expired - try recovery again</li>
-            <li>Check your internet connection</li>
-            <li>Make sure you're using the same device where you started recovery</li>
-          </ul>
-        </div>
-        
-        <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-top: 15px;">
-          🔄 Start Recovery Again
-        </button>
-      </div>
-    `;
-  }
+      } catch (error) {
+        console.error('❌ Failed to generate new Telegram keys:', error);
+        document.getElementById('content').innerHTML = `
+          <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+            <h3>❌ Key Generation Failed</h3>
+            <p><strong>Error:</strong> ${error.message}</p>
+            
+            <div style="margin: 15px 0;">
+              <h4>💡 Possible Solutions:</h4>
+              <ul style="text-align: left;">
+                <li>Your recovery session may have expired - try recovery again</li>
+                <li>Check your internet connection</li>
+                <li>Make sure you're using the same device where you started recovery</li>
+              </ul>
+            </div>
+            
+            <div style="margin-top: 15px;">
+              <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+                🔄 Start Recovery Again
+              </button>
+              <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+                ← Back to Main Menu
+              </button>
+            </div>
+          </div>
+        `;
+      }
 }
 
 // Test login with new keys

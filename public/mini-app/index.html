@@ -95,8 +95,8 @@
             }
 
             // Add buttons to trigger debug and clear
-            document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()">Check Cloud Storage</button>';
-            document.getElementById('content').innerHTML += '<button onclick="window.unregister()">Unregister (Clear)</button>';
+            document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" style="background: #17a2b8; color: white; padding: 8px 16px; border: none; border-radius: 4px; margin: 5px; font-size: 0.9em;">🔍 Check Cloud Storage</button>';
+            document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" style="background: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 4px; margin: 5px; font-size: 0.9em;">⚠️ Clear Data</button>';
         });
     </script>
 </body>
