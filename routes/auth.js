@@ -606,5 +606,666 @@ router.post('/mini-app/sign-payload', async (req, res) => {
   }
 });
 
+// NEW: Get user fee status for fee calculation (mirrors Python bot logic)
+router.get('/mini-app/user-fee-status/:telegram_id', async (req, res) => {
+  const { telegram_id } = req.params;
+  
+  try {
+    // Get comprehensive user status for fee calculation (mirrors Python bot)
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.pioneer_status,
+        u.referral_code,
+        u.user_email,
+        u.public_key,
+        f.telegram_id as is_founder,
+        r.referee_id as is_referral
+      FROM users u
+      LEFT JOIN founders f ON u.telegram_id = f.telegram_id
+      LEFT JOIN referrals r ON u.telegram_id = r.referee_id
+      WHERE u.telegram_id = $1
+    `, [telegram_id]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Mirror Python bot fee logic exactly
+    let feePercentage = 0.01; // Default 1% base rate
+    let discountType = 'none';
+    let discountRate = 0.00;
+    let discountDescription = 'No discount';
+    
+    // Check founder/pioneer status (0.1% fee = 90% discount)
+    if (user.pioneer_status || user.is_founder) {
+      feePercentage = 0.001; // 0.1% for founders (pioneers)
+      discountType = 'pioneer';
+      discountRate = 0.90;
+      discountDescription = 'Pioneer/Founder (90% discount)';
+    }
+    // Check referral status (0.9% fee = 10% discount) - only if not pioneer
+    else if (user.referral_code || user.is_referral) {
+      feePercentage = 0.009; // 0.9% for referred users
+      discountType = 'referral';
+      discountRate = 0.10;
+      discountDescription = 'Referral (10% discount)';
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        telegram_id: user.telegram_id,
+        email: user.user_email,
+        public_key: user.public_key,
+        pioneer_status: user.pioneer_status || !!user.is_founder,
+        referral_code: user.referral_code,
+        is_referral: !!user.is_referral
+      },
+      fee_status: {
+        discount_type: discountType,
+        discount_rate: discountRate,
+        discount_description: discountDescription,
+        fee_percentage: feePercentage, // Mirror Python bot field name
+        base_fee_rate: 0.01,
+        final_fee_rate: feePercentage
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting user fee status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Get user fee status by orgId (for wallet integration)
+router.get('/mini-app/user-fee-status-by-org/:orgId', async (req, res) => {
+  const { orgId } = req.params;
+  
+  try {
+    // Get user by orgId (similar to existing get-user-email endpoint)
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.pioneer_status,
+        u.referral_code,
+        u.user_email,
+        u.public_key,
+        f.telegram_id as is_founder,
+        r.referee_id as is_referral
+      FROM users u
+      JOIN turnkey_wallets tw ON u.telegram_id = tw.telegram_id
+      LEFT JOIN founders f ON u.telegram_id = f.telegram_id
+      LEFT JOIN referrals r ON u.telegram_id = r.referee_id
+      WHERE tw.turnkey_sub_org_id = $1 AND tw.is_active = TRUE
+    `, [orgId]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found for this organization" });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Mirror Python bot fee logic exactly
+    let feePercentage = 0.01; // Default 1% base rate
+    let discountType = 'none';
+    let discountRate = 0.00;
+    let discountDescription = 'No discount';
+    
+    if (user.pioneer_status || user.is_founder) {
+      feePercentage = 0.001; // 0.1% for founders (pioneers)
+      discountType = 'pioneer';
+      discountRate = 0.90;
+      discountDescription = 'Pioneer/Founder (90% discount)';
+    }
+    else if (user.referral_code || user.is_referral) {
+      feePercentage = 0.009; // 0.9% for referred users
+      discountType = 'referral';
+      discountRate = 0.10;
+      discountDescription = 'Referral (10% discount)';
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        telegram_id: user.telegram_id,
+        email: user.user_email,
+        public_key: user.public_key,
+        pioneer_status: user.pioneer_status || !!user.is_founder,
+        referral_code: user.referral_code,
+        is_referral: !!user.is_referral
+      },
+      fee_status: {
+        discount_type: discountType,
+        discount_rate: discountRate,
+        discount_description: discountDescription,
+        fee_percentage: feePercentage,
+        base_fee_rate: 0.01,
+        final_fee_rate: feePercentage
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting user fee status by orgId:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Calculate fees for a transaction (mirrors Python bot logic exactly)
+router.post('/mini-app/calculate-fees', async (req, res) => {
+  const { telegram_id, transaction_amount, transaction_type = 'payment', asset_code, asset_issuer, xlm_equivalent } = req.body;
+  
+  if (!telegram_id || !transaction_amount) {
+    return res.status(400).json({ error: "Missing telegram_id or transaction_amount" });
+  }
+  
+  try {
+    // Get user fee status (mirrors Python bot logic)
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.pioneer_status,
+        u.referral_code,
+        f.telegram_id as is_founder,
+        r.referee_id as is_referral
+      FROM users u
+      LEFT JOIN founders f ON u.telegram_id = f.telegram_id
+      LEFT JOIN referrals r ON u.telegram_id = r.referee_id
+      WHERE u.telegram_id = $1
+    `, [telegram_id]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Mirror Python bot fee logic exactly
+    let feePercentage = 0.01; // Default 1% base rate
+    let discountType = 'none';
+    let discountRate = 0.00;
+    
+    if (user.pioneer_status || user.is_founder) {
+      feePercentage = 0.001; // 0.1% for founders (pioneers)
+      discountType = 'pioneer';
+      discountRate = 0.90;
+    }
+    else if (user.referral_code || user.is_referral) {
+      feePercentage = 0.009; // 0.9% for referred users
+      discountType = 'referral';
+      discountRate = 0.10;
+    }
+    
+    // Calculate XLM volume (mirrors Python bot logic)
+    let xlmVolume;
+    if (asset_code === 'XLM' || !asset_code) {
+      // Native XLM transaction
+      xlmVolume = parseFloat(transaction_amount);
+    } else {
+      // Non-XLM asset - use provided XLM equivalent or calculate
+      if (xlm_equivalent) {
+        xlmVolume = parseFloat(xlm_equivalent);
+      } else {
+        // TODO: Implement XLM equivalent calculation using Stellar paths
+        // For now, use a placeholder - this should be calculated client-side
+        xlmVolume = parseFloat(transaction_amount) * 0.1; // Placeholder conversion
+      }
+    }
+    
+    // Calculate fee (mirrors Python bot logic exactly)
+    const fee = parseFloat((feePercentage * xlmVolume).toFixed(7));
+    const totalAmount = parseFloat(transaction_amount) + fee;
+    
+    res.json({
+      success: true,
+      calculation: {
+        transaction_amount: parseFloat(transaction_amount),
+        transaction_type: transaction_type,
+        asset_code: asset_code || 'XLM',
+        asset_issuer: asset_issuer,
+        xlm_volume: xlmVolume,
+        fee_percentage: feePercentage,
+        fee: fee,
+        total_amount: totalAmount
+      },
+      user_status: {
+        telegram_id: user.telegram_id,
+        pioneer_status: user.pioneer_status || !!user.is_founder,
+        referral_code: user.referral_code,
+        is_referral: !!user.is_referral,
+        discount_type: discountType,
+        discount_rate: discountRate
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error calculating fees:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Log XLM volume for referrals (mirrors Python bot logic)
+router.post('/mini-app/log-xlm-volume', async (req, res) => {
+  const { telegram_id, xlm_volume, tx_hash, action_type = 'payment' } = req.body;
+  
+  if (!telegram_id || !xlm_volume || !tx_hash) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  try {
+    // Check if transaction already logged (mirrors Python bot logic)
+    const existingTx = await pool.query(
+      "SELECT COUNT(*) as count FROM trades WHERE tx_hash = $1",
+      [tx_hash]
+    );
+    
+    if (existingTx.rows[0].count > 0) {
+      console.warn(`Transaction ${tx_hash} already logged, skipping`);
+      return res.json({ success: true, message: "Transaction already logged" });
+    }
+    
+    // Log the trade (mirrors Python bot trades table)
+    await pool.query(
+      "INSERT INTO trades (user_id, xlm_volume, tx_hash, action_type) VALUES ($1, $2, $3, $4)",
+      [telegram_id, parseFloat(xlm_volume), tx_hash, action_type]
+    );
+    
+    // Also log fee for tracking (mirrors Python bot fees table)
+    const fee = parseFloat((0.01 * xlm_volume).toFixed(7)); // Base fee for logging
+    await pool.query(
+      "INSERT INTO fees (telegram_id, action_type, amount, fee, tx_hash) VALUES ($1, $2, $3, $4, $5)",
+      [telegram_id, action_type, parseFloat(xlm_volume), fee, tx_hash]
+    );
+    
+    console.log(`Logged XLM volume for user ${telegram_id}: ${xlm_volume} XLM, tx_hash: ${tx_hash}`);
+    
+    res.json({ 
+      success: true, 
+      message: "XLM volume logged successfully",
+      logged_volume: parseFloat(xlm_volume),
+      tx_hash: tx_hash
+    });
+    
+  } catch (error) {
+    console.error('Error logging XLM volume:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Calculate referral shares (mirrors Python bot logic)
+router.post('/mini-app/calculate-referral-shares', async (req, res) => {
+  const { telegram_id, fee_amount } = req.body;
+  
+  if (!telegram_id || !fee_amount) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  
+  try {
+    // Get referrer chain (up to 5 levels, mirrors Python bot logic)
+    const referrerChain = [];
+    let currentUser = telegram_id;
+    
+    for (let level = 0; level < 5; level++) {
+      const referrerRes = await pool.query(
+        "SELECT referrer_id FROM referrals WHERE referee_id = $1",
+        [currentUser]
+      );
+      
+      if (referrerRes.rows.length === 0) {
+        break;
+      }
+      
+      const referrerId = referrerRes.rows[0].referrer_id;
+      referrerChain.push(referrerId);
+      currentUser = referrerId;
+    }
+    
+    console.log(`Referrer chain for user ${telegram_id}: ${referrerChain}`);
+    
+    // Calculate user's trading volume for past week (mirrors Python bot logic)
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const volumeRes = await pool.query(
+      "SELECT SUM(xlm_volume) as total_volume FROM trades WHERE user_id = $1 AND timestamp >= $2",
+      [telegram_id, oneWeekAgo]
+    );
+    
+    const userVolume = parseFloat(volumeRes.rows[0].total_volume || 0);
+    console.log(`User ${telegram_id} trading volume (past week): ${userVolume} XLM`);
+    
+    // Determine share percentage based on volume (mirrors Python bot logic)
+    const sharePercentage = userVolume >= 100000 ? 0.35 : 0.25; // $10,000 in XLM equivalent
+    console.log(`Share percentage for user ${telegram_id}: ${sharePercentage}`);
+    
+    // Distribute shares across referrer chain (mirrors Python bot logic)
+    const referralShares = [];
+    for (let level = 0; level < referrerChain.length; level++) {
+      const referrerId = referrerChain[level];
+      const levelShare = sharePercentage * (1 - 0.05 * level); // Decrease by 5% per level
+      
+      if (levelShare <= 0) {
+        console.warn(`Level share for referrer ${referrerId} at level ${level + 1} is <= 0, skipping`);
+        break;
+      }
+      
+      const amount = parseFloat((fee_amount * levelShare).toFixed(7));
+      console.log(`Calculated referral amount for referrer ${referrerId} at level ${level + 1}: ${amount} XLM`);
+      
+      // Log reward (mirrors Python bot rewards table)
+      await pool.query(
+        "INSERT INTO rewards (user_id, amount, status) VALUES ($1, $2, 'unpaid')",
+        [referrerId, amount]
+      );
+      
+      referralShares.push({
+        referrer_id: referrerId,
+        level: level + 1,
+        share_percentage: levelShare,
+        amount: amount
+      });
+      
+      console.log(`Successfully logged referral fee for referrer ${referrerId}: ${amount} XLM`);
+    }
+    
+    res.json({
+      success: true,
+      message: "Referral shares calculated and logged",
+      user_volume: userVolume,
+      share_percentage: sharePercentage,
+      referral_shares: referralShares
+    });
+    
+  } catch (error) {
+    console.error('Error calculating referral shares:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Get user authenticator type and signing method
+router.get('/mini-app/user-authenticator-type/:telegram_id', async (req, res) => {
+  const { telegram_id } = req.params;
+  
+  try {
+    // Get comprehensive user data to determine authenticator type
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.pioneer_status,
+        u.referral_code,
+        u.user_email,
+        u.public_key,
+        u.kms_encrypted_session_key,
+        u.kms_key_id,
+        u.temp_api_public_key,
+        u.temp_api_private_key,
+        u.session_expiry,
+        u.source_old_db,
+        f.telegram_id as is_founder,
+        r.referee_id as is_referral,
+        tw.turnkey_sub_org_id,
+        tw.turnkey_key_id,
+        tw.turnkey_api_public_key
+      FROM users u
+      LEFT JOIN founders f ON u.telegram_id = f.telegram_id
+      LEFT JOIN referrals r ON u.telegram_id = r.referee_id
+      LEFT JOIN turnkey_wallets tw ON u.telegram_id = tw.telegram_id AND tw.is_active = TRUE
+      WHERE u.telegram_id = $1
+    `, [telegram_id]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Determine authenticator type (mirrors Python bot logic)
+    let authenticatorType = 'unknown';
+    let signingMethod = 'unknown';
+    let hasActiveSession = false;
+    
+    // Check for KMS session (new users)
+    if (user.kms_encrypted_session_key && user.kms_key_id) {
+      authenticatorType = 'session_keys';
+      signingMethod = 'python_bot_kms';
+      hasActiveSession = true;
+    }
+    // Check for Telegram Cloud API keys (new users with TG storage)
+    else if (user.turnkey_api_public_key) {
+      authenticatorType = 'telegram_cloud';
+      signingMethod = 'python_bot_tg_cloud';
+      hasActiveSession = true;
+    }
+    // Check for legacy session keys
+    else if (user.temp_api_public_key && user.temp_api_private_key) {
+      authenticatorType = 'legacy';
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = true;
+    }
+    // Check for legacy users with source_old_db
+    else if (user.source_old_db) {
+      authenticatorType = 'legacy';
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = false; // Need to recreate session
+    }
+    
+    // Check session expiry
+    if (hasActiveSession && user.session_expiry) {
+      const sessionExpiry = new Date(user.session_expiry);
+      const now = new Date();
+      if (sessionExpiry < now) {
+        hasActiveSession = false;
+        signingMethod = 'session_expired';
+      }
+    }
+    
+    // Determine fee status (mirrors Python bot logic)
+    let feePercentage = 0.01; // Default 1% base rate
+    let discountType = 'none';
+    let discountRate = 0.00;
+    
+    if (user.pioneer_status || user.is_founder) {
+      feePercentage = 0.001; // 0.1% for founders (pioneers)
+      discountType = 'pioneer';
+      discountRate = 0.90;
+    }
+    else if (user.referral_code || user.is_referral) {
+      feePercentage = 0.009; // 0.9% for referred users
+      discountType = 'referral';
+      discountRate = 0.10;
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        telegram_id: user.telegram_id,
+        email: user.user_email,
+        public_key: user.public_key,
+        pioneer_status: user.pioneer_status || !!user.is_founder,
+        referral_code: user.referral_code,
+        is_referral: !!user.is_referral
+      },
+      authenticator: {
+        type: authenticatorType,
+        signing_method: signingMethod,
+        has_active_session: hasActiveSession,
+        turnkey_sub_org_id: user.turnkey_sub_org_id,
+        turnkey_key_id: user.turnkey_key_id
+      },
+      fee_status: {
+        discount_type: discountType,
+        discount_rate: discountRate,
+        fee_percentage: feePercentage,
+        base_fee_rate: 0.01,
+        final_fee_rate: feePercentage
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting user authenticator type:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: Sign transaction with appropriate method
+router.post('/mini-app/sign-transaction', async (req, res) => {
+  const { telegram_id, xdr, transaction_type = 'payment', include_fee = false } = req.body;
+  
+  if (!telegram_id || !xdr) {
+    return res.status(400).json({ error: "Missing telegram_id or xdr" });
+  }
+  
+  try {
+    // Get user authenticator type
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.kms_encrypted_session_key,
+        u.kms_key_id,
+        u.temp_api_public_key,
+        u.temp_api_private_key,
+        u.session_expiry,
+        u.source_old_db,
+        tw.turnkey_sub_org_id,
+        tw.turnkey_key_id,
+        tw.turnkey_api_public_key
+      FROM users u
+      LEFT JOIN turnkey_wallets tw ON u.telegram_id = tw.telegram_id AND tw.is_active = TRUE
+      WHERE u.telegram_id = $1
+    `, [telegram_id]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Determine signing method
+    let signingMethod = 'unknown';
+    let hasActiveSession = false;
+    
+    if (user.kms_encrypted_session_key && user.kms_key_id) {
+      signingMethod = 'python_bot_kms';
+      hasActiveSession = true;
+    }
+    else if (user.turnkey_api_public_key) {
+      signingMethod = 'python_bot_tg_cloud';
+      hasActiveSession = true;
+    }
+    else if (user.temp_api_public_key && user.temp_api_private_key) {
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = true;
+    }
+    else if (user.source_old_db) {
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = false;
+    }
+    
+    // Check session expiry
+    if (hasActiveSession && user.session_expiry) {
+      const sessionExpiry = new Date(user.session_expiry);
+      const now = new Date();
+      if (sessionExpiry < now) {
+        hasActiveSession = false;
+        signingMethod = 'session_expired';
+      }
+    }
+    
+    if (!hasActiveSession) {
+      return res.status(401).json({ 
+        error: "No active session", 
+        signing_method: signingMethod,
+        requires_login: true 
+      });
+    }
+    
+    // Call Python bot for signing
+    const pythonBotResponse = await fetch('http://localhost:8080/api/sign', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${generateJWT(telegram_id)}` // You'll need to implement JWT generation
+      },
+      body: JSON.stringify({
+        telegram_id: parseInt(telegram_id),
+        xdr: xdr,
+        action_type: transaction_type,
+        include_fee: include_fee
+      })
+    });
+    
+    if (!pythonBotResponse.ok) {
+      const errorData = await pythonBotResponse.json();
+      throw new Error(`Python bot signing failed: ${errorData.error || pythonBotResponse.status}`);
+    }
+    
+    const result = await pythonBotResponse.json();
+    
+    res.json({
+      success: true,
+      signed_xdr: result.signed_xdr,
+      hash: result.hash,
+      fee: result.fee,
+      signing_method: signingMethod
+    });
+    
+  } catch (error) {
+    console.error('Error signing transaction:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to generate JWT for Python bot
+function generateJWT(telegram_id) {
+  const jwt = require('jsonwebtoken');
+  const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+  
+  if (!JWT_SECRET || JWT_SECRET === 'dev-secret-key-change-in-production') {
+    console.warn('⚠️ Using development JWT secret. Set JWT_SECRET in production!');
+  }
+  
+  return jwt.sign({
+    telegram_id: telegram_id,
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+  }, JWT_SECRET, { algorithm: 'HS256' });
+}
+
+// Test endpoint for local development
+router.get('/mini-app/test-python-connection', async (req, res) => {
+  try {
+    console.log('🧪 Testing Python bot connection...');
+    
+    // Test basic connectivity
+    const testResponse = await fetch('http://localhost:8080/api/health', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!testResponse.ok) {
+      throw new Error(`Python bot health check failed: ${testResponse.status}`);
+    }
+    
+    const healthData = await testResponse.json();
+    
+    res.json({
+      success: true,
+      message: 'Python bot connection successful',
+      python_bot_status: healthData,
+      node_env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Python bot connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Python bot connection failed. Check if Python bot is running on port 8080.',
+      node_env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 module.exports = router;
 module.exports.handleTurnkeyPost = handleTurnkeyPost;
