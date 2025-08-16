@@ -284,8 +284,8 @@ async function decryptCredentialBundle(credentialBundle, targetPrivateKey) {
 }
 
 function accessWallet() {
-  // Redirect to wallet with recovery flag
-  window.location.href = '/wallet.html?recovered=true&orgId=' + window.recoveryData.orgId;
+  // Wallet access temporarily disabled - redirect to bot setup instead
+  setupBot();
 }
 
 function setupBot() {
@@ -451,9 +451,6 @@ async function generateNewTelegramKeys() {
         <div style="margin: 15px 0;">
           <button onclick="testLogin()" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
             🔐 Test Login
-          </button>
-          <button onclick="accessWallet('${window.recoveryData.orgId}')" style="background: #17a2b8; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
-            💰 Access Wallet
           </button>
         </div>
         
