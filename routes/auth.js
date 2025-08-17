@@ -1215,6 +1215,134 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
   }
 });
 
+// Test endpoint for development - simulate signing with test user
+router.post('/mini-app/test-sign-transaction', async (req, res) => {
+  const { xdr, transaction_type = 'payment', include_fee = false } = req.body;
+  
+  if (!xdr) {
+    return res.status(400).json({ error: "Missing xdr" });
+  }
+  
+  try {
+    // Use a test telegram_id for development
+    const testTelegramId = 123456789; // Replace with your actual test user ID
+    
+    console.log('🧪 Testing transaction signing with test user:', testTelegramId);
+    
+    // Get test user authenticator type
+    const userRes = await pool.query(`
+      SELECT 
+        u.telegram_id,
+        u.kms_encrypted_session_key,
+        u.kms_key_id,
+        u.temp_api_public_key,
+        u.temp_api_private_key,
+        u.session_expiry,
+        u.source_old_db,
+        tw.turnkey_sub_org_id,
+        tw.turnkey_key_id,
+        tw.turnkey_api_public_key
+      FROM users u
+      LEFT JOIN turnkey_wallets tw ON u.telegram_id = tw.telegram_id AND tw.is_active = TRUE
+      WHERE u.telegram_id = $1
+    `, [testTelegramId]);
+    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ 
+        error: "Test user not found", 
+        message: "Please create a test user in the database first",
+        test_telegram_id: testTelegramId
+      });
+    }
+    
+    const user = userRes.rows[0];
+    
+    // Determine signing method
+    let signingMethod = 'unknown';
+    let hasActiveSession = false;
+    
+    if (user.kms_encrypted_session_key && user.kms_key_id) {
+      signingMethod = 'python_bot_kms';
+      hasActiveSession = true;
+    }
+    else if (user.turnkey_api_public_key) {
+      signingMethod = 'python_bot_tg_cloud';
+      hasActiveSession = true;
+    }
+    else if (user.temp_api_public_key && user.temp_api_private_key) {
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = true;
+    }
+    else if (user.source_old_db) {
+      signingMethod = 'python_bot_legacy';
+      hasActiveSession = false;
+    }
+    
+    // Check session expiry
+    if (hasActiveSession && user.session_expiry) {
+      const sessionExpiry = new Date(user.session_expiry);
+      const now = new Date();
+      if (sessionExpiry < now) {
+        hasActiveSession = false;
+        signingMethod = 'session_expired';
+      }
+    }
+    
+    if (!hasActiveSession) {
+      return res.status(401).json({ 
+        error: "No active session for test user", 
+        signing_method: signingMethod,
+        requires_login: true,
+        test_telegram_id: testTelegramId
+      });
+    }
+    
+    console.log('✅ Test user has active session, calling Python bot...');
+    
+    // Call Python bot for signing
+    const pythonBotResponse = await fetch('http://172.31.2.184:8080/api/sign', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${generateJWT(testTelegramId)}`
+      },
+      body: JSON.stringify({
+        telegram_id: testTelegramId,
+        xdr: xdr,
+        action_type: transaction_type,
+        include_fee: include_fee
+      })
+    });
+    
+    if (!pythonBotResponse.ok) {
+      const errorData = await pythonBotResponse.json();
+      throw new Error(`Python bot signing failed: ${errorData.error || pythonBotResponse.status}`);
+    }
+    
+    const result = await pythonBotResponse.json();
+    
+    res.json({
+      success: true,
+      signed_xdr: result.signed_xdr,
+      hash: result.hash,
+      fee: result.fee,
+      signing_method: signingMethod,
+      test_user: {
+        telegram_id: testTelegramId,
+        public_key: user.public_key,
+        session_type: signingMethod
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in test signing:', error);
+    res.status(500).json({ 
+      error: error.message,
+      message: "Test signing failed. Check Python bot connection and test user setup."
+    });
+  }
+});
+
 // Helper function to generate JWT for Python bot
 function generateJWT(telegram_id) {
   const jwt = require('jsonwebtoken');
@@ -1236,7 +1364,7 @@ router.get('/mini-app/test-python-connection', async (req, res) => {
     console.log('🧪 Testing Python bot connection...');
     
     // Test basic connectivity
-    const testResponse = await fetch('http://localhost:8080/api/health', {
+    const testResponse = await fetch('http://172.31.2.184:8080/api/health', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -1260,7 +1388,7 @@ router.get('/mini-app/test-python-connection', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message,
-      message: 'Python bot connection failed. Check if Python bot is running on port 8080.',
+      message: 'Python bot connection failed. Check if Python bot is running on 172.31.2.184:8080.',
       node_env: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString()
     });
