@@ -13,12 +13,57 @@
 
 <body>
     <div id="content" class="fade-in">
-        <h1>Welcome to LumenBro Trading Bot</h1>
-        <div class="flex flex-col items-center gap-4">
-            <button onclick="window.register()" class="btn-primary">📝 Register</button>
-            <button onclick="window.login()" class="btn-success">🔐 Login</button>
-            <button onclick="window.recover()" class="btn-warning">🔑 Recover</button>
+        <!-- Wallet-First Interface -->
+        <div id="wallet-interface" style="display: none;">
+            <h1>LumenBro Wallet</h1>
+            <div class="wallet-balance">
+                <div class="balance-card">
+                    <h3>💰 Balance</h3>
+                    <div class="balance-amount">Loading...</div>
+                    <div class="balance-currency">XLM</div>
+                </div>
+            </div>
+            
+            <div class="wallet-actions">
+                <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>
+                <button onclick="showAssetManagement()" class="btn-success">🔄 Manage Assets</button>
+                <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>
+            </div>
+            
+            <div class="wallet-status">
+                <div id="connection-status" class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
         </div>
+        
+        <!-- Auth Interface (Fallback) -->
+        <div id="auth-interface">
+            <h1>Welcome to LumenBro Trading Bot</h1>
+            <div class="flex flex-col items-center gap-4">
+                <button onclick="window.register()" class="btn-primary">📝 Register</button>
+                <button onclick="window.login()" class="btn-success">🔐 Login</button>
+                <button onclick="window.recover()" class="btn-warning">🔑 Recover</button>
+            </div>
+            
+            <!-- Quick access to wallet (if authenticated) -->
+            <div id="quick-wallet-access" style="display: none; margin-top: 20px;">
+                <button onclick="showWallet()" class="btn-info">💼 Open Wallet</button>
+            </div>
+        </div>
+        
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav" style="display: none;">
+            <div class="nav-item active" onclick="showWallet()">
+                <div class="nav-icon">💼</div>
+                <div class="nav-label">Wallet</div>
+            </div>
+            <div class="nav-item" onclick="showAuth()">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">Settings</div>
+            </div>
+        </nav>
     </div>
     <script src="/recovery-credentials.js"></script>
     <script src="/mini-app/encryption-utils.js"></script>
@@ -101,7 +146,92 @@
             // Add buttons to trigger debug and clear
             document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
             document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
+            
+            // Initialize wallet-first interface
+            initializeWalletInterface();
         });
+        
+        // Wallet interface functions
+        function initializeWalletInterface() {
+            console.log('Initializing wallet interface...');
+            
+            // Check if user is authenticated
+            checkUserAuthentication().then(isAuthenticated => {
+                if (isAuthenticated) {
+                    showWallet();
+                } else {
+                    showAuth();
+                }
+            });
+        }
+        
+        async function checkUserAuthentication() {
+            try {
+                // Check if user has stored keys
+                const storedKey = await window.checkCloudStorage();
+                return !!storedKey;
+            } catch (error) {
+                console.log('User not authenticated:', error);
+                return false;
+            }
+        }
+        
+        function showWallet() {
+            document.getElementById('auth-interface').style.display = 'none';
+            document.getElementById('wallet-interface').style.display = 'block';
+            document.querySelector('.bottom-nav').style.display = 'flex';
+            
+            // Load wallet data
+            loadWalletData();
+        }
+        
+        function showAuth() {
+            document.getElementById('wallet-interface').style.display = 'none';
+            document.getElementById('auth-interface').style.display = 'block';
+            document.querySelector('.bottom-nav').style.display = 'none';
+        }
+        
+        async function loadWalletData() {
+            try {
+                // Update connection status
+                updateConnectionStatus('Connecting to wallet...', 'connecting');
+                
+                // TODO: Load actual wallet data from your API
+                // For now, show mock data
+                setTimeout(() => {
+                    document.querySelector('.balance-amount').textContent = '1,234.56';
+                    updateConnectionStatus('Connected', 'connected');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error loading wallet data:', error);
+                updateConnectionStatus('Connection failed', 'error');
+            }
+        }
+        
+        function updateConnectionStatus(text, status) {
+            const statusElement = document.getElementById('connection-status');
+            const statusDot = statusElement.querySelector('.status-dot');
+            const statusText = statusElement.querySelector('.status-text');
+            
+            statusText.textContent = text;
+            statusDot.className = `status-dot ${status}`;
+        }
+        
+        function showSendPayment() {
+            // TODO: Implement send payment interface
+            alert('Send Payment feature coming soon!');
+        }
+        
+        function showAssetManagement() {
+            // TODO: Implement asset management interface
+            alert('Asset Management feature coming soon!');
+        }
+        
+        function showTransactionHistory() {
+            // TODO: Implement transaction history interface
+            alert('Transaction History feature coming soon!');
+        }
     </script>
 </body>
 
