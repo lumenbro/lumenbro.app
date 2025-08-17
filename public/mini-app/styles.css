@@ -1,34 +1,437 @@
-/* Basic styles for mobile-first Mini App */
+/* Mini-App Styles - Matching LumenBro Site Theme */
+
+/* CSS Variables from main site */
+:root {
+  --bg: #0b1225;
+  --bg-soft: #0e1730;
+  --panel: #111a36;
+  --text: #e6ebff;
+  --muted: #a9b2d6;
+  --primary: #4f8aff;
+  --primary-600: #3f6ed1;
+  --accent: #13e6ff;
+  --success: #39d98a;
+  --warning: #f5b14a;
+  --danger: #ff6b6b;
+  --ring: rgba(79, 138, 255, 0.35);
+  --radius: 14px;
+  --shadow-1: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-2: 0 20px 60px rgba(0,0,0,0.45);
+}
+
+/* Reset and base styles */
+* { 
+  box-sizing: border-box; 
+  margin: 0;
+  padding: 0;
+}
+
+html, body { 
+  height: 100%; 
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f0f0f0;
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 80% -10%, rgba(79,138,255,0.12), transparent 60%),
+              radial-gradient(900px 500px at -10% 10%, rgba(19,230,255,0.10), transparent 50%),
+              var(--bg);
+  line-height: 1.5;
+  padding: 20px;
+  min-height: 100vh;
 }
 
+/* Main content container */
 #content {
-    text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 30px;
+  box-shadow: var(--shadow-1);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
 }
 
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  margin-bottom: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+h1 {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--accent), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+h3 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+/* Buttons */
 button {
-    display: block;
-    margin: 10px auto;
-    padding: 10px 20px;
-    font-size: 16px;
+  background: linear-gradient(180deg, var(--accent), var(--primary));
+  color: #0c1225;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(79,138,255,0.25);
+  margin: 8px;
+  min-width: 120px;
 }
 
-/* Turnkey badge for mini-app modals */
-.tk-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #f1f3f5;
-    color: #334155;
-    border: 1px solid #cbd5e1;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
+button:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79,138,255,0.35);
 }
-.tk-badge img { height: 14px; display: inline-block; vertical-align: middle; }
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Button variants */
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #ff6b6b, #ff5252);
+  box-shadow: 0 4px 15px rgba(255,107,107,0.25);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 6px 20px rgba(255,107,107,0.35);
+}
+
+.btn-warning {
+  background: linear-gradient(180deg, var(--warning), #f39c12);
+  box-shadow: 0 4px 15px rgba(245,177,74,0.25);
+}
+
+.btn-warning:hover {
+  box-shadow: 0 6px 20px rgba(245,177,74,0.35);
+}
+
+.btn-success {
+  background: linear-gradient(180deg, var(--success), #27ae60);
+  box-shadow: 0 4px 15px rgba(57,217,138,0.25);
+}
+
+.btn-success:hover {
+  box-shadow: 0 6px 20px rgba(57,217,138,0.35);
+}
+
+/* Form elements */
+input, textarea, select {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  margin-bottom: 15px;
+  transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Status messages */
+.status {
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: none;
+  border: 1px solid;
+}
+
+.status.success {
+  background: rgba(57,217,138,0.1);
+  color: var(--success);
+  border-color: rgba(57,217,138,0.3);
+}
+
+.status.error {
+  background: rgba(255,107,107,0.1);
+  color: var(--danger);
+  border-color: rgba(255,107,107,0.3);
+}
+
+.status.loading {
+  background: rgba(79,138,255,0.1);
+  color: var(--primary);
+  border-color: rgba(79,138,255,0.3);
+}
+
+.status.warning {
+  background: rgba(245,177,74,0.1);
+  color: var(--warning);
+  border-color: rgba(245,177,74,0.3);
+}
+
+/* Cards and panels */
+.card {
+  background: var(--bg-soft);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-1);
+}
+
+.card-header {
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Grid layouts */
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+/* Text utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-lg {
+  font-size: 18px;
+}
+
+/* Spacing utilities */
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.p-4 {
+  padding: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+  
+  #content {
+    padding: 20px;
+  }
+  
+  h1 {
+    font-size: 24px;
+  }
+  
+  button {
+    width: 100%;
+    margin: 4px 0;
+  }
+  
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Telegram WebApp specific styles */
+.tg-app {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-600);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Button variants */
+.btn-primary {
+  background: linear-gradient(180deg, var(--primary), var(--primary-600)) !important;
+  color: white !important;
+}
+
+.btn-success {
+  background: linear-gradient(180deg, var(--success), #2bb673) !important;
+  color: white !important;
+}
+
+.btn-warning {
+  background: linear-gradient(180deg, var(--warning), #e6a23c) !important;
+  color: white !important;
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, var(--danger), #e74c3c) !important;
+  color: white !important;
+}
+
+.btn-info {
+  background: linear-gradient(180deg, #17a2b8, #138496) !important;
+  color: white !important;
+}
+
+/* Turnkey badge styling */
+.tk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.tk-badge img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
