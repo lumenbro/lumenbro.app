@@ -147,8 +147,10 @@
             document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
             document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
             
-            // Initialize wallet-first interface
-            initializeWalletInterface();
+            // Only initialize wallet interface if no specific action is requested
+            if (!action) {
+                initializeWalletInterface();
+            }
         });
         
         // Wallet interface functions
