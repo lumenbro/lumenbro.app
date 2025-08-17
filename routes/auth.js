@@ -1315,8 +1315,16 @@ router.post('/mini-app/test-sign-transaction', async (req, res) => {
     });
     
     if (!pythonBotResponse.ok) {
-      const errorData = await pythonBotResponse.json();
-      throw new Error(`Python bot signing failed: ${errorData.error || pythonBotResponse.status}`);
+      let errorMessage;
+      try {
+        const errorData = await pythonBotResponse.json();
+        errorMessage = errorData.error || `HTTP ${pythonBotResponse.status}`;
+      } catch (e) {
+        // If response is not JSON, get the text
+        const errorText = await pythonBotResponse.text();
+        errorMessage = errorText || `HTTP ${pythonBotResponse.status}`;
+      }
+      throw new Error(`Python bot signing failed: ${errorMessage}`);
     }
     
     const result = await pythonBotResponse.json();
