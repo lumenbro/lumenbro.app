@@ -1363,11 +1363,15 @@ router.get('/mini-app/test-python-connection', async (req, res) => {
   try {
     console.log('🧪 Testing Python bot connection...');
     
-    // Test basic connectivity
+    // Test basic connectivity with JWT authentication
+    const testTelegramId = 123456789; // Replace with your actual test user ID
     const testResponse = await fetch('http://172.31.2.184:8080/api/check_status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_id: 123456789 })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${generateJWT(testTelegramId)}`
+      },
+      body: JSON.stringify({ telegram_id: testTelegramId })
     });
     
     if (!testResponse.ok) {
