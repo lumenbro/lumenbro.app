@@ -185,13 +185,47 @@
         }
         
         function showWallet() {
-            const authInterface = document.getElementById('auth-interface');
-            const walletInterface = document.getElementById('wallet-interface');
-            const bottomNav = document.querySelector('.bottom-nav');
-            
-            if (authInterface) authInterface.style.display = 'none';
-            if (walletInterface) walletInterface.style.display = 'block';
-            if (bottomNav) bottomNav.style.display = 'flex';
+            // Recreate the wallet interface
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <!-- Wallet Interface -->
+                    <div id="wallet-interface">
+                        <h1>LumenBro Wallet</h1>
+                        <div class="wallet-balance">
+                            <div class="balance-card">
+                                <h3>💰 Balance</h3>
+                                <div class="balance-amount">Loading...</div>
+                                <div class="balance-currency">XLM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="wallet-actions">
+                            <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>
+                            <button onclick="showAssetManagement()" class="btn-success">🔄 Manage Assets</button>
+                            <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>
+                        </div>
+                        
+                        <div class="wallet-status">
+                            <div id="connection-status" class="status-indicator">
+                                <span class="status-dot"></span>
+                                <span class="status-text">Connecting...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bottom Navigation -->
+                <nav class="bottom-nav">
+                    <div class="nav-item active" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
             
             // Load wallet data
             loadWalletData();
@@ -204,7 +238,37 @@
             
             if (walletInterface) walletInterface.style.display = 'none';
             if (authInterface) authInterface.style.display = 'block';
-            if (bottomNav) bottomNav.style.display = 'none';
+            if (bottomNav) bottomNav.style.display = 'flex';
+            
+            // Show the main menu (settings) with all functions
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <h1>🔧 Settings</h1>
+                    <div class="flex flex-col items-center gap-4">
+                        <button onclick="window.register()" class="btn-primary">📝 Register</button>
+                        <button onclick="window.login()" class="btn-success">🔐 Login</button>
+                        <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button>
+                        <button onclick="window.export()" class="btn-info">📤 Export Keys</button>
+                    </div>
+                    
+                    <!-- Quick access to wallet (if authenticated) -->
+                    <div id="quick-wallet-access" style="display: none; margin-top: 20px;">
+                        <button onclick="showWallet()" class="btn-info">💼 Open Wallet</button>
+                    </div>
+                </div>
+                
+                <!-- Bottom Navigation -->
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item active" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
         }
         
         async function loadWalletData() {
