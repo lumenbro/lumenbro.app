@@ -1224,8 +1224,8 @@ router.post('/mini-app/test-sign-transaction', async (req, res) => {
   }
   
   try {
-    // Use a test telegram_id for development
-    const testTelegramId = 123456789; // Replace with your actual test user ID
+    // Use test user ID for development
+    const testTelegramId = 5014800072; // Test user ID
     
     console.log('🧪 Testing transaction signing with test user:', testTelegramId);
     
@@ -1364,7 +1364,7 @@ router.get('/mini-app/test-python-connection', async (req, res) => {
     console.log('🧪 Testing Python bot connection...');
     
     // Test basic connectivity with JWT authentication
-    const testTelegramId = 123456789; // Replace with your actual test user ID
+    const testTelegramId = 5014800072; // Test user ID
     const testResponse = await fetch('http://172.31.2.184:8080/api/check_status', {
       method: 'POST',
       headers: { 
