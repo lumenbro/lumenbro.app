@@ -1366,46 +1366,145 @@ function generateJWT(telegram_id) {
   }, JWT_SECRET, { algorithm: 'HS256' });
 }
 
-// Test endpoint for authenticator info
-router.get('/mini-app/test-authenticator', async (req, res) => {
-  try {
-    console.log('🧪 Testing Python bot authenticator...');
-    
-    // Test authenticator endpoint with JWT authentication
-    const testTelegramId = 5014800072; // Test user ID
-    const testResponse = await fetch('http://172.31.2.184:8080/api/authenticator', {
-      method: 'GET',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${generateJWT(testTelegramId)}`
-      }
-    });
-    
-    if (!testResponse.ok) {
-      throw new Error(`Python bot authenticator check failed: ${testResponse.status}`);
-    }
-    
-    const authData = await testResponse.json();
-    
-    res.json({
-      success: true,
-      message: 'Python bot authenticator check successful',
-      authenticator_info: authData,
-      node_env: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Python bot authenticator test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      message: 'Python bot authenticator check failed.',
-      node_env: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+        // Test endpoint for authenticator info
+        router.get('/mini-app/test-authenticator', async (req, res) => {
+          try {
+            console.log('🧪 Testing Python bot authenticator...');
+            
+            // Test authenticator endpoint with JWT authentication
+            const testTelegramId = 5014800072; // Test user ID
+            const testResponse = await fetch('http://172.31.2.184:8080/api/authenticator', {
+              method: 'GET',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${generateJWT(testTelegramId)}`
+              }
+            });
+            
+            if (!testResponse.ok) {
+              throw new Error(`Python bot authenticator check failed: ${testResponse.status}`);
+            }
+            
+            const authData = await testResponse.json();
+            
+            res.json({
+              success: true,
+              message: 'Python bot authenticator check successful',
+              authenticator_info: authData,
+              node_env: process.env.NODE_ENV || 'development',
+              timestamp: new Date().toISOString()
+            });
+            
+          } catch (error) {
+            console.error('❌ Python bot authenticator test failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Python bot authenticator check failed.',
+              node_env: process.env.NODE_ENV || 'development',
+              timestamp: new Date().toISOString()
+            });
+          }
+        });
+        
+        // Proxy endpoint for Stellar Expert asset metadata
+        router.get('/mini-app/asset-metadata/:assetCode/:assetIssuer', async (req, res) => {
+          try {
+            const { assetCode, assetIssuer } = req.params;
+            console.log(`🔍 Fetching asset metadata for ${assetCode}-${assetIssuer}`);
+            
+            // Call Stellar Expert API
+            const stellarExpertUrl = `https://stellar.expert/api/assets/${assetCode}-${assetIssuer}`;
+            const response = await fetch(stellarExpertUrl, {
+              headers: {
+                'User-Agent': 'LumenBro-Wallet/1.0'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Stellar Expert API returned ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            res.json({
+              success: true,
+              data: data,
+              source: 'stellar_expert'
+            });
+            
+          } catch (error) {
+            console.error(`❌ Asset metadata fetch failed for ${req.params.assetCode}:`, error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to fetch asset metadata'
+            });
+          }
+        });
+        
+        // Proxy endpoint for TOML file fetching
+        router.get('/mini-app/toml-metadata/:assetCode/:assetIssuer', async (req, res) => {
+          try {
+            const { assetCode, assetIssuer } = req.params;
+            console.log(`🔍 Fetching TOML metadata for ${assetCode}-${assetIssuer}`);
+            
+            // First get issuer's home domain
+            const issuerResponse = await fetch(`https://horizon.stellar.org/accounts/${assetIssuer}`);
+            const issuerData = await issuerResponse.json();
+            
+            if (!issuerData.home_domain) {
+              throw new Error('Issuer has no home domain');
+            }
+            
+            // Fetch TOML file
+            const tomlUrl = `https://${issuerData.home_domain}/.well-known/stellar.toml`;
+            const tomlResponse = await fetch(tomlUrl, {
+              headers: {
+                'User-Agent': 'LumenBro-Wallet/1.0'
+              }
+            });
+            
+            if (!tomlResponse.ok) {
+              throw new Error(`TOML fetch failed: ${tomlResponse.status}`);
+            }
+            
+            const tomlText = await tomlResponse.text();
+            
+            // Parse TOML for the specific asset
+            const assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+            
+            if (!assetMatch) {
+              throw new Error('Asset not found in TOML');
+            }
+            
+            const assetSection = assetMatch[1];
+            const iconMatch = assetSection.match(/image\s*=\s*"([^"]+)"/i);
+            const nameMatch = assetSection.match(/name\s*=\s*"([^"]+)"/i);
+            const descMatch = assetSection.match(/desc\s*=\s*"([^"]+)"/i);
+            
+            const metadata = {
+              icon: iconMatch ? iconMatch[1] : null,
+              name: nameMatch ? nameMatch[1] : null,
+              description: descMatch ? descMatch[1] : null,
+              home_domain: issuerData.home_domain
+            };
+            
+            res.json({
+              success: true,
+              data: metadata,
+              source: 'toml'
+            });
+            
+          } catch (error) {
+            console.error(`❌ TOML metadata fetch failed for ${req.params.assetCode}:`, error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to fetch TOML metadata'
+            });
+          }
+        });
 
 // Test endpoint for local development
 router.get('/mini-app/test-python-connection', async (req, res) => {

@@ -421,34 +421,34 @@
         
         async function fetchAssetMetadata(assetCode, assetIssuer, assetCard) {
             try {
-                // Try Stellar Expert API first
-                const stellarExpertUrl = `https://stellar.expert/api/assets/${assetCode}-${assetIssuer}`;
+                // Try Stellar Expert API first (via our proxy)
+                const stellarExpertUrl = `/mini-app/asset-metadata/${assetCode}/${assetIssuer}`;
                 const response = await fetch(stellarExpertUrl);
                 
                 if (response.ok) {
-                    const data = await response.json();
+                    const result = await response.json();
                     
-                    if (data.icon && data.icon !== '') {
+                    if (result.success && result.data.icon && result.data.icon !== '') {
                         // Update the asset card with real icon
                         const iconContainer = assetCard.querySelector('.asset-icon');
                         const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
                         const imgElement = iconContainer.querySelector('.asset-icon-img');
                         
                         if (imgElement && fallbackSpan) {
-                            imgElement.src = data.icon;
+                            imgElement.src = result.data.icon;
                             imgElement.style.display = 'block';
                             fallbackSpan.style.display = 'none';
                         }
                         
                         // Update asset name if available
-                        if (data.name && data.name !== assetCode) {
+                        if (result.data.name && result.data.name !== assetCode) {
                             const nameElement = assetCard.querySelector('.asset-name');
                             if (nameElement) {
-                                nameElement.textContent = data.name;
+                                nameElement.textContent = result.data.name;
                             }
                         }
                         
-                        console.log(`✅ Loaded metadata for ${assetCode}:`, data.name, data.icon);
+                        console.log(`✅ Loaded Stellar Expert metadata for ${assetCode}:`, result.data.name, result.data.icon);
                         return;
                     }
                 }
@@ -469,37 +469,33 @@
         
         async function fetchAssetFromToml(assetCode, assetIssuer, assetCard) {
             try {
-                // Get TOML file from issuer's domain
-                const issuerResponse = await fetch(`https://horizon.stellar.org/accounts/${assetIssuer}`);
-                const issuerData = await issuerResponse.json();
+                // Use our TOML proxy endpoint
+                const tomlUrl = `/mini-app/toml-metadata/${assetCode}/${assetIssuer}`;
+                const tomlResponse = await fetch(tomlUrl);
                 
-                if (issuerData.home_domain) {
-                    const tomlUrl = `https://${issuerData.home_domain}/.well-known/stellar.toml`;
-                    const tomlResponse = await fetch(tomlUrl);
+                if (tomlResponse.ok) {
+                    const result = await tomlResponse.json();
                     
-                    if (tomlResponse.ok) {
-                        const tomlText = await tomlResponse.text();
-                        const assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+                    if (result.success && result.data.icon) {
+                        const iconContainer = assetCard.querySelector('.asset-icon');
+                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
+                        const imgElement = iconContainer.querySelector('.asset-icon-img');
                         
-                        if (assetMatch) {
-                            const assetSection = assetMatch[1];
-                            const iconMatch = assetSection.match(/image\s*=\s*"([^"]+)"/i);
-                            
-                            if (iconMatch) {
-                                const iconUrl = iconMatch[1];
-                                const iconContainer = assetCard.querySelector('.asset-icon');
-                                const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
-                                const imgElement = iconContainer.querySelector('.asset-icon-img');
-                                
-                                if (imgElement && fallbackSpan) {
-                                    imgElement.src = iconUrl;
-                                    imgElement.style.display = 'block';
-                                    fallbackSpan.style.display = 'none';
-                                }
-                                
-                                console.log(`✅ Loaded TOML icon for ${assetCode}:`, iconUrl);
+                        if (imgElement && fallbackSpan) {
+                            imgElement.src = result.data.icon;
+                            imgElement.style.display = 'block';
+                            fallbackSpan.style.display = 'none';
+                        }
+                        
+                        // Update asset name if available
+                        if (result.data.name && result.data.name !== assetCode) {
+                            const nameElement = assetCard.querySelector('.asset-name');
+                            if (nameElement) {
+                                nameElement.textContent = result.data.name;
                             }
                         }
+                        
+                        console.log(`✅ Loaded TOML metadata for ${assetCode}:`, result.data.name, result.data.icon);
                     }
                 }
             } catch (error) {
