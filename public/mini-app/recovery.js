@@ -433,13 +433,13 @@ async function generateNewTelegramKeys() {
     
     if (!result) return;
     document.getElementById('content').innerHTML = `
-      <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+      <div class="success-message">
         <h3>🎉 Recovery Complete!</h3>
         <p><strong>New API Key Created:</strong> ${result.apiKeyId}</p>
         <p><strong>Encryption:</strong> ✅ Secured with your password</p>
         <p><strong>Storage:</strong> ✅ Saved to Telegram Cloud</p>
         
-        <div style="margin: 20px 0; padding: 15px; background: #e7f3ff; border-radius: 5px;">
+        <div class="info-card">
           <h4>🎯 What's Next?</h4>
           <ol style="text-align: left; margin: 10px 0;">
             <li><strong>Test Login:</strong> Try logging in to verify your new keys work</li>
@@ -449,12 +449,12 @@ async function generateNewTelegramKeys() {
         </div>
         
         <div style="margin: 15px 0;">
-          <button onclick="testLogin()" style="background: #28a745; color: white; padding: 12px 24px; border: none; border-radius: 5px; margin: 5px; font-size: 16px;">
+          <button onclick="testLogin()" class="btn-success">
             🔐 Test Login
           </button>
         </div>
         
-        <p style="font-size: 0.9em; color: #666; margin-top: 15px;">
+        <p class="text-muted" style="font-size: 0.9em; margin-top: 15px;">
           💡 <strong>Important:</strong> Your recovery is now complete. The temporary recovery session will expire in ${status.expiresIn} minutes.
         </p>
       </div>
@@ -463,7 +463,7 @@ async function generateNewTelegramKeys() {
       } catch (error) {
         console.error('❌ Failed to generate new Telegram keys:', error);
         document.getElementById('content').innerHTML = `
-          <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+          <div class="error-message">
             <h3>❌ Key Generation Failed</h3>
             <p><strong>Error:</strong> ${error.message}</p>
             
@@ -477,10 +477,10 @@ async function generateNewTelegramKeys() {
             </div>
             
             <div style="margin-top: 15px;">
-              <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+              <button onclick="recover()" class="btn-secondary">
                 🔄 Start Recovery Again
               </button>
-              <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+              <button onclick="goBackToMain()" class="btn-primary">
                 ← Back to Main Menu
               </button>
             </div>
