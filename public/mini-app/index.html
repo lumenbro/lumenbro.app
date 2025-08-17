@@ -143,8 +143,12 @@
                 });
             }
 
-            // Add buttons to trigger debug and clear (avoid during login to prevent DOM rebuild/focus issues)
-            if (action !== 'login') {
+            // Add debug buttons only for development/testing, not on sensitive pages
+            const sensitiveActions = ['login', 'export', 'recover'];
+            const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const showDebugButtons = isDevelopment && !sensitiveActions.includes(action);
+            
+            if (showDebugButtons) {
                 document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
                 document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
             }

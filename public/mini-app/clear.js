@@ -2,6 +2,22 @@
 
 // Show warning before clearing data
 window.showClearWarning = function() {
+    // Safety check: Don't allow clearing on sensitive pages
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const sensitiveActions = ['export', 'recover'];
+    
+    if (sensitiveActions.includes(action)) {
+        alert('⚠️ Clear Data is not available on this page for security reasons.');
+        return;
+    }
+    
+    // Additional safety check for production
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    if (isProduction) {
+        const confirmed = confirm('⚠️ SECURITY WARNING: This will permanently delete your API keys from Telegram Cloud Storage. Are you sure you want to continue?');
+        if (!confirmed) return;
+    }
     const warningDiv = document.createElement('div');
     warningDiv.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;

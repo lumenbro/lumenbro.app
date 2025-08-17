@@ -877,6 +877,16 @@ function copyMaskedInput(elementId) {
 // Function to automatically clear cloud storage
 async function autoClearCloudStorage() {
     try {
+        // Safety check: Don't allow clearing on sensitive pages
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const sensitiveActions = ['export', 'recover'];
+        
+        if (sensitiveActions.includes(action)) {
+            alert('⚠️ Auto-clear is not available on this page for security reasons.');
+            return;
+        }
+        
         // Add confirmation dialog to prevent accidental clearing
         const confirmed = confirm('⚠️ WARNING: This will permanently delete all your stored API keys and session data.\n\nThis action cannot be undone. Are you sure you want to continue?');
         if (!confirmed) {
