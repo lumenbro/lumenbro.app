@@ -473,164 +473,54 @@ async function login() {
       // Use standardized decryption
       console.log('Using encrypted key format');
       
-      // For mobile compatibility, use a simpler approach
-      if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-        console.log('🔧 Using mobile-compatible approach...');
-        
-        // Show a simple password input (like export does)
-        document.getElementById('content').innerHTML = `
-          <div class="login-card">
-            <h3>🔐 Enter Password</h3>
-            <p>Enter your password to decrypt your API keys:</p>
-            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input" autocomplete="current-password" style="pointer-events: auto !important; user-select: text !important; -webkit-user-select: text !important; position: relative !important; z-index: 9999 !important;">
-            <button onclick="submitMobileLogin()" class="btn-primary login-button">
-              Continue Login
-            </button>
-          </div>
-        `;
-        
-        // Add event listeners to debug input issues
-        setTimeout(() => {
-          const input = document.getElementById('loginPassword');
-          if (input) {
-            console.log('🔍 Password input found, adding event listeners');
-            console.log('🔍 Input element:', input);
-            console.log('🔍 Input HTML:', input.outerHTML);
-            
-            input.addEventListener('focus', () => console.log('🔍 Password input focused'));
-            input.addEventListener('blur', () => console.log('🔍 Password input blurred'));
-            input.addEventListener('input', (e) => console.log('🔍 Password input changed:', e.target.value.length, 'characters'));
-            input.addEventListener('click', () => console.log('🔍 Password input clicked'));
-            input.addEventListener('keydown', (e) => console.log('🔍 Password input keydown:', e.key));
-            input.addEventListener('keyup', (e) => console.log('🔍 Password input keyup:', e.key));
-            
-            // Ensure input is not disabled or readonly
-            input.disabled = false;
-            input.readOnly = false;
-            input.style.pointerEvents = 'auto';
-            input.style.userSelect = 'text';
-            input.style.webkitUserSelect = 'text';
-            input.style.position = 'relative';
-            input.style.zIndex = '9999';
-            
-            console.log('🔍 Input properties:', {
-              disabled: input.disabled,
-              readOnly: input.readOnly,
-              pointerEvents: input.style.pointerEvents,
-              tabIndex: input.tabIndex,
-              value: input.value,
-              type: input.type
-            });
-            
-            // Test if input is actually focusable
-            try {
-              input.focus();
-              console.log('🔍 Input focus test successful');
-            } catch (error) {
-              console.error('❌ Input focus test failed:', error);
-            }
-          } else {
-            console.error('❌ Password input not found!');
-          }
-        }, 200);
-        
-        // Focus on password input with multiple attempts
-        const focusInput = () => {
-          const input = document.getElementById('loginPassword');
-          if (input) {
-            input.focus();
-            input.click();
-            console.log('🔍 Attempted to focus password input');
-          }
-        };
-        
-        // Try focusing multiple times with delays
-        setTimeout(focusInput, 100);
-        setTimeout(focusInput, 500);
-        setTimeout(focusInput, 1000);
-        
-        // Define the submit function
-        window.submitMobileLogin = async () => {
-          try {
-            const password = document.getElementById('loginPassword').value;
-            if (!password) {
-              alert('Password required');
-              return;
-            }
-            
-            // Use the password to decrypt (same as export)
-            apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
-            console.log('✅ Decryption successful (mobile-compatible)');
-            
-            // Continue with the rest of the login process
-            continueLoginProcess(apiKey);
-          } catch (error) {
-            console.error('❌ Mobile decryption error:', error);
-            document.getElementById('content').innerHTML = `
-              <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                <h3>❌ Mobile Login Error</h3>
-                <p>There was an issue decrypting your key on mobile. This is likely due to:</p>
-                <ul>
-                  <li>Web Crypto API limitations on mobile</li>
-                  <li>Data format compatibility issues</li>
-                  <li>Telegram WebView restrictions</li>
-                </ul>
-                <p><strong>Try:</strong></p>
-                <ul>
-                  <li>Using desktop version</li>
-                  <li>Re-registering on mobile</li>
-                  <li>Checking the debug console (🐛 button)</li>
-                </ul>
-                <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
-                  🐛 Show Debug Info
-                </button>
-              </div>
-            `;
-          }
-        };
-        
-        // Return early - the rest will be handled by submitMobileLogin
-        return;
-      }
+             // Always use the input field approach (works on both mobile and desktop)
+       console.log('🔧 Using input field approach...');
+       
+       // Show a simple password input (like export does)
+       document.getElementById('content').innerHTML = `
+         <div class="login-card">
+           <h3>🔐 Enter Password</h3>
+           <p>Enter your password to decrypt your API keys:</p>
+           <input type="password" id="loginPassword" placeholder="Enter password" class="login-input" autocomplete="current-password">
+           <button onclick="submitLogin()" class="btn-primary login-button">
+             Continue Login
+           </button>
+         </div>
+       `;
+       
+       // Define the submit function
+       window.submitLogin = async () => {
+         try {
+           const password = document.getElementById('loginPassword').value;
+           if (!password) {
+             alert('Password required');
+             return;
+           }
+           
+           // Use the password to decrypt (same as export)
+           apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+           console.log('✅ Decryption successful');
+           
+           // Continue with the rest of the login process
+           continueLoginProcess(apiKey);
+         } catch (error) {
+           console.error('❌ Decryption error:', error);
+           document.getElementById('content').innerHTML = `
+             <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+               <h3>❌ Login Error</h3>
+               <p>There was an issue decrypting your key. Please check your password and try again.</p>
+               <button onclick="window.login()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                 🔄 Try Again
+               </button>
+             </div>
+           `;
+         }
+       };
+       
+       // Return early - the rest will be handled by submitLogin
+       return;
       
-      // Desktop approach - use prompt
-      password = prompt('Enter your password to decrypt key:');
-      if (!password) throw new Error('Password required');
-      
-      try {
-        apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
-        console.log('✅ Decryption successful');
-      } catch (error) {
-        // Enhanced mobile error handling
-        if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-          console.error('❌ Mobile decryption error:', error);
-          MobileEncryptionFix.handleMobileError(error, 'key decryption');
-          
-          // Show user-friendly error message
-          document.getElementById('content').innerHTML = `
-            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
-              <h3>❌ Mobile Login Error</h3>
-              <p>There was an issue decrypting your key on mobile. This is likely due to:</p>
-              <ul>
-                <li>Web Crypto API limitations on mobile</li>
-                <li>Data format compatibility issues</li>
-                <li>Telegram WebView restrictions</li>
-              </ul>
-              <p><strong>Try:</strong></p>
-              <ul>
-                <li>Using desktop version</li>
-                <li>Re-registering on mobile</li>
-                <li>Checking the debug console (🐛 button)</li>
-              </ul>
-              <button onclick="window.mobileDebug && window.mobileDebug.toggle()" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
-                🐛 Show Debug Info
-              </button>
-            </div>
-          `;
-          return;
-        }
-        throw error;
-      }
+             // This code is now handled by the input field approach above
       
     } else {
       // Handle legacy unencrypted keys
