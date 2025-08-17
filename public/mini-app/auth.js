@@ -228,17 +228,17 @@ async function showExportForm() {
         
         // Show export form
         document.getElementById('content').innerHTML = `
-            <div style="background: #e8f5e8; border: 1px solid #4CAF50; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h2 style="color: #2E7D32; margin-top: 0;">🔐 Export Wallet Keys</h2>
+            <div class="export-card">
+                <h2>🔐 Export Wallet Keys</h2>
                 <p><strong>Organization ID:</strong> ${window.orgId}</p>
                 <p><strong>Email:</strong> ${window.email}</p>
             </div>
             
-            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px;">
+            <div class="export-card">
                 <h3>📧 Enter Your Password</h3>
                 <p>Enter the password you used to encrypt your API keys:</p>
-                <input type="password" id="exportPassword" placeholder="Enter your password" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
-                <button onclick="startExport()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">🔐 Export Wallet Keys</button>
+                <input type="password" id="exportPassword" placeholder="Enter your password" class="export-input">
+                <button onclick="startExport()" class="export-button">🔐 Export Wallet Keys</button>
             </div>
             
             <div id="exportStatus" style="display: none; padding: 10px; margin: 10px 0; border-radius: 5px; font-weight: bold;"></div>
@@ -248,7 +248,7 @@ async function showExportForm() {
     } catch (error) {
         console.error('Export error:', error);
         document.getElementById('content').innerHTML = `
-            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px;">
+            <div class="error-message">
                 <h3>❌ Export Error</h3>
                 <p>Error: ${error.message}</p>
             </div>

@@ -73,21 +73,21 @@ async function recover() {
 
     // Step 3: Prompt for OTP code from email
     document.getElementById('content').innerHTML = `
-      <div style="background: #e7f3ff; border: 1px solid #b3d7ff; padding: 20px; margin: 10px 0; border-radius: 5px;">
+      <div class="recovery-card">
         <h3>📧 Recovery Email Sent!</h3>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Organization:</strong> ${responseOrgId}</p>
         <p>Check your email for a 6-digit recovery code:</p>
         
         <div style="margin: 15px 0;">
-          <input type="text" id="otpCode" placeholder="Enter 6-digit code" style="padding: 10px; width: 200px; text-align: center; font-size: 18px; border: 2px solid #ddd; border-radius: 5px;" maxlength="6">
+          <input type="text" id="otpCode" placeholder="Enter 6-digit code" class="recovery-input" maxlength="6">
         </div>
         
-        <button onclick="completeRecovery()" style="background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+        <button onclick="completeRecovery()" class="recovery-button">
           Complete Recovery
         </button>
         
-        <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+        <div class="recovery-note">
           <p>💡 <strong>Note:</strong> The code expires in 5 minutes</p>
           <p>📱 If you don't see the email, check your spam folder</p>
         </div>
@@ -189,31 +189,31 @@ async function completeRecovery() {
 
     // Show recovery success with option to create new Telegram keys
     document.getElementById('content').innerHTML = `
-      <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+      <div class="success-message">
         <h3>✅ Email Recovery Successful!</h3>
         <p><strong>Organization:</strong> ${orgId}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p>You now have temporary access to your wallet. Choose an option:</p>
         
         <div style="margin: 15px 0;">
-          <button onclick="generateNewTelegramKeys()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+          <button onclick="generateNewTelegramKeys()" class="btn-primary">
             🔑 Create New Telegram Keys
           </button>
-          <p style="font-size: 0.9em; color: #666;">Recommended: Create new encrypted keys for Telegram bot access</p>
+          <p class="recovery-note">Recommended: Create new encrypted keys for Telegram bot access</p>
         </div>
 
-        <div style="margin: 15px 0; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #dee2e6;">
-          <h4 style="margin-top: 0; color: #6c757d;">🚧 Wallet Access (Coming Soon)</h4>
-          <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+        <div class="warning-card">
+          <h4 style="margin-top: 0;">🚧 Wallet Access (Coming Soon)</h4>
+          <p style="margin-bottom: 10px;">
             Direct wallet access is currently under development. For now, please use the Telegram bot for trading.
           </p>
-          <button onclick="setupBot()" style="background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 0.9em;">
+          <button onclick="setupBot()" class="btn-secondary">
             🤖 Setup Bot Access
           </button>
         </div>
         
         <div style="margin: 15px 0;">
-          <button onclick="goBackToMain()" style="background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; font-size: 0.9em;">
+          <button onclick="goBackToMain()" class="btn-secondary">
             ← Back to Main Menu
           </button>
         </div>
@@ -230,7 +230,7 @@ async function completeRecovery() {
   } catch (error) {
     console.error('Recovery completion error:', error);
     document.getElementById('content').innerHTML = `
-      <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; margin: 10px 0; border-radius: 5px;">
+      <div class="error-message">
         <h3>❌ Recovery Completion Failed</h3>
         <p><strong>Error:</strong> ${error.message}</p>
         
@@ -244,10 +244,10 @@ async function completeRecovery() {
         </div>
         
         <div style="margin-top: 15px;">
-          <button onclick="recover()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+          <button onclick="recover()" class="btn-secondary">
             🔄 Start Recovery Again
           </button>
-          <button onclick="goBackToMain()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 5px;">
+          <button onclick="goBackToMain()" class="btn-primary">
             ← Back to Main Menu
           </button>
         </div>
