@@ -379,10 +379,10 @@ function displayExportResults(result, stellarAddress) {
     if (result.needsManualDecryption) {
         // Show manual decryption info
         resultsDiv.innerHTML = `
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px solid #e9ecef; margin-top: 20px;">
+            <div class="export-results">
                 <h3>🔐 Export Bundle Ready!</h3>
                 
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <div class="export-security-warning">
                     <strong>⚠️ Manual Decryption Required:</strong><br>
                     • The export bundle has been created successfully<br>
                     • Manual decryption is needed to extract the private key<br>
@@ -391,23 +391,23 @@ function displayExportResults(result, stellarAddress) {
 
                 <div>
                     <label><strong>Export Bundle:</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 10px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6; max-height: 200px; overflow-y: auto;">${result.exportBundle}</div>
-                    <button onclick="copyToClipboard('${result.exportBundle}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Bundle</button>
+                    <div class="export-key-display large">${result.exportBundle}</div>
+                    <button onclick="copyToClipboard('${result.exportBundle}')" class="export-copy-button">📋 Copy Bundle</button>
                 </div>
 
                 <div style="margin-top: 20px;">
                     <label><strong>Ephemeral Private Key (for decryption):</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 10px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${result.ephemeralPrivateKey}</div>
-                    <button onclick="copyToClipboard('${result.ephemeralPrivateKey}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Private Key</button>
+                    <div class="export-key-display large">${result.ephemeralPrivateKey}</div>
+                    <button onclick="copyToClipboard('${result.ephemeralPrivateKey}')" class="export-copy-button">📋 Copy Private Key</button>
                 </div>
 
                 <div style="margin-top: 20px;">
                     <label><strong>Stellar Public Address:</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${stellarAddress}</div>
-                    <button onclick="copyToClipboard('${stellarAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Address</button>
+                    <div class="export-key-display">${stellarAddress}</div>
+                    <button onclick="copyToClipboard('${stellarAddress}')" class="export-copy-button">📋 Copy Address</button>
                 </div>
 
-                <div style="background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <div class="export-info-box">
                     <strong>💡 Next Steps:</strong><br>
                     • Copy the export bundle and ephemeral private key<br>
                     • Use a tool to decrypt the bundle with the private key<br>
@@ -418,10 +418,10 @@ function displayExportResults(result, stellarAddress) {
     } else {
         // Show normal export results (adds encrypted download option)
         resultsDiv.innerHTML = `
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px solid #e9ecef; margin-top: 20px;">
+            <div class="export-results">
                 <h3>✅ Export Successful!</h3>
                 
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <div class="export-security-warning">
                     <strong>⚠️ Security Warning:</strong><br>
                     • Never share these keys with anyone<br>
                     • Store them offline in a secure location<br>
@@ -431,20 +431,20 @@ function displayExportResults(result, stellarAddress) {
 
                 <div>
                     <label><strong>Stellar Private Key (Hex):</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${result.stellarPrivateKey}</div>
-                    <button onclick="copyToClipboard('${result.stellarPrivateKey}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Private Key</button>
+                    <div class="export-key-display">${result.stellarPrivateKey}</div>
+                    <button onclick="copyToClipboard('${result.stellarPrivateKey}')" class="export-copy-button">📋 Copy Private Key</button>
                 </div>
 
                 <div style="margin-top: 20px;">
                     <label><strong>Stellar S-Address:</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${result.stellarSAddress}</div>
-                    <button onclick="copyToClipboard('${result.stellarSAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy S-Address</button>
+                    <div class="export-key-display">${result.stellarSAddress}</div>
+                    <button onclick="copyToClipboard('${result.stellarSAddress}')" class="export-copy-button">📋 Copy S-Address</button>
                 </div>
 
                 <div style="margin-top: 20px;">
                     <label><strong>Stellar Public Address:</strong></label>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 10px 0; border: 1px solid #dee2e6;">${stellarAddress}</div>
-                    <button onclick="copyToClipboard('${stellarAddress}')" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0;">📋 Copy Public Address</button>
+                    <div class="export-key-display">${stellarAddress}</div>
+                    <button onclick="copyToClipboard('${stellarAddress}')" class="export-copy-button">📋 Copy Public Address</button>
                 </div>
 
                 <!-- Download/JSON options removed per mobile constraints -->

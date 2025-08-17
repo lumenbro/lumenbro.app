@@ -876,3 +876,95 @@ input::placeholder {
   color: var(--muted);
   margin-bottom: 10px;
 }
+
+/* Export Results Styles */
+.export-results {
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-1);
+}
+
+.export-results h3 {
+  color: var(--text);
+  font-size: 20px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.export-results label {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.export-results label strong {
+  color: var(--text);
+}
+
+.export-key-display {
+  background: var(--bg-soft);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 15px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  margin: 10px 0;
+  color: var(--text);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.export-key-display.large {
+  font-size: 10px;
+}
+
+.export-copy-button {
+  background: linear-gradient(180deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 5px 5px 5px 0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.export-copy-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.export-security-warning {
+  background: rgba(245,177,74,0.1);
+  border: 1px solid rgba(245,177,74,0.3);
+  color: var(--warning);
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.export-security-warning strong {
+  color: var(--warning);
+}
+
+.export-info-box {
+  background: rgba(79,138,255,0.1);
+  border: 1px solid rgba(79,138,255,0.3);
+  color: var(--primary);
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.export-info-box strong {
+  color: var(--primary);
+}
