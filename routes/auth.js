@@ -1364,21 +1364,22 @@ router.get('/mini-app/test-python-connection', async (req, res) => {
     console.log('🧪 Testing Python bot connection...');
     
     // Test basic connectivity
-    const testResponse = await fetch('http://172.31.2.184:8080/api/health', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+    const testResponse = await fetch('http://172.31.2.184:8080/api/check_status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id: 123456789 })
     });
     
     if (!testResponse.ok) {
-      throw new Error(`Python bot health check failed: ${testResponse.status}`);
+      throw new Error(`Python bot status check failed: ${testResponse.status}`);
     }
     
-    const healthData = await testResponse.json();
+    const statusData = await testResponse.json();
     
     res.json({
       success: true,
       message: 'Python bot connection successful',
-      python_bot_status: healthData,
+      python_bot_status: statusData,
       node_env: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString()
     });
