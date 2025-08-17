@@ -177,18 +177,26 @@
         }
         
         function showWallet() {
-            document.getElementById('auth-interface').style.display = 'none';
-            document.getElementById('wallet-interface').style.display = 'block';
-            document.querySelector('.bottom-nav').style.display = 'flex';
+            const authInterface = document.getElementById('auth-interface');
+            const walletInterface = document.getElementById('wallet-interface');
+            const bottomNav = document.querySelector('.bottom-nav');
+            
+            if (authInterface) authInterface.style.display = 'none';
+            if (walletInterface) walletInterface.style.display = 'block';
+            if (bottomNav) bottomNav.style.display = 'flex';
             
             // Load wallet data
             loadWalletData();
         }
         
         function showAuth() {
-            document.getElementById('wallet-interface').style.display = 'none';
-            document.getElementById('auth-interface').style.display = 'block';
-            document.querySelector('.bottom-nav').style.display = 'none';
+            const walletInterface = document.getElementById('wallet-interface');
+            const authInterface = document.getElementById('auth-interface');
+            const bottomNav = document.querySelector('.bottom-nav');
+            
+            if (walletInterface) walletInterface.style.display = 'none';
+            if (authInterface) authInterface.style.display = 'block';
+            if (bottomNav) bottomNav.style.display = 'none';
         }
         
         async function loadWalletData() {
@@ -199,7 +207,10 @@
                 // TODO: Load actual wallet data from your API
                 // For now, show mock data
                 setTimeout(() => {
-                    document.querySelector('.balance-amount').textContent = '1,234.56';
+                    const balanceAmount = document.querySelector('.balance-amount');
+                    if (balanceAmount) {
+                        balanceAmount.textContent = '1,234.56';
+                    }
                     updateConnectionStatus('Connected', 'connected');
                 }, 1000);
                 
@@ -211,11 +222,13 @@
         
         function updateConnectionStatus(text, status) {
             const statusElement = document.getElementById('connection-status');
+            if (!statusElement) return;
+            
             const statusDot = statusElement.querySelector('.status-dot');
             const statusText = statusElement.querySelector('.status-text');
             
-            statusText.textContent = text;
-            statusDot.className = `status-dot ${status}`;
+            if (statusText) statusText.textContent = text;
+            if (statusDot) statusDot.className = `status-dot ${status}`;
         }
         
         function showSendPayment() {
