@@ -274,21 +274,54 @@
         async function loadWalletData() {
             try {
                 // Update connection status
-                updateConnectionStatus('Connecting to wallet...', 'connecting');
+                updateConnectionStatus('Loading balance...', 'connecting');
                 
-                // TODO: Load actual wallet data from your API
-                // For now, show mock data
-                setTimeout(() => {
-                    const balanceAmount = document.querySelector('.balance-amount');
-                    if (balanceAmount) {
-                        balanceAmount.textContent = '1,234.56';
-                    }
-                    updateConnectionStatus('Connected', 'connected');
-                }, 1000);
+                // Get user's public key from authenticator endpoint
+                const authResponse = await fetch('/mini-app/test-authenticator');
+                const authData = await authResponse.json();
+                
+                if (!authData.success) {
+                    throw new Error('Failed to get user data');
+                }
+                
+                const publicKey = authData.authenticator_info.user.public_key;
+                console.log('Loading balance for public key:', publicKey);
+                
+                // Use Stellar-Plus to get real balance
+                // For now, we'll use a simple fetch to Stellar RPC
+                // Later we can add the full Stellar-Plus library
+                const stellarResponse = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
+                const accountData = await stellarResponse.json();
+                
+                if (accountData.detail) {
+                    throw new Error('Account not found on Stellar network');
+                }
+                
+                // Find XLM balance
+                const xlmBalance = accountData.balances.find(balance => 
+                    balance.asset_type === 'native'
+                );
+                
+                const balanceAmount = document.querySelector('.balance-amount');
+                if (balanceAmount && xlmBalance) {
+                    balanceAmount.textContent = parseFloat(xlmBalance.balance).toFixed(2);
+                }
+                
+                // Show total assets count
+                const totalAssets = accountData.balances.length;
+                console.log(`Account has ${totalAssets} assets (including XLM)`);
+                
+                updateConnectionStatus('Connected', 'connected');
                 
             } catch (error) {
                 console.error('Error loading wallet data:', error);
                 updateConnectionStatus('Connection failed', 'error');
+                
+                // Show error in balance
+                const balanceAmount = document.querySelector('.balance-amount');
+                if (balanceAmount) {
+                    balanceAmount.textContent = 'Error';
+                }
             }
         }
         
