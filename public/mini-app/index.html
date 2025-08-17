@@ -193,9 +193,16 @@
                         <h1>LumenBro Wallet</h1>
                         <div class="wallet-balance">
                             <div class="balance-card">
-                                <h3>💰 Balance</h3>
+                                <h3>💰 XLM Balance</h3>
                                 <div class="balance-amount">Loading...</div>
                                 <div class="balance-currency">XLM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="wallet-assets">
+                            <h3>🪙 All Assets</h3>
+                            <div id="assets-list" class="assets-list">
+                                <div class="loading-assets">Loading assets...</div>
                             </div>
                         </div>
                         
@@ -307,6 +314,9 @@
                     balanceAmount.textContent = parseFloat(xlmBalance.balance).toFixed(2);
                 }
                 
+                // Display all assets
+                displayAllAssets(accountData.balances);
+                
                 // Show total assets count
                 const totalAssets = accountData.balances.length;
                 console.log(`Account has ${totalAssets} assets (including XLM)`);
@@ -334,6 +344,66 @@
             
             if (statusText) statusText.textContent = text;
             if (statusDot) statusDot.className = `status-dot ${status}`;
+        }
+        
+        function displayAllAssets(balances) {
+            const assetsList = document.getElementById('assets-list');
+            if (!assetsList) return;
+            
+            // Clear loading message
+            assetsList.innerHTML = '';
+            
+            balances.forEach(balance => {
+                const assetCard = document.createElement('div');
+                assetCard.className = 'asset-card';
+                
+                let assetName, assetCode, assetIcon;
+                
+                if (balance.asset_type === 'native') {
+                    // XLM
+                    assetName = 'Stellar Lumens';
+                    assetCode = 'XLM';
+                    assetIcon = '⭐';
+                } else if (balance.asset_type === 'credit_alphanum4') {
+                    // Traditional assets
+                    assetName = balance.asset_code || 'Unknown Asset';
+                    assetCode = balance.asset_code;
+                    assetIcon = '🪙';
+                } else if (balance.asset_type === 'credit_alphanum12') {
+                    // 12-character assets
+                    assetName = balance.asset_code || 'Unknown Asset';
+                    assetCode = balance.asset_code;
+                    assetIcon = '🪙';
+                } else {
+                    // Soroban or other assets
+                    assetName = 'Smart Contract Asset';
+                    assetCode = 'SOROBAN';
+                    assetIcon = '🤖';
+                }
+                
+                const balanceAmount = parseFloat(balance.balance).toFixed(7);
+                
+                assetCard.innerHTML = `
+                    <div class="asset-info">
+                        <div class="asset-icon">${assetIcon}</div>
+                        <div class="asset-details">
+                            <div class="asset-name">${assetName}</div>
+                            <div class="asset-code">${assetCode}</div>
+                        </div>
+                    </div>
+                    <div class="asset-balance">
+                        <div class="balance-amount">${balanceAmount}</div>
+                        <div class="balance-limit">${balance.limit ? `Limit: ${balance.limit}` : ''}</div>
+                    </div>
+                `;
+                
+                assetsList.appendChild(assetCard);
+            });
+            
+            // If no assets found
+            if (balances.length === 0) {
+                assetsList.innerHTML = '<div class="no-assets">No assets found</div>';
+            }
         }
         
         function showSendPayment() {
