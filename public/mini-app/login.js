@@ -482,7 +482,7 @@ async function login() {
           <div class="login-card">
             <h3>🔐 Enter Password</h3>
             <p>Enter your password to decrypt your API keys:</p>
-            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input" autocomplete="current-password">
+            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input" autocomplete="current-password" style="pointer-events: auto !important; user-select: text !important; -webkit-user-select: text !important; position: relative !important; z-index: 9999 !important;">
             <button onclick="submitMobileLogin()" class="btn-primary login-button">
               Continue Login
             </button>
@@ -494,23 +494,41 @@ async function login() {
           const input = document.getElementById('loginPassword');
           if (input) {
             console.log('🔍 Password input found, adding event listeners');
+            console.log('🔍 Input element:', input);
+            console.log('🔍 Input HTML:', input.outerHTML);
             
             input.addEventListener('focus', () => console.log('🔍 Password input focused'));
             input.addEventListener('blur', () => console.log('🔍 Password input blurred'));
             input.addEventListener('input', (e) => console.log('🔍 Password input changed:', e.target.value.length, 'characters'));
             input.addEventListener('click', () => console.log('🔍 Password input clicked'));
+            input.addEventListener('keydown', (e) => console.log('🔍 Password input keydown:', e.key));
+            input.addEventListener('keyup', (e) => console.log('🔍 Password input keyup:', e.key));
             
             // Ensure input is not disabled or readonly
             input.disabled = false;
             input.readOnly = false;
             input.style.pointerEvents = 'auto';
+            input.style.userSelect = 'text';
+            input.style.webkitUserSelect = 'text';
+            input.style.position = 'relative';
+            input.style.zIndex = '9999';
             
             console.log('🔍 Input properties:', {
               disabled: input.disabled,
               readOnly: input.readOnly,
               pointerEvents: input.style.pointerEvents,
-              tabIndex: input.tabIndex
+              tabIndex: input.tabIndex,
+              value: input.value,
+              type: input.type
             });
+            
+            // Test if input is actually focusable
+            try {
+              input.focus();
+              console.log('🔍 Input focus test successful');
+            } catch (error) {
+              console.error('❌ Input focus test failed:', error);
+            }
           } else {
             console.error('❌ Password input not found!');
           }

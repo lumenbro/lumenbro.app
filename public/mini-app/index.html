@@ -83,7 +83,16 @@
             document.head.appendChild(script);
         }
     </script>
-    <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
+    <!-- Temporarily disabled mobile encryption fix during login to prevent input blocking -->
+    <script>
+        // Only load mobile encryption fix if not on login action
+        const currentAction = new URLSearchParams(window.location.search).get('action');
+        if (currentAction !== 'login') {
+            const script = document.createElement('script');
+            script.src = '/mini-app/mobile-encryption-fix.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <style>
         .status {
             padding: 15px;
