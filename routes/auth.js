@@ -1366,6 +1366,47 @@ function generateJWT(telegram_id) {
   }, JWT_SECRET, { algorithm: 'HS256' });
 }
 
+// Test endpoint for authenticator info
+router.get('/mini-app/test-authenticator', async (req, res) => {
+  try {
+    console.log('🧪 Testing Python bot authenticator...');
+    
+    // Test authenticator endpoint with JWT authentication
+    const testTelegramId = 5014800072; // Test user ID
+    const testResponse = await fetch('http://172.31.2.184:8080/api/authenticator', {
+      method: 'GET',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${generateJWT(testTelegramId)}`
+      }
+    });
+    
+    if (!testResponse.ok) {
+      throw new Error(`Python bot authenticator check failed: ${testResponse.status}`);
+    }
+    
+    const authData = await testResponse.json();
+    
+    res.json({
+      success: true,
+      message: 'Python bot authenticator check successful',
+      authenticator_info: authData,
+      node_env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Python bot authenticator test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Python bot authenticator check failed.',
+      node_env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Test endpoint for local development
 router.get('/mini-app/test-python-connection', async (req, res) => {
   try {
