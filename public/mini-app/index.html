@@ -73,7 +73,16 @@
     <script src="/mini-app/login.js"></script>
     <script src="/mini-app/recovery.js"></script>
     <script src="/mini-app/clear.js"></script>  <!-- New script for clear -->
-    <script src="/mini-app/mobile-debug.js"></script>  <!-- Mobile debugging -->
+    <!-- Temporarily disabled mobile debug during login to prevent input blocking -->
+    <script>
+        // Only load mobile debug if not on login action
+        const action = new URLSearchParams(window.location.search).get('action');
+        if (action !== 'login') {
+            const script = document.createElement('script');
+            script.src = '/mini-app/mobile-debug.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
     <style>
         .status {

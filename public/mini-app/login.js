@@ -479,13 +479,11 @@ async function login() {
         
         // Show a simple password input (like export does)
         document.getElementById('content').innerHTML = `
-          <div style="background: #e7f3ff; border: 1px solid #b3d7ff; padding: 20px; margin: 10px 0; border-radius: 5px;">
+          <div class="login-card">
             <h3>🔐 Enter Password</h3>
             <p>Enter your password to decrypt your API keys:</p>
-            <input type="password" id="loginPassword" placeholder="Enter password" 
-                   style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; margin: 10px 0; font-size: 16px;">
-            <button onclick="submitMobileLogin()" 
-                    style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 5px; font-size: 16px; cursor: pointer; width: 100%;">
+            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input">
+            <button onclick="submitMobileLogin()" class="btn-primary login-button">
               Continue Login
             </button>
           </div>
