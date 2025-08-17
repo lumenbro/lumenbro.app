@@ -14,15 +14,30 @@ class MobileDebug {
 
     init() {
         if (this.isMobile) {
-            this.createDebugContainer();
+            // Suppress on sensitive flows (e.g., login) to avoid UI interference
+            const params = new URLSearchParams(window.location.search);
+            this.suppressUI = params.get('action') === 'login';
+
+            if (!this.suppressUI) {
+                this.createDebugContainer();
+            }
+
             this.overrideConsole();
             this.log('🔍 Mobile debug mode activated');
             this.log(`Platform: ${window.Telegram?.WebApp?.platform || 'unknown'}`);
             this.log(`User Agent: ${navigator.userAgent.substring(0, 50)}...`);
+            if (this.suppressUI) {
+                this.log('⚠️ Debug UI suppressed on login flow to prevent input blocking');
+            }
         }
     }
 
     createDebugContainer() {
+        // If UI is suppressed, do not render any overlay elements
+        if (this.suppressUI) {
+            return;
+        }
+
         this.debugContainer = document.createElement('div');
         this.debugContainer.id = 'mobile-debug-container';
         this.debugContainer.style.cssText = `
@@ -39,6 +54,7 @@ class MobileDebug {
             overflow-y: auto;
             z-index: 9999;
             display: none;
+            pointer-events: none; /* never block input when hidden */
         `;
         
         const header = document.createElement('div');
@@ -67,8 +83,9 @@ class MobileDebug {
             padding: 8px 12px;
             border-radius: 4px;
             cursor: pointer;
-            z-index: 9998;
+            z-index: 100; /* keep below app modals */
             font-size: 12px;
+            pointer-events: auto;
         `;
         toggleBtn.onclick = () => this.toggle();
         document.body.appendChild(toggleBtn);
@@ -126,8 +143,9 @@ class MobileDebug {
 
     toggle() {
         if (this.debugContainer) {
-            this.debugContainer.style.display = 
-                this.debugContainer.style.display === 'none' ? 'block' : 'none';
+            const showing = this.debugContainer.style.display === 'none';
+            this.debugContainer.style.display = showing ? 'block' : 'none';
+            this.debugContainer.style.pointerEvents = showing ? 'auto' : 'none';
         }
     }
 

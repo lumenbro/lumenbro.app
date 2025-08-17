@@ -143,9 +143,11 @@
                 });
             }
 
-            // Add buttons to trigger debug and clear
-            document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
-            document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
+            // Add buttons to trigger debug and clear (avoid during login to prevent DOM rebuild/focus issues)
+            if (action !== 'login') {
+                document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
+                document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
+            }
             
             // Only initialize wallet interface if no specific action is requested
             if (!action) {
