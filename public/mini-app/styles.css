@@ -572,6 +572,18 @@ input::placeholder {
   justify-content: center;
   background: rgba(79,138,255,0.1);
   border-radius: 8px;
+  position: relative;
+}
+
+.asset-icon-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.asset-icon-fallback {
+  font-size: 20px;
 }
 
 .asset-details {

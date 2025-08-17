@@ -346,46 +346,49 @@
             if (statusDot) statusDot.className = `status-dot ${status}`;
         }
         
-        function displayAllAssets(balances) {
+        async function displayAllAssets(balances) {
             const assetsList = document.getElementById('assets-list');
             if (!assetsList) return;
             
             // Clear loading message
             assetsList.innerHTML = '';
             
-            balances.forEach(balance => {
+            // Process each balance and fetch asset metadata
+            for (const balance of balances) {
                 const assetCard = document.createElement('div');
                 assetCard.className = 'asset-card';
                 
-                let assetName, assetCode, assetIcon;
+                let assetName, assetCode, assetIcon, assetIssuer;
                 
                 if (balance.asset_type === 'native') {
                     // XLM
                     assetName = 'Stellar Lumens';
                     assetCode = 'XLM';
                     assetIcon = '⭐';
-                } else if (balance.asset_type === 'credit_alphanum4') {
+                    assetIssuer = null;
+                } else if (balance.asset_type === 'credit_alphanum4' || balance.asset_type === 'credit_alphanum12') {
                     // Traditional assets
                     assetName = balance.asset_code || 'Unknown Asset';
                     assetCode = balance.asset_code;
-                    assetIcon = '🪙';
-                } else if (balance.asset_type === 'credit_alphanum12') {
-                    // 12-character assets
-                    assetName = balance.asset_code || 'Unknown Asset';
-                    assetCode = balance.asset_code;
-                    assetIcon = '🪙';
+                    assetIcon = '🪙'; // Default fallback
+                    assetIssuer = balance.asset_issuer;
                 } else {
                     // Soroban or other assets
                     assetName = 'Smart Contract Asset';
                     assetCode = 'SOROBAN';
                     assetIcon = '🤖';
+                    assetIssuer = null;
                 }
                 
+                // Create initial card with fallback icon
                 const balanceAmount = parseFloat(balance.balance).toFixed(7);
                 
                 assetCard.innerHTML = `
                     <div class="asset-info">
-                        <div class="asset-icon">${assetIcon}</div>
+                        <div class="asset-icon">
+                            <img src="${assetIcon}" alt="${assetCode}" class="asset-icon-img" style="display: none;">
+                            <span class="asset-icon-fallback">${assetIcon}</span>
+                        </div>
                         <div class="asset-details">
                             <div class="asset-name">${assetName}</div>
                             <div class="asset-code">${assetCode}</div>
@@ -398,11 +401,109 @@
                 `;
                 
                 assetsList.appendChild(assetCard);
-            });
+                
+                // Fetch real asset metadata if not XLM
+                if (balance.asset_type !== 'native' && assetIssuer) {
+                    try {
+                        await fetchAssetMetadata(assetCode, assetIssuer, assetCard);
+                    } catch (error) {
+                        console.log(`Failed to fetch metadata for ${assetCode}:`, error);
+                        // Keep fallback icon
+                    }
+                }
+            }
             
             // If no assets found
             if (balances.length === 0) {
                 assetsList.innerHTML = '<div class="no-assets">No assets found</div>';
+            }
+        }
+        
+        async function fetchAssetMetadata(assetCode, assetIssuer, assetCard) {
+            try {
+                // Try Stellar Expert API first
+                const stellarExpertUrl = `https://stellar.expert/api/assets/${assetCode}-${assetIssuer}`;
+                const response = await fetch(stellarExpertUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.icon && data.icon !== '') {
+                        // Update the asset card with real icon
+                        const iconContainer = assetCard.querySelector('.asset-icon');
+                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
+                        const imgElement = iconContainer.querySelector('.asset-icon-img');
+                        
+                        if (imgElement && fallbackSpan) {
+                            imgElement.src = data.icon;
+                            imgElement.style.display = 'block';
+                            fallbackSpan.style.display = 'none';
+                        }
+                        
+                        // Update asset name if available
+                        if (data.name && data.name !== assetCode) {
+                            const nameElement = assetCard.querySelector('.asset-name');
+                            if (nameElement) {
+                                nameElement.textContent = data.name;
+                            }
+                        }
+                        
+                        console.log(`✅ Loaded metadata for ${assetCode}:`, data.name, data.icon);
+                        return;
+                    }
+                }
+                
+                // Fallback: Try TOML file if Stellar Expert doesn't have icon
+                await fetchAssetFromToml(assetCode, assetIssuer, assetCard);
+                
+            } catch (error) {
+                console.log(`❌ Stellar Expert failed for ${assetCode}:`, error);
+                // Try TOML fallback
+                try {
+                    await fetchAssetFromToml(assetCode, assetIssuer, assetCard);
+                } catch (tomlError) {
+                    console.log(`❌ TOML also failed for ${assetCode}:`, tomlError);
+                }
+            }
+        }
+        
+        async function fetchAssetFromToml(assetCode, assetIssuer, assetCard) {
+            try {
+                // Get TOML file from issuer's domain
+                const issuerResponse = await fetch(`https://horizon.stellar.org/accounts/${assetIssuer}`);
+                const issuerData = await issuerResponse.json();
+                
+                if (issuerData.home_domain) {
+                    const tomlUrl = `https://${issuerData.home_domain}/.well-known/stellar.toml`;
+                    const tomlResponse = await fetch(tomlUrl);
+                    
+                    if (tomlResponse.ok) {
+                        const tomlText = await tomlResponse.text();
+                        const assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+                        
+                        if (assetMatch) {
+                            const assetSection = assetMatch[1];
+                            const iconMatch = assetSection.match(/image\s*=\s*"([^"]+)"/i);
+                            
+                            if (iconMatch) {
+                                const iconUrl = iconMatch[1];
+                                const iconContainer = assetCard.querySelector('.asset-icon');
+                                const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
+                                const imgElement = iconContainer.querySelector('.asset-icon-img');
+                                
+                                if (imgElement && fallbackSpan) {
+                                    imgElement.src = iconUrl;
+                                    imgElement.style.display = 'block';
+                                    fallbackSpan.style.display = 'none';
+                                }
+                                
+                                console.log(`✅ Loaded TOML icon for ${assetCode}:`, iconUrl);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log(`❌ TOML fetch failed for ${assetCode}:`, error);
             }
         }
         
