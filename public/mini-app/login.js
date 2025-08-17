@@ -482,17 +482,54 @@ async function login() {
           <div class="login-card">
             <h3>🔐 Enter Password</h3>
             <p>Enter your password to decrypt your API keys:</p>
-            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input">
+            <input type="password" id="loginPassword" placeholder="Enter password" class="login-input" autocomplete="current-password">
             <button onclick="submitMobileLogin()" class="btn-primary login-button">
               Continue Login
             </button>
           </div>
         `;
         
-        // Focus on password input
+        // Add event listeners to debug input issues
         setTimeout(() => {
-          document.getElementById('loginPassword').focus();
-        }, 100);
+          const input = document.getElementById('loginPassword');
+          if (input) {
+            console.log('🔍 Password input found, adding event listeners');
+            
+            input.addEventListener('focus', () => console.log('🔍 Password input focused'));
+            input.addEventListener('blur', () => console.log('🔍 Password input blurred'));
+            input.addEventListener('input', (e) => console.log('🔍 Password input changed:', e.target.value.length, 'characters'));
+            input.addEventListener('click', () => console.log('🔍 Password input clicked'));
+            
+            // Ensure input is not disabled or readonly
+            input.disabled = false;
+            input.readOnly = false;
+            input.style.pointerEvents = 'auto';
+            
+            console.log('🔍 Input properties:', {
+              disabled: input.disabled,
+              readOnly: input.readOnly,
+              pointerEvents: input.style.pointerEvents,
+              tabIndex: input.tabIndex
+            });
+          } else {
+            console.error('❌ Password input not found!');
+          }
+        }, 200);
+        
+        // Focus on password input with multiple attempts
+        const focusInput = () => {
+          const input = document.getElementById('loginPassword');
+          if (input) {
+            input.focus();
+            input.click();
+            console.log('🔍 Attempted to focus password input');
+          }
+        };
+        
+        // Try focusing multiple times with delays
+        setTimeout(focusInput, 100);
+        setTimeout(focusInput, 500);
+        setTimeout(focusInput, 1000);
         
         // Define the submit function
         window.submitMobileLogin = async () => {
