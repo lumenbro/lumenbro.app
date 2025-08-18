@@ -28,9 +28,14 @@ const chartsRoutes = require('./routes/charts');
 const exportRoutes = require('./routes/export');
 const walletRoutes = require('./routes/wallet');
 
-// Add cache-busting for development
+// Add cache-busting for development (exclude asset metadata endpoints)
 if (process.env.NODE_ENV !== 'production') {
   app.use('/mini-app', (req, res, next) => {
+    // Skip cache-busting for asset metadata endpoints to allow caching
+    if (req.path.includes('/asset-metadata/') || req.path.includes('/toml-metadata/')) {
+      return next();
+    }
+    
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
@@ -111,8 +116,17 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+const host = process.env.NODE_ENV === 'development' ? '0.0.0.0' : 'localhost';
+server.listen(port, host, () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🚀 Development mode - Network access enabled`);
+    console.log(`Server running on http://0.0.0.0:${port}`);
+    console.log(`Local access: http://localhost:${port}`);
+    console.log(`Network access: http://192.168.1.247:${port}`);
+  } else {
+    console.log(`🔒 Production mode - Localhost only`);
+    console.log(`Server running on http://localhost:${port}`);
+  }
   
   // Start sync service
   if (process.env.NODE_ENV === 'production') {
