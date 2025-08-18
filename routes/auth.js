@@ -1366,7 +1366,43 @@ function generateJWT(telegram_id) {
   }, JWT_SECRET, { algorithm: 'HS256' });
 }
 
-        // Test endpoint for authenticator info
+        // Production endpoint for authenticator info
+        router.get('/mini-app/authenticator', async (req, res) => {
+          try {
+            // Get user's Telegram ID from request (you'll need to implement proper auth)
+            // For now, using test user ID - this should be replaced with real user authentication
+            const telegramId = 5014800072; // TODO: Get from proper auth
+            
+            const response = await fetch('http://172.31.2.184:8080/api/authenticator', {
+              method: 'GET',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${generateJWT(telegramId)}`
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Python bot authenticator check failed: ${response.status}`);
+            }
+            
+            const authData = await response.json();
+            
+            res.json({
+              success: true,
+              authenticator_info: authData
+            });
+            
+          } catch (error) {
+            console.error('❌ Python bot authenticator failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to get authenticator info'
+            });
+          }
+        });
+        
+        // Test endpoint for authenticator info (keep for debugging)
         router.get('/mini-app/test-authenticator', async (req, res) => {
           try {
             console.log('🧪 Testing Python bot authenticator...');
