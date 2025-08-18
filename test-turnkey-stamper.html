@@ -7,6 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script>
     <script src="/mini-app/encryption-utils.js"></script>
+    <script src="/mini-app/mobile-encryption-fix.js"></script>
     <script src="/mini-app/login.js"></script>
     <style>
         body {
@@ -308,59 +309,19 @@
                 log(`📋 API Public Key: ${apiKey.apiPublicKey.substring(0, 20)}...`);
                 log(`📋 API Private Key: ${apiKey.apiPrivateKey.substring(0, 20)}...`);
                 
-                // Test direct signing approach (bypassing ManualStamper for now)
-                log('🔐 Testing direct signing approach...');
+                // Test using your existing ManualStamper (proven to work)
+                log('🔐 Testing with your existing ManualStamper...');
                 
-                // Helper function to convert hex to Uint8Array
-                function hexToUint8Array(hex) {
-                    const cleanHex = hex.replace(/^0x/, '');
-                    const pairs = [];
-                    for (let i = 0; i < cleanHex.length; i += 2) {
-                        pairs.push(cleanHex.substr(i, 2));
-                    }
-                    return new Uint8Array(pairs.map(byte => parseInt(byte, 16)));
+                // Check if ManualStamper is available
+                if (typeof ManualStamper === 'undefined') {
+                    throw new Error('ManualStamper not available - need to load login.js');
                 }
                 
-                // Helper function to convert array buffer to hex
-                function arrayBufferToHex(buffer) {
-                    return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, '0')).join('');
-                }
+                log('✅ ManualStamper available');
                 
-                // Helper function to encode signature in DER format
-                function derEncodeSignature(sigBuffer) {
-                    const sigBytes = new Uint8Array(sigBuffer);
-                    const rBytes = sigBytes.slice(0, 32);
-                    let s = BigInt('0x' + arrayBufferToHex(sigBytes.slice(32)));
-                    const n = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
-                    if (s > n / 2n) {
-                        s = n - s;
-                    }
-                    const sHex = s.toString(16).padStart(64, '0');
-                    const sBytes = hexToUint8Array(sHex);
-
-                    let r = [...rBytes];
-                    let sArr = [...sBytes];
-                    if (r[0] > 127) r = [0, ...r];
-                    if (sArr[0] > 127) sArr = [0, ...sArr];
-
-                    const rLen = r.length;
-                    const sLen = sArr.length;
-                    const totalLen = 2 + rLen + 2 + sLen;
-
-                    const der = new Uint8Array(2 + totalLen);
-                    let offset = 0;
-                    der[offset++] = 0x30; // SEQUENCE
-                    der[offset++] = totalLen;
-                    der[offset++] = 0x02; // INTEGER
-                    der[offset++] = rLen;
-                    der.set(r, offset);
-                    offset += rLen;
-                    der[offset++] = 0x02; // INTEGER
-                    der[offset++] = sLen;
-                    der.set(sArr, offset);
-
-                    return arrayBufferToHex(der);
-                }
+                // Create your custom stamper using the existing proven method
+                const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
+                log('✅ Custom stamper created successfully');
                 
                 // Create a mock request to sign
                 const mockRequest = {
@@ -378,71 +339,9 @@
                 const payload = JSON.stringify(mockRequest);
                 log(`📋 Payload to sign: ${payload.substring(0, 100)}...`);
                 
-                // Import private key using raw format (more reliable)
-                const privateKeyBuffer = hexToUint8Array(apiKey.apiPrivateKey);
-                log('✅ Private key converted to buffer');
-                
-                let privateKeyCrypto;
-                
-                // Try raw import first (most reliable)
-                try {
-                    privateKeyCrypto = await crypto.subtle.importKey(
-                        "raw",
-                        privateKeyBuffer,
-                        { name: "ECDSA", namedCurve: "P-256" },
-                        true,
-                        ["sign"]
-                    );
-                    log('✅ Private key imported successfully (raw format)');
-                } catch (rawError) {
-                    log('⚠️ Raw import failed, trying JWK format...');
-                    
-                    // Fallback to JWK format
-                    function bytesToBase64url(bytes) {
-                        const base64 = btoa(String.fromCharCode(...bytes));
-                        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-                    }
-                    
-                    const d = bytesToBase64url(privateKeyBuffer);
-                    log('✅ Private key converted to base64url');
-                    
-                    // Create minimal JWK (some browsers accept this)
-                    const privateJwk = {
-                        kty: "EC",
-                        crv: "P-256",
-                        d: d
-                    };
-                    
-                    privateKeyCrypto = await crypto.subtle.importKey(
-                        "jwk",
-                        privateJwk,
-                        { name: "ECDSA", namedCurve: "P-256" },
-                        true,
-                        ["sign"]
-                    );
-                    log('✅ Private key imported successfully (JWK format)');
-                }
-                log('✅ Private key imported successfully');
-                
-                // Sign the payload
-                const payloadBytes = new TextEncoder().encode(payload);
-                const sigBuffer = await crypto.subtle.sign(
-                    { name: "ECDSA", hash: "SHA-256" },
-                    privateKeyCrypto,
-                    payloadBytes
-                );
-                log('✅ Payload signed successfully');
-                
-                // Encode signature in DER format
-                const sigHex = derEncodeSignature(sigBuffer);
-                log('✅ Signature encoded in DER format');
-                
-                // Create stamp object (same format as ManualStamper)
-                const stamp = {
-                    publicKey: apiKey.apiPublicKey,
-                    scheme: "SIGNATURE_SCHEME_TK_API_P256",
-                    signature: sigHex
-                };
+                // Use your existing stamper (which handles mobile/desktop automatically)
+                const stamp = await stamper.stamp(payload);
+                log('✅ Stamp created successfully using existing ManualStamper');
                 
                 log('✅ Stamp created successfully');
                 log(`📋 Stamp object: ${JSON.stringify(stamp, null, 2)}`);
@@ -482,8 +381,12 @@
                 const apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
                 log('✅ Keys decrypted for transaction signing');
                 
-                // 2. Create custom stamper (using direct approach)
-                log('✅ Using direct signing approach for transaction');
+                // 2. Create custom stamper using existing proven method
+                log('✅ Using existing ManualStamper for transaction');
+                
+                // Create your custom stamper using the existing proven method
+                const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
+                log('✅ Custom stamper created for transaction');
                 
                 // 3. Create the request body for signRawPayload
                 const requestBody = {
@@ -500,115 +403,10 @@
 
                 log(`📋 Request body: ${JSON.stringify(requestBody, null, 2)}`);
 
-                // 4. Create a stamp using direct signing (same as above)
+                // 4. Create a stamp using your existing stamper
                 const payload = JSON.stringify(requestBody);
-                
-                // Helper functions (same as above)
-                function hexToUint8Array(hex) {
-                    const cleanHex = hex.replace(/^0x/, '');
-                    const pairs = [];
-                    for (let i = 0; i < cleanHex.length; i += 2) {
-                        pairs.push(cleanHex.substr(i, 2));
-                    }
-                    return new Uint8Array(pairs.map(byte => parseInt(byte, 16)));
-                }
-                
-                function arrayBufferToHex(buffer) {
-                    return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, '0')).join('');
-                }
-                
-                function derEncodeSignature(sigBuffer) {
-                    const sigBytes = new Uint8Array(sigBuffer);
-                    const rBytes = sigBytes.slice(0, 32);
-                    let s = BigInt('0x' + arrayBufferToHex(sigBytes.slice(32)));
-                    const n = BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
-                    if (s > n / 2n) {
-                        s = n - s;
-                    }
-                    const sHex = s.toString(16).padStart(64, '0');
-                    const sBytes = hexToUint8Array(sHex);
-
-                    let r = [...rBytes];
-                    let sArr = [...sBytes];
-                    if (r[0] > 127) r = [0, ...r];
-                    if (sArr[0] > 127) sArr = [0, ...sArr];
-
-                    const rLen = r.length;
-                    const sLen = sArr.length;
-                    const totalLen = 2 + rLen + 2 + sLen;
-
-                    const der = new Uint8Array(2 + totalLen);
-                    let offset = 0;
-                    der[offset++] = 0x30; // SEQUENCE
-                    der[offset++] = totalLen;
-                    der[offset++] = 0x02; // INTEGER
-                    der[offset++] = rLen;
-                    der.set(r, offset);
-                    offset += rLen;
-                    der[offset++] = 0x02; // INTEGER
-                    der[offset++] = sLen;
-                    der.set(sArr, offset);
-
-                    return arrayBufferToHex(der);
-                }
-                
-                // Import and sign using raw format (more reliable)
-                const privateKeyBuffer = hexToUint8Array(apiKey.apiPrivateKey);
-                
-                let privateKeyCrypto;
-                
-                // Try raw import first (most reliable)
-                try {
-                    privateKeyCrypto = await crypto.subtle.importKey(
-                        "raw",
-                        privateKeyBuffer,
-                        { name: "ECDSA", namedCurve: "P-256" },
-                        true,
-                        ["sign"]
-                    );
-                    log('✅ Private key imported successfully (raw format)');
-                } catch (rawError) {
-                    log('⚠️ Raw import failed, trying JWK format...');
-                    
-                    // Fallback to JWK format
-                    function bytesToBase64url(bytes) {
-                        const base64 = btoa(String.fromCharCode(...bytes));
-                        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-                    }
-                    
-                    const d = bytesToBase64url(privateKeyBuffer);
-                    
-                    // Create minimal JWK (some browsers accept this)
-                    const privateJwk = {
-                        kty: "EC",
-                        crv: "P-256",
-                        d: d
-                    };
-                    
-                    privateKeyCrypto = await crypto.subtle.importKey(
-                        "jwk",
-                        privateJwk,
-                        { name: "ECDSA", namedCurve: "P-256" },
-                        true,
-                        ["sign"]
-                    );
-                    log('✅ Private key imported successfully (JWK format)');
-                }
-                
-                const payloadBytes = new TextEncoder().encode(payload);
-                const sigBuffer = await crypto.subtle.sign(
-                    { name: "ECDSA", hash: "SHA-256" },
-                    privateKeyCrypto,
-                    payloadBytes
-                );
-                
-                const sigHex = derEncodeSignature(sigBuffer);
-                
-                const stamp = {
-                    publicKey: apiKey.apiPublicKey,
-                    scheme: "SIGNATURE_SCHEME_TK_API_P256",
-                    signature: sigHex
-                };
+                const stamp = await stamper.stamp(payload);
+                log('✅ Stamp created successfully using existing ManualStamper');
                 
                 log(`✅ Stamp created successfully: ${JSON.stringify(stamp).substring(0, 50)}...`);
 
