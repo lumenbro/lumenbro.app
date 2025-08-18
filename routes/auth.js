@@ -1696,6 +1696,122 @@ function generateJWT(telegram_id) {
           }
         }
         
+        // Log transaction data for fee tracking and referral rewards (mirrors Python bot)
+        router.post('/mini-app/log-transaction', async (req, res) => {
+          try {
+            const { type, recipient, amount, asset, signedXDR, signingMethod, timestamp, telegramId } = req.body;
+            
+            console.log('📊 Logging transaction:', { type, recipient, amount, asset, signingMethod, telegramId });
+            
+            // Get user status and referral info from database
+            const userQuery = await pool.query(`
+              SELECT u.pioneer_status, u.referral_code, 
+                     r.referrer_id, f.telegram_id as founder_id
+              FROM users u
+              LEFT JOIN referrals r ON u.telegram_id = r.referee_id
+              LEFT JOIN founders f ON u.telegram_id = f.telegram_id
+              WHERE u.telegram_id = $1
+            `, [telegramId]);
+            
+            if (userQuery.rows.length === 0) {
+              return res.status(404).json({ success: false, error: 'User not found' });
+            }
+            
+            const user = userQuery.rows[0];
+            const isPioneer = user.pioneer_status;
+            const isFounder = !!user.founder_id;
+            const referrerId = user.referrer_id;
+            
+            // Calculate XLM equivalent for fee calculation (mirrors Python bot)
+            let xlmEquivalent = parseFloat(amount);
+            if (asset !== 'XLM') {
+              // TODO: Get asset price from Stellar DEX for XLM conversion
+              // For now, using a simple conversion (should match Python bot logic)
+              xlmEquivalent = parseFloat(amount) * 0.1; // Assume 10:1 ratio
+            }
+            
+            // Calculate fees based on user status (mirrors Python bot)
+            let feePercentage = 0.01; // 1% base fee
+            if (isFounder || isPioneer) {
+              feePercentage = 0.001; // 0.1% for founders/pioneers
+            } else if (referrerId) {
+              feePercentage = 0.009; // 0.9% for referred users
+            }
+            
+            // Calculate fee amount
+            const feeAmount = (xlmEquivalent * feePercentage).toFixed(7);
+            
+            // Log to trades table (mirrors Python bot)
+            const tradeQuery = await pool.query(`
+              INSERT INTO trades (user_id, xlm_volume, tx_hash, action_type, timestamp)
+              VALUES ($1, $2, $3, $4, $5)
+              RETURNING id
+            `, [
+              telegramId, xlmEquivalent, `mock_hash_${Date.now()}`, type, timestamp
+            ]);
+            
+            const tradeId = tradeQuery.rows[0].id;
+            
+            // Log to fees table (mirrors Python bot)
+            await pool.query(`
+              INSERT INTO fees (telegram_id, action_type, amount, fee, tx_hash, timestamp)
+              VALUES ($1, $2, $3, $4, $5, $6)
+            `, [
+              telegramId, type, xlmEquivalent, feeAmount, `mock_hash_${Date.now()}`, timestamp
+            ]);
+            
+            // Calculate referral rewards (mirrors Python bot logic)
+            if (referrerId) {
+              // Get referrer's volume to determine reward percentage
+              const referrerVolumeQuery = await pool.query(`
+                SELECT COALESCE(SUM(xlm_volume), 0) as total_volume
+                FROM trades 
+                WHERE user_id = $1
+              `, [referrerId]);
+              
+              const referrerVolume = parseFloat(referrerVolumeQuery.rows[0].total_volume);
+              const volumeThreshold = 1000; // 1000 XLM threshold for higher rewards
+              
+              // Calculate reward percentage: 35% if over threshold, 25% otherwise
+              const rewardPercentage = referrerVolume >= volumeThreshold ? 0.35 : 0.25;
+              const referralReward = (feeAmount * rewardPercentage).toFixed(7);
+              
+              // Log to rewards table (mirrors Python bot)
+              await pool.query(`
+                INSERT INTO rewards (user_id, amount, status, timestamp)
+                VALUES ($1, $2, $3, $4)
+              `, [
+                referrerId, referralReward, 'unpaid', timestamp
+              ]);
+              
+              console.log('💰 Referral reward logged:', { 
+                referrerId, 
+                rewardAmount: referralReward, 
+                rewardPercentage: rewardPercentage * 100 + '%',
+                referrerVolume: referrerVolume
+              });
+            }
+            
+            res.json({
+              success: true,
+              tradeId: tradeId,
+              xlmEquivalent: xlmEquivalent,
+              feeAmount: feeAmount,
+              feePercentage: feePercentage,
+              referralReward: referrerId ? (feeAmount * (referrerVolume >= volumeThreshold ? 0.35 : 0.25)).toFixed(7) : null,
+              referrerVolume: referrerId ? referrerVolume : null
+            });
+            
+          } catch (error) {
+            console.error('❌ Transaction logging failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to log transaction'
+            });
+          }
+        });
+        
         // Test endpoint for local development
         router.get('/mini-app/test-python-connection', async (req, res) => {
   try {
