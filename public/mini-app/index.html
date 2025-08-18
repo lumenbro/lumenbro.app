@@ -715,11 +715,20 @@
                 confirmButton.textContent = '⏳ Signing Transaction...';
                 confirmButton.disabled = true;
                 
-                // TODO: Implement actual signing logic
-                // For now, just show success message
-                setTimeout(() => {
-                    showTransactionSuccess();
-                }, 2000);
+                // Sign transaction with Turnkey Cloud Stamper
+                try {
+                    const signedXDR = await signTransactionWithTurnkey(password);
+                    console.log('Transaction signed successfully:', signedXDR);
+                    showTransactionSuccess(signedXDR);
+                } catch (error) {
+                    console.error('Signing failed:', error);
+                    alert(`Signing failed: ${error.message}`);
+                    
+                    // Reset button
+                    const confirmButton = document.querySelector('.btn-primary');
+                    confirmButton.textContent = '✅ Confirm & Sign';
+                    confirmButton.disabled = false;
+                }
                 
             } catch (error) {
                 console.error('Transaction signing failed:', error);
@@ -813,15 +822,64 @@
             }
         }
         
-        function showTransactionSuccess() {
+        async function signTransactionWithTurnkey(password) {
+            try {
+                console.log('Starting Turnkey signing process...');
+                
+                // Get transaction data from the confirmation screen
+                const recipient = document.querySelector('.detail-row .value').textContent;
+                const amountElement = document.querySelectorAll('.detail-row .value')[1];
+                const amountText = amountElement.textContent;
+                const [amount, asset] = amountText.split(' ');
+                
+                console.log('Transaction details:', { recipient, amount, asset });
+                
+                // Use Turnkey Cloud Stamper for signing
+                const stamper = new Turnkey.TelegramCloudStorageStamper();
+                
+                // For now, we'll use a mock transaction hash
+                // In production, we'll build the actual transaction
+                const mockTxHash = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+                
+                console.log('Signing transaction hash:', mockTxHash);
+                
+                // Sign with Turnkey (this will use Telegram Cloud Storage for auth)
+                const signature = await stamper.signRawPayloadV2(mockTxHash, {
+                    encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
+                    hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
+                });
+                
+                console.log('Turnkey signature received:', signature);
+                
+                // Process the signature (r + s format)
+                const r = signature.r;
+                const s = signature.s;
+                const combinedSignature = r + s;
+                
+                console.log('Combined signature:', combinedSignature);
+                
+                // For now, return a mock signed XDR
+                // In production, we'll integrate with Stellar SDK
+                const mockSignedXDR = 'AAAAAgAAAAA...'; // Mock signed XDR
+                
+                return mockSignedXDR;
+                
+            } catch (error) {
+                console.error('Turnkey signing error:', error);
+                throw new Error(`Turnkey signing failed: ${error.message}`);
+            }
+        }
+        
+        function showTransactionSuccess(signedXDR) {
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>✅ Transaction Successful!</h1>
                     
                     <div class="success-message">
                         <div class="success-icon">🎉</div>
-                        <p>Your transaction has been submitted to the Stellar network.</p>
-                        <p>Transaction hash: <code>abc123...</code></p>
+                        <p>Your transaction has been signed successfully!</p>
+                        <p>Signed XDR: <code>${signedXDR || 'Mock signed XDR'}</code></p>
+                        <p><small>Ready for network submission</small></p>
                     </div>
                     
                     <div class="form-actions">
