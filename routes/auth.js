@@ -1413,28 +1413,23 @@ function generateJWT(telegram_id) {
             const { assetCode, assetIssuer } = req.params;
             console.log(`🔍 Fetching asset metadata for ${assetCode}-${assetIssuer}`);
             
-            // Call Stellar Expert API
+            // Call Stellar Expert API using axios
             const stellarExpertUrl = `https://stellar.expert/api/assets/${assetCode}-${assetIssuer}`;
-            const response = await fetch(stellarExpertUrl, {
+            const response = await axios.get(stellarExpertUrl, {
               headers: {
                 'User-Agent': 'LumenBro-Wallet/1.0'
-              }
+              },
+              timeout: 10000
             });
-            
-            if (!response.ok) {
-              throw new Error(`Stellar Expert API returned ${response.status}`);
-            }
-            
-            const data = await response.json();
             
             res.json({
               success: true,
-              data: data,
+              data: response.data,
               source: 'stellar_expert'
             });
             
           } catch (error) {
-            console.error(`❌ Asset metadata fetch failed for ${req.params.assetCode}:`, error);
+            console.error(`❌ Asset metadata fetch failed for ${req.params.assetCode}:`, error.message);
             res.status(500).json({
               success: false,
               error: error.message,
@@ -1450,8 +1445,10 @@ function generateJWT(telegram_id) {
             console.log(`🔍 Fetching TOML metadata for ${assetCode}-${assetIssuer}`);
             
             // First get issuer's home domain
-            const issuerResponse = await fetch(`https://horizon.stellar.org/accounts/${assetIssuer}`);
-            const issuerData = await issuerResponse.json();
+            const issuerResponse = await axios.get(`https://horizon.stellar.org/accounts/${assetIssuer}`, {
+              timeout: 10000
+            });
+            const issuerData = issuerResponse.data;
             
             if (!issuerData.home_domain) {
               throw new Error('Issuer has no home domain');
@@ -1459,17 +1456,14 @@ function generateJWT(telegram_id) {
             
             // Fetch TOML file
             const tomlUrl = `https://${issuerData.home_domain}/.well-known/stellar.toml`;
-            const tomlResponse = await fetch(tomlUrl, {
+            const tomlResponse = await axios.get(tomlUrl, {
               headers: {
                 'User-Agent': 'LumenBro-Wallet/1.0'
-              }
+              },
+              timeout: 10000
             });
             
-            if (!tomlResponse.ok) {
-              throw new Error(`TOML fetch failed: ${tomlResponse.status}`);
-            }
-            
-            const tomlText = await tomlResponse.text();
+            const tomlText = tomlResponse.data;
             
             // Parse TOML for the specific asset
             const assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
@@ -1497,7 +1491,7 @@ function generateJWT(telegram_id) {
             });
             
           } catch (error) {
-            console.error(`❌ TOML metadata fetch failed for ${req.params.assetCode}:`, error);
+            console.error(`❌ TOML metadata fetch failed for ${req.params.assetCode}:`, error.message);
             res.status(500).json({
               success: false,
               error: error.message,
