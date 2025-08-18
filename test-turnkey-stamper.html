@@ -75,6 +75,7 @@
     <div class="test-section">
         <h3>3. Stamper Initialization</h3>
         <button onclick="testStamperInit()" class="btn">Initialize Stamper</button>
+        <button onclick="checkAPIKey()" class="btn">Check API Key</button>
         <div id="stamper-status"></div>
     </div>
 
@@ -210,8 +211,10 @@
                     throw new Error('TelegramCloudStorageStamper not available');
                 }
 
-                stamper = new Turnkey.TelegramCloudStorageStamper();
-                log('✅ Stamper initialized successfully');
+                // Try to create stamper with existing API key from Cloud Storage
+                log('🔍 Attempting to create stamper with existing API key...');
+                stamper = await Turnkey.TelegramCloudStorageStamper.create();
+                log('✅ Stamper initialized successfully with existing API key');
                 
                 // Debug: Log available methods
                 log(`🔍 Available stamper methods: ${Object.getOwnPropertyNames(Object.getPrototypeOf(stamper)).join(', ')}`);
@@ -222,8 +225,36 @@
 
             } catch (error) {
                 log(`❌ Stamper initialization failed: ${error.message}`, 'error');
+                log('💡 This might be expected if no API key is stored yet');
                 showStatus('stamper-status', `❌ Stamper initialization failed: ${error.message}`, 'error');
                 testResults.stamper = false;
+            }
+        }
+
+        async function checkAPIKey() {
+            log('Checking for existing API key in Cloud Storage...');
+            
+            try {
+                // Create a basic stamper to check Cloud Storage
+                const basicStamper = new Turnkey.TelegramCloudStorageStamper();
+                
+                // Check if there's an API key stored at the default location
+                const apiKey = await basicStamper.getAPIKey();
+                
+                if (apiKey) {
+                    log('✅ Found existing API key in Cloud Storage');
+                    log(`📋 API Public Key: ${apiKey.apiPublicKey.substring(0, 20)}...`);
+                    log(`📋 API Private Key: ${apiKey.apiPrivateKey.substring(0, 20)}...`);
+                    showStatus('stamper-status', '✅ API key found in Cloud Storage', 'success');
+                } else {
+                    log('❌ No API key found in Cloud Storage');
+                    log('💡 You need to register/login first to store an API key');
+                    showStatus('stamper-status', '❌ No API key found. Please register/login first.', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to check API key: ${error.message}`, 'error');
+                showStatus('stamper-status', `❌ Failed to check API key: ${error.message}`, 'error');
             }
         }
 
