@@ -1812,6 +1812,216 @@ function generateJWT(telegram_id) {
           }
         });
         
+        // P&L and Positions endpoints
+        
+        // Get user positions with current P&L
+        router.get('/mini-app/positions', async (req, res) => {
+          try {
+            const telegramId = req.query.telegramId || '5014800072'; // Default for testing
+            
+            console.log('📊 Fetching positions for user:', telegramId);
+            
+            // Get user positions
+            const positionsQuery = await pool.query(`
+              SELECT 
+                up.id,
+                up.asset_code,
+                up.asset_issuer,
+                up.quantity,
+                up.avg_buy_price,
+                up.total_invested,
+                up.current_value,
+                up.unrealized_pnl,
+                up.pnl_percentage,
+                up.last_updated,
+                ap.price_xlm as current_price
+              FROM user_positions up
+              LEFT JOIN (
+                SELECT DISTINCT ON (asset_code, asset_issuer) 
+                  asset_code, asset_issuer, price_xlm
+                FROM asset_prices 
+                ORDER BY asset_code, asset_issuer, timestamp DESC
+              ) ap ON up.asset_code = ap.asset_code AND up.asset_issuer = ap.asset_issuer
+              WHERE up.telegram_id = $1 AND up.quantity > 0
+              ORDER BY up.unrealized_pnl DESC
+            `, [telegramId]);
+            
+            const positions = positionsQuery.rows;
+            
+            // Calculate portfolio summary
+            const portfolioSummary = {
+              totalPositions: positions.length,
+              totalInvested: 0,
+              totalCurrentValue: 0,
+              totalUnrealizedPnl: 0,
+              totalPnlPercentage: 0
+            };
+            
+            positions.forEach(pos => {
+              portfolioSummary.totalInvested += parseFloat(pos.total_invested || 0);
+              portfolioSummary.totalCurrentValue += parseFloat(pos.current_value || 0);
+              portfolioSummary.totalUnrealizedPnl += parseFloat(pos.unrealized_pnl || 0);
+            });
+            
+            if (portfolioSummary.totalInvested > 0) {
+              portfolioSummary.totalPnlPercentage = (portfolioSummary.totalUnrealizedPnl / portfolioSummary.totalInvested) * 100;
+            }
+            
+            res.json({
+              success: true,
+              positions: positions,
+              portfolioSummary: portfolioSummary
+            });
+            
+          } catch (error) {
+            console.error('❌ Positions fetch failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to fetch positions'
+            });
+          }
+        });
+        
+        // Get user trade history
+        router.get('/mini-app/trade-history', async (req, res) => {
+          try {
+            const telegramId = req.query.telegramId || '5014800072'; // Default for testing
+            const limit = parseInt(req.query.limit) || 50;
+            const offset = parseInt(req.query.offset) || 0;
+            
+            console.log('📊 Fetching trade history for user:', telegramId);
+            
+            const tradesQuery = await pool.query(`
+              SELECT 
+                ut.id,
+                ut.trade_type,
+                ut.asset_code,
+                ut.asset_issuer,
+                ut.quantity,
+                ut.price_xlm,
+                ut.total_xlm,
+                ut.tx_hash,
+                ut.timestamp,
+                ut.fee_amount,
+                ut.notes
+              FROM user_trades ut
+              WHERE ut.telegram_id = $1
+              ORDER BY ut.timestamp DESC
+              LIMIT $2 OFFSET $3
+            `, [telegramId, limit, offset]);
+            
+            res.json({
+              success: true,
+              trades: tradesQuery.rows,
+              pagination: {
+                limit: limit,
+                offset: offset,
+                total: tradesQuery.rows.length
+              }
+            });
+            
+          } catch (error) {
+            console.error('❌ Trade history fetch failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to fetch trade history'
+            });
+          }
+        });
+        
+        // Log a trade (called after successful transaction)
+        router.post('/mini-app/log-trade', async (req, res) => {
+          try {
+            const { 
+              telegramId, tradeType, assetCode, assetIssuer, 
+              quantity, priceXlm, totalXlm, txHash, feeAmount, notes 
+            } = req.body;
+            
+            console.log('📊 Logging trade:', { 
+              telegramId, tradeType, assetCode, quantity, priceXlm, totalXlm 
+            });
+            
+            // Insert trade record
+            const tradeQuery = await pool.query(`
+              INSERT INTO user_trades (
+                telegram_id, trade_type, asset_code, asset_issuer,
+                quantity, price_xlm, total_xlm, tx_hash, fee_amount, notes
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              RETURNING id
+            `, [
+              telegramId, tradeType, assetCode, assetIssuer,
+              quantity, priceXlm, totalXlm, txHash, feeAmount, notes
+            ]);
+            
+            const tradeId = tradeQuery.rows[0].id;
+            
+            // Update position using database function
+            await pool.query(`
+              SELECT update_position_after_trade($1, $2, $3, $4, $5, $6, $7)
+            `, [
+              telegramId, assetCode, assetIssuer, tradeType,
+              quantity, priceXlm, totalXlm
+            ]);
+            
+            // Get updated position
+            const positionQuery = await pool.query(`
+              SELECT * FROM user_positions 
+              WHERE telegram_id = $1 AND asset_code = $2 AND asset_issuer = $3
+            `, [telegramId, assetCode, assetIssuer]);
+            
+            res.json({
+              success: true,
+              tradeId: tradeId,
+              position: positionQuery.rows[0] || null
+            });
+            
+          } catch (error) {
+            console.error('❌ Trade logging failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to log trade'
+            });
+          }
+        });
+        
+        // Update asset prices (called periodically)
+        router.post('/mini-app/update-prices', async (req, res) => {
+          try {
+            const { prices } = req.body; // Array of {assetCode, assetIssuer, priceXlm, volume24h}
+            
+            console.log('📊 Updating asset prices:', prices.length, 'assets');
+            
+            for (const price of prices) {
+              await pool.query(`
+                INSERT INTO asset_prices (asset_code, asset_issuer, price_xlm, volume_24h)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (asset_code, asset_issuer, timestamp) DO NOTHING
+              `, [
+                price.assetCode, 
+                price.assetIssuer, 
+                price.priceXlm, 
+                price.volume24h || null
+              ]);
+            }
+            
+            res.json({
+              success: true,
+              updatedAssets: prices.length
+            });
+            
+          } catch (error) {
+            console.error('❌ Price update failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to update prices'
+            });
+          }
+        });
+        
         // Test endpoint for local development
         router.get('/mini-app/test-python-connection', async (req, res) => {
   try {

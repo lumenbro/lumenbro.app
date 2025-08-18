@@ -862,11 +862,53 @@
                 // In production, we'll integrate with Stellar SDK
                 const mockSignedXDR = 'AAAAAgAAAAA...'; // Mock signed XDR
                 
+                // Log transaction data for fee tracking and referral rewards
+                await logTransactionData({
+                    type: 'payment',
+                    recipient: recipient,
+                    amount: amount,
+                    asset: asset,
+                    signedXDR: mockSignedXDR,
+                    signingMethod: 'client_side_turnkey'
+                });
+                
                 return mockSignedXDR;
                 
             } catch (error) {
                 console.error('Turnkey signing error:', error);
                 throw new Error(`Turnkey signing failed: ${error.message}`);
+            }
+        }
+        
+        // Log transaction data for fee tracking and referral rewards
+        async function logTransactionData(transactionData) {
+            try {
+                console.log('Logging transaction data for fee tracking...');
+                
+                const response = await fetch('/mini-app/log-transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...transactionData,
+                        timestamp: new Date().toISOString(),
+                        telegramId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'unknown'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to log transaction: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Transaction logged successfully:', result);
+                
+                return result;
+                
+            } catch (error) {
+                console.error('Failed to log transaction data:', error);
+                // Don't throw - logging failure shouldn't break the transaction
             }
         }
         
@@ -898,6 +940,133 @@
                     </div>
                 </nav>
             `;
+        }
+        
+        function showPositions() {
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <h1>📊 Positions & P&L</h1>
+                    <div id="positions-content">
+                        <div class="loading">Loading positions...</div>
+                    </div>
+                </div>
+                
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item active" onclick="showPositions()">
+                        <div class="nav-icon">📊</div>
+                        <div class="nav-label">Positions</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
+            
+            loadPositions();
+        }
+        
+        async function loadPositions() {
+            try {
+                const response = await fetch('/mini-app/positions?telegramId=5014800072');
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load positions');
+                }
+                
+                displayPositions(result.positions, result.portfolioSummary);
+                
+            } catch (error) {
+                console.error('Failed to load positions:', error);
+                document.getElementById('positions-content').innerHTML = `
+                    <div class="error-message">
+                        <p>❌ Failed to load positions: ${error.message}</p>
+                        <button onclick="loadPositions()" class="btn-primary">🔄 Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayPositions(positions, portfolioSummary) {
+            const content = document.getElementById('positions-content');
+            
+            if (!positions || positions.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <h3>No Positions Yet</h3>
+                        <p>Start trading to see your positions and P&L here!</p>
+                        <button onclick="showWallet()" class="btn-primary">💼 Go to Wallet</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Portfolio summary
+            const summaryHtml = `
+                <div class="portfolio-summary">
+                    <div class="summary-card">
+                        <div class="summary-title">Portfolio Value</div>
+                        <div class="summary-value">${portfolioSummary.totalCurrentValue.toFixed(2)} XLM</div>
+                    </div>
+                    <div class="summary-card ${portfolioSummary.totalUnrealizedPnl >= 0 ? 'positive' : 'negative'}">
+                        <div class="summary-title">Unrealized P&L</div>
+                        <div class="summary-value">${portfolioSummary.totalUnrealizedPnl.toFixed(2)} XLM</div>
+                        <div class="summary-percentage">${portfolioSummary.totalPnlPercentage.toFixed(2)}%</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-title">Total Invested</div>
+                        <div class="summary-value">${portfolioSummary.totalInvested.toFixed(2)} XLM</div>
+                    </div>
+                </div>
+            `;
+            
+            // Positions list
+            const positionsHtml = positions.map(position => {
+                const pnlClass = position.unrealized_pnl >= 0 ? 'positive' : 'negative';
+                const pnlIcon = position.unrealized_pnl >= 0 ? '📈' : '📉';
+                
+                return `
+                    <div class="position-card">
+                        <div class="position-header">
+                            <div class="position-asset">
+                                <div class="asset-code">${position.asset_code}</div>
+                                <div class="asset-issuer">${position.asset_issuer ? position.asset_issuer.substring(0, 8) + '...' : 'Native'}</div>
+                            </div>
+                            <div class="position-pnl ${pnlClass}">
+                                <div class="pnl-icon">${pnlIcon}</div>
+                                <div class="pnl-amount">${position.unrealized_pnl.toFixed(2)} XLM</div>
+                                <div class="pnl-percentage">${position.pnl_percentage.toFixed(2)}%</div>
+                            </div>
+                        </div>
+                        <div class="position-details">
+                            <div class="detail-row">
+                                <span class="label">Quantity:</span>
+                                <span class="value">${position.quantity.toFixed(7)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Avg Buy Price:</span>
+                                <span class="value">${position.avg_buy_price.toFixed(7)} XLM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Current Price:</span>
+                                <span class="value">${position.current_price ? position.current_price.toFixed(7) + ' XLM' : 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Current Value:</span>
+                                <span class="value">${position.current_value.toFixed(2)} XLM</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            content.innerHTML = summaryHtml + positionsHtml;
         }
         
         function showAssetManagement() {
