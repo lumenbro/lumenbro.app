@@ -1422,6 +1422,12 @@ function generateJWT(telegram_id) {
               timeout: 10000
             });
             
+            // Set cache headers for Stellar Expert metadata (cache for 1 hour)
+            res.set({
+              'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+              'ETag': `"${assetCode}-${assetIssuer}-expert-${Date.now()}"`
+            });
+            
             res.json({
               success: true,
               data: response.data,
@@ -1510,6 +1516,12 @@ function generateJWT(telegram_id) {
                 home_domain: issuerData.home_domain
               };
               
+              // Set cache headers for fallback metadata (cache for 1 hour)
+              res.set({
+                'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+                'ETag': `"${assetCode}-${assetIssuer}-fallback-${Date.now()}"`
+              });
+              
               res.json({
                 success: true,
                 data: metadata,
@@ -1529,6 +1541,12 @@ function generateJWT(telegram_id) {
               description: descMatch ? descMatch[1] : null,
               home_domain: issuerData.home_domain
             };
+            
+            // Set cache headers for TOML metadata (cache for 1 hour)
+            res.set({
+              'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+              'ETag': `"${assetCode}-${assetIssuer}-${Date.now()}"`
+            });
             
             res.json({
               success: true,
