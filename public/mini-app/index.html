@@ -256,6 +256,7 @@
                         <button onclick="window.login()" class="btn-success">🔐 Login</button>      
                         <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button> 
                         <button onclick="window.export()" class="btn-info">📤 Export Keys</button>  
+                        <button onclick="testTurnkeyStamper()" class="btn-secondary">🧪 Test Turnkey</button>  
                     </div>
 
                     <!-- Quick access to wallet (if authenticated) -->
@@ -719,6 +720,11 @@
         function showTransactionHistory() {
             // TODO: Implement transaction history interface
             alert('Transaction History feature coming soon!');
+        }
+
+        function testTurnkeyStamper() {
+            // Navigate to the test page within the mini app
+            window.location.href = '/test-turnkey-stamper';
         }
     </script>
 </body>
