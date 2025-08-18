@@ -48,6 +48,7 @@ body {
   background: var(--panel);
   border-radius: var(--radius);
   padding: 30px;
+  padding-bottom: 100px; /* Ensure content doesn't get cut off by bottom nav */
   box-shadow: var(--shadow-1);
   border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(10px);
@@ -643,8 +644,11 @@ input::placeholder {
   border-top: 1px solid rgba(255,255,255,0.1);
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
+  padding: 8px 0;
   backdrop-filter: blur(10px);
+  z-index: 1000;
+  /* Ensure it's above content and properly positioned */
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
 }
 
 .nav-item {
@@ -684,6 +688,7 @@ input::placeholder {
   max-width: 500px;
   margin: 0 auto;
   padding: 20px;
+  padding-bottom: 80px; /* Add space for bottom navigation */
 }
 
 .form-group {
@@ -756,6 +761,7 @@ input::placeholder {
   border-radius: 8px;
   padding: 20px;
   margin: 20px 0;
+  margin-bottom: 80px; /* Add space for bottom navigation */
 }
 
 .detail-row {
