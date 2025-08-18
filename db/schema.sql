@@ -72,4 +72,39 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_popular_pairs_timestamp
     BEFORE UPDATE ON popular_pairs
     FOR EACH ROW
-    EXECUTE FUNCTION update_last_accessed(); 
+    EXECUTE FUNCTION update_last_accessed();
+
+-- Trades table (consistent with Python bot)
+CREATE TABLE IF NOT EXISTS trades (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+    xlm_volume DOUBLE PRECISION,
+    tx_hash TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    turnkey_activity_id TEXT,
+    fee_amount DECIMAL(20, 8),
+    fee_asset VARCHAR(10),
+    INDEX idx_user_id (user_id),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_tx_hash (tx_hash)
+);
+
+-- Rewards table (consistent with Python bot)
+CREATE TABLE IF NOT EXISTS rewards (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+    amount DOUBLE PRECISION NOT NULL,
+    status TEXT DEFAULT 'unpaid',
+    paid_at TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status)
+);
+
+-- Referrals table (consistent with Python bot)
+CREATE TABLE IF NOT EXISTS referrals (
+    referrer_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+    referee_id BIGINT REFERENCES users(telegram_id) ON DELETE CASCADE,
+    PRIMARY KEY (referrer_id, referee_id),
+    INDEX idx_referrer_id (referrer_id),
+    INDEX idx_referee_id (referee_id)
+); 

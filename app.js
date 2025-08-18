@@ -27,6 +27,7 @@ const recoveryRoutes = require('./routes/recovery');
 const chartsRoutes = require('./routes/charts');
 const exportRoutes = require('./routes/export');
 const walletRoutes = require('./routes/wallet');
+const signTransactionRoutes = require('./routes/sign-transaction');
 
 // Add cache-busting for development (exclude asset metadata endpoints)
 if (process.env.NODE_ENV !== 'production') {
@@ -54,6 +55,7 @@ app.use(recoveryRoutes);
 app.use('/api/charts', chartsRoutes);
 app.use(exportRoutes);
 app.use('/api', walletRoutes);
+app.use(signTransactionRoutes);
 // Download routes removed per mobile constraints
 
 // Landing
