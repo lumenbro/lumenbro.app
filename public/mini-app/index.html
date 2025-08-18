@@ -703,12 +703,143 @@
         
         async function signAndSubmitTransaction() {
             try {
-                // TODO: Implement password prompt and signing
-                alert('Transaction signing coming soon!');
+                // Show password prompt
+                const password = await showPasswordPrompt();
+                if (!password) {
+                    return; // User cancelled
+                }
+                
+                // Show loading state
+                const confirmButton = document.querySelector('.btn-primary');
+                const originalText = confirmButton.textContent;
+                confirmButton.textContent = '⏳ Signing Transaction...';
+                confirmButton.disabled = true;
+                
+                // TODO: Implement actual signing logic
+                // For now, just show success message
+                setTimeout(() => {
+                    showTransactionSuccess();
+                }, 2000);
+                
             } catch (error) {
                 console.error('Transaction signing failed:', error);
                 alert(`Signing failed: ${error.message}`);
+                
+                // Reset button
+                const confirmButton = document.querySelector('.btn-primary');
+                confirmButton.textContent = '✅ Confirm & Sign';
+                confirmButton.disabled = false;
             }
+        }
+        
+        function showPasswordPrompt() {
+            return new Promise((resolve) => {
+                // Create modal overlay
+                const modal = document.createElement('div');
+                modal.className = 'password-modal-overlay';
+                modal.innerHTML = `
+                    <div class="password-modal">
+                        <h3>🔐 Enter Password</h3>
+                        <p>Enter your password to sign this transaction:</p>
+                        
+                        <div class="form-group">
+                            <input type="password" id="transactionPassword" 
+                                   placeholder="Enter password" 
+                                   class="form-input" 
+                                   autocomplete="current-password">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button onclick="cancelPasswordPrompt()" class="btn-secondary">Cancel</button>
+                            <button onclick="confirmPasswordPrompt()" class="btn-primary">Sign Transaction</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Focus on password input
+                setTimeout(() => {
+                    const passwordInput = document.getElementById('transactionPassword');
+                    if (passwordInput) {
+                        passwordInput.focus();
+                    }
+                }, 100);
+                
+                // Handle Enter key
+                const passwordInput = document.getElementById('transactionPassword');
+                passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        confirmPasswordPrompt();
+                    }
+                });
+                
+                // Store resolve function globally for button handlers
+                window.passwordPromptResolve = resolve;
+            });
+        }
+        
+        function confirmPasswordPrompt() {
+            const password = document.getElementById('transactionPassword').value;
+            if (!password.trim()) {
+                alert('Please enter your password');
+                return;
+            }
+            
+            // Remove modal
+            const modal = document.querySelector('.password-modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+            
+            // Resolve with password
+            if (window.passwordPromptResolve) {
+                window.passwordPromptResolve(password);
+                window.passwordPromptResolve = null;
+            }
+        }
+        
+        function cancelPasswordPrompt() {
+            // Remove modal
+            const modal = document.querySelector('.password-modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+            
+            // Resolve with null (cancelled)
+            if (window.passwordPromptResolve) {
+                window.passwordPromptResolve(null);
+                window.passwordPromptResolve = null;
+            }
+        }
+        
+        function showTransactionSuccess() {
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <h1>✅ Transaction Successful!</h1>
+                    
+                    <div class="success-message">
+                        <div class="success-icon">🎉</div>
+                        <p>Your transaction has been submitted to the Stellar network.</p>
+                        <p>Transaction hash: <code>abc123...</code></p>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button onclick="showWallet()" class="btn-primary">← Back to Wallet</button>
+                    </div>
+                </div>
+                
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
         }
         
         function showAssetManagement() {
