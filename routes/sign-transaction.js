@@ -74,8 +74,8 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
        
        console.log('✅ Trade logged successfully');
        
-       // Handle referral rewards (if applicable)
-       await handleReferralRewards(telegram_id, xlmVolume);
+               // Handle referral rewards (if applicable) - use fee_amount like Python bot
+        await handleReferralRewards(telegram_id, fee_amount || 0);
        
      } catch (dbError) {
        console.error('⚠️ Trade logging failed:', dbError);
@@ -167,38 +167,79 @@ router.get('/mini-app/user-rewards/:telegram_id', async (req, res) => {
   }
 });
 
-// Handle referral rewards (consistent with Python bot logic)
-async function handleReferralRewards(userId, xlmVolume) {
+// Handle referral rewards (EXACT same logic as Python bot)
+async function handleReferralRewards(userId, feeAmount) {
   try {
-    // Check if user has a referrer
-    const referrerQuery = `
-      SELECT referrer_id 
-      FROM referrals 
-      WHERE referee_id = $1
+    console.log(`🔗 Calculating referral shares for user ${userId}, fee: ${feeAmount}`);
+    
+    // Get the referrer chain (up to 5 levels) - EXACT same as Python bot
+    const referrerChain = [];
+    let currentUser = userId;
+    
+    for (let level = 0; level < 5; level++) {
+      const referrerQuery = `
+        SELECT referrer_id 
+        FROM referrals 
+        WHERE referee_id = $1
+      `;
+      
+      const referrerResult = await pool.query(referrerQuery, [currentUser]);
+      
+      if (referrerResult.rows.length === 0) {
+        break; // No more referrers in chain
+      }
+      
+      const referrerId = referrerResult.rows[0].referrer_id;
+      referrerChain.push(referrerId);
+      currentUser = referrerId;
+    }
+    
+    console.log(`📊 Referrer chain for user ${userId}: ${referrerChain}`);
+    
+    // Calculate the user's trading volume for the past week - EXACT same as Python bot
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const volumeQuery = `
+      SELECT SUM(xlm_volume) 
+      FROM trades 
+      WHERE user_id = $1 AND timestamp >= $2
     `;
     
-    const referrerResult = await pool.query(referrerQuery, [userId]);
+    const volumeResult = await pool.query(volumeQuery, [userId, oneWeekAgo]);
+    const userVolume = parseFloat(volumeResult.rows[0]?.sum || 0);
     
-    if (referrerResult.rows.length > 0) {
-      const referrerId = referrerResult.rows[0].referrer_id;
+    console.log(`📈 User ${userId} trading volume (past week): ${userVolume} XLM`);
+    
+    // Determine the share percentage based on volume - EXACT same as Python bot
+    const sharePercentage = userVolume >= 100000 ? 0.35 : 0.25; // $10,000 in XLM (assuming 1 XLM = $0.10)
+    console.log(`💰 Share percentage for user ${userId}: ${sharePercentage * 100}%`);
+    
+    // Distribute shares across the referrer chain - EXACT same as Python bot
+    for (let level = 0; level < referrerChain.length; level++) {
+      const referrerId = referrerChain[level];
+      const levelShare = sharePercentage * (1 - 0.05 * level); // Decrease by 5% per level
       
-      // Calculate reward (adjust percentage as needed)
-      const rewardPercentage = 0.01; // 1% of XLM volume
-      const rewardAmount = xlmVolume * rewardPercentage;
+      if (levelShare <= 0) {
+        console.log(`⚠️ Level share for referrer ${referrerId} at level ${level + 1} is <= 0, skipping`);
+        break;
+      }
       
-      if (rewardAmount > 0) {
-        // Insert reward record
+      const amount = feeAmount * levelShare;
+      console.log(`🎯 Level ${level + 1} share for referrer ${referrerId}: ${levelShare * 100}% = ${amount} XLM`);
+      
+      if (amount > 0) {
+        // Insert reward record - EXACT same as Python bot
         const rewardQuery = `
           INSERT INTO rewards (user_id, amount, status)
           VALUES ($1, $2, 'unpaid')
-          ON CONFLICT DO NOTHING
         `;
         
-        await pool.query(rewardQuery, [referrerId, rewardAmount]);
-        
-        console.log(`💰 Referral reward logged: ${rewardAmount} XLM for user ${referrerId}`);
+        await pool.query(rewardQuery, [referrerId, amount]);
+        console.log(`✅ Successfully logged referral fee for referrer ${referrerId}: ${amount} XLM`);
       }
     }
+    
   } catch (error) {
     console.error('⚠️ Referral reward handling failed:', error);
     // Don't fail the transaction if referral handling fails
