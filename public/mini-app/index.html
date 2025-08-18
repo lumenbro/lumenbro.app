@@ -364,7 +364,7 @@
                     // XLM
                     assetName = 'Stellar Lumens';
                     assetCode = 'XLM';
-                    assetIcon = '⭐';
+                    assetIcon = '/media/stellar-logo.svg';
                     assetIssuer = null;
                 } else if (balance.asset_type === 'credit_alphanum4' || balance.asset_type === 'credit_alphanum12') {
                     // Traditional assets
@@ -386,8 +386,8 @@
                 assetCard.innerHTML = `
                     <div class="asset-info">
                         <div class="asset-icon">
-                            <img alt="${assetCode}" class="asset-icon-img" style="display: none;">
-                            <span class="asset-icon-fallback">${assetIcon}</span>
+                            <img alt="${assetCode}" class="asset-icon-img" style="display: ${balance.asset_type === 'native' ? 'block' : 'none'};" src="${balance.asset_type === 'native' ? assetIcon : ''}">
+                            <span class="asset-icon-fallback" style="display: ${balance.asset_type === 'native' ? 'none' : 'inline'}">${balance.asset_type === 'native' ? '' : assetIcon}</span>
                         </div>
                         <div class="asset-details">
                             <div class="asset-name">${assetName}</div>
