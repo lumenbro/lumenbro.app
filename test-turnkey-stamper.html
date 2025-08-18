@@ -6,6 +6,8 @@
     <title>Turnkey Cloud Stamper Test</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script>
+    <script src="/mini-app/encryption-utils.js"></script>
+    <script src="/mini-app/login.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -73,9 +75,9 @@
     </div>
 
     <div class="test-section">
-        <h3>3. Stamper Initialization</h3>
-        <button onclick="testStamperInit()" class="btn">Initialize Stamper</button>
-        <button onclick="checkAPIKey()" class="btn">Check API Key</button>
+        <h3>3. Custom Stamper Test (Your System)</h3>
+        <button onclick="testCustomStamper()" class="btn">Test Custom Stamper</button>
+        <button onclick="checkEncryptedKeys()" class="btn">Check Encrypted Keys</button>
         <div id="stamper-status"></div>
     </div>
 
@@ -231,49 +233,150 @@
             }
         }
 
-        async function checkAPIKey() {
-            log('Checking for existing API key in Cloud Storage...');
+        async function checkEncryptedKeys() {
+            log('Checking for encrypted API keys in Cloud Storage...');
             
             try {
-                // Create a basic stamper to check Cloud Storage
-                const basicStamper = new Turnkey.TelegramCloudStorageStamper();
+                // Check if there's encrypted data stored
+                const encryptedData = await new Promise((resolve, reject) => {
+                    Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+                        if (error) reject(error);
+                        else resolve(value);
+                    });
+                });
                 
-                // Check if there's an API key stored at the default location
-                const apiKey = await basicStamper.getAPIKey();
-                
-                if (apiKey) {
-                    log('✅ Found existing API key in Cloud Storage');
-                    log(`📋 API Public Key: ${apiKey.apiPublicKey.substring(0, 20)}...`);
-                    log(`📋 API Private Key: ${apiKey.apiPrivateKey.substring(0, 20)}...`);
-                    showStatus('stamper-status', '✅ API key found in Cloud Storage', 'success');
+                if (encryptedData) {
+                    log('✅ Found encrypted data in Cloud Storage');
+                    log(`📋 Encrypted data length: ${encryptedData.length} characters`);
+                    
+                    // Try to parse as JSON to see the structure
+                    try {
+                        const parsed = JSON.parse(encryptedData);
+                        log('📋 Data structure:');
+                        log(`   - encryptedPrivateKey: ${parsed.encryptedPrivateKey ? 'Present' : 'Missing'}`);
+                        log(`   - iv: ${parsed.iv ? 'Present' : 'Missing'}`);
+                        log(`   - publicKey: ${parsed.publicKey ? 'Present' : 'Missing'}`);
+                        log(`   - salt: ${parsed.salt ? 'Present' : 'Missing'}`);
+                        
+                        showStatus('stamper-status', '✅ Encrypted keys found in Cloud Storage', 'success');
+                    } catch (parseError) {
+                        log('📋 Data appears to be encrypted (not JSON)');
+                        showStatus('stamper-status', '✅ Encrypted keys found in Cloud Storage', 'success');
+                    }
                 } else {
-                    log('❌ No API key found in Cloud Storage');
-                    log('💡 You need to register/login first to store an API key');
-                    showStatus('stamper-status', '❌ No API key found. Please register/login first.', 'error');
+                    log('❌ No encrypted data found in Cloud Storage');
+                    log('💡 You need to register first to store encrypted API keys');
+                    showStatus('stamper-status', '❌ No encrypted keys found. Please register first.', 'error');
                 }
                 
             } catch (error) {
-                log(`❌ Failed to check API key: ${error.message}`, 'error');
-                showStatus('stamper-status', `❌ Failed to check API key: ${error.message}`, 'error');
+                log(`❌ Failed to check encrypted keys: ${error.message}`, 'error');
+                showStatus('stamper-status', `❌ Failed to check encrypted keys: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCustomStamper() {
+            log('Testing Custom Stamper (Your System)...');
+            
+            try {
+                // Check if EncryptionUtils is available
+                if (!window.EncryptionUtils) {
+                    throw new Error('EncryptionUtils not available - need to load encryption-utils.js');
+                }
+                
+                log('✅ EncryptionUtils available');
+                
+                // Check if keys are encrypted
+                const isEncrypted = await window.EncryptionUtils.isKeyEncrypted();
+                log(`🔐 Keys are encrypted: ${isEncrypted}`);
+                
+                if (!isEncrypted) {
+                    throw new Error('No encrypted keys found - please register first');
+                }
+                
+                // Simulate password prompt (in real app, this would be user input)
+                const password = prompt('Enter your password to decrypt keys:');
+                if (!password) {
+                    throw new Error('Password required for decryption');
+                }
+                
+                log('🔓 Attempting to decrypt keys...');
+                
+                // Decrypt the keys using your system
+                const apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+                log('✅ Keys decrypted successfully');
+                log(`📋 API Public Key: ${apiKey.apiPublicKey.substring(0, 20)}...`);
+                log(`📋 API Private Key: ${apiKey.apiPrivateKey.substring(0, 20)}...`);
+                
+                // Check if ManualStamper is available
+                if (typeof ManualStamper === 'undefined') {
+                    throw new Error('ManualStamper not available - need to load login.js');
+                }
+                
+                log('✅ ManualStamper available');
+                
+                // Create your custom stamper
+                const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
+                log('✅ Custom stamper created successfully');
+                
+                // Test signing a mock request
+                const mockRequest = {
+                    type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+                    timestampMs: Date.now().toString(),
+                    organizationId: "test-org-id",
+                    parameters: {
+                        signWith: "test-key-id",
+                        payload: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+                        encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
+                        hashFunction: "HASH_FUNCTION_NO_OP"
+                    }
+                };
+                
+                log('🔐 Testing custom stamper with mock request...');
+                const stamp = await stamper.stamp(JSON.stringify(mockRequest));
+                log('✅ Custom stamper created stamp successfully');
+                log(`📋 Stamp: ${stamp.substring(0, 50)}...`);
+                
+                showStatus('stamper-status', '✅ Custom stamper test successful!', 'success');
+                testResults.customStamper = true;
+                
+            } catch (error) {
+                log(`❌ Custom stamper test failed: ${error.message}`, 'error');
+                showStatus('stamper-status', `❌ Custom stamper test failed: ${error.message}`, 'error');
+                testResults.customStamper = false;
             }
         }
 
         async function testMockSigning() {
-            log('Testing Mock Transaction Signing...');
+            log('Testing Mock Transaction Signing with Custom Stamper...');
             
             try {
-                if (!stamper) {
-                    throw new Error('Stamper not initialized. Run step 3 first.');
+                // Check if we have a custom stamper ready
+                if (!testResults.customStamper) {
+                    throw new Error('Custom stamper not ready. Run "Test Custom Stamper" first.');
                 }
 
                 // Create a mock transaction hash (this is what we'd get from Stellar SDK)
                 const mockTxHash = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
                 log(`📝 Mock transaction hash: ${mockTxHash}`);
 
-                // Test creating a stamp for Turnkey API call
-                log('🔐 Creating stamp for Turnkey API call...');
+                // Simulate the real-world scenario
+                log('🔐 Simulating real transaction signing flow...');
                 
-                // Create the request body for signRawPayload
+                // 1. Decrypt keys (same as in your wallet)
+                const password = prompt('Enter password again for transaction signing:');
+                if (!password) {
+                    throw new Error('Password required for transaction signing');
+                }
+                
+                const apiKey = await window.EncryptionUtils.retrieveTelegramKey(password);
+                log('✅ Keys decrypted for transaction signing');
+                
+                // 2. Create custom stamper
+                const stamper = createManualStamper(apiKey.apiPrivateKey, apiKey.apiPublicKey);
+                log('✅ Custom stamper created for transaction');
+                
+                // 3. Create the request body for signRawPayload
                 const requestBody = {
                     type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
                     timestampMs: Date.now().toString(),
@@ -288,16 +391,31 @@
 
                 log(`📋 Request body: ${JSON.stringify(requestBody, null, 2)}`);
 
-                // Create a stamp using the stamper
-                const stamp = await stamper.stamp(requestBody);
-                log(`✅ Stamp created successfully: ${stamp}`);
+                // 4. Create a stamp using your custom stamper
+                const stamp = await stamper.stamp(JSON.stringify(requestBody));
+                log(`✅ Stamp created successfully: ${stamp.substring(0, 50)}...`);
 
-                // In a real implementation, we would now use this stamp to call the Turnkey API
-                log('📡 In production, this stamp would be used to call Turnkey API');
-                log('🔗 API endpoint: POST https://api.turnkey.com/public/v1/submit/sign_raw_payload');
+                // 5. Simulate API call (in production, this would go to your backend proxy)
+                log('📡 Simulating API call to Turnkey...');
+                log('🔗 In production, this would go to: POST /mini-app/sign-transaction');
                 log('📋 Headers: { "X-Stamp": stamp, "Content-Type": "application/json" }');
+                log('📋 Body: JSON.stringify(requestBody)');
 
-                showStatus('signing-status', '✅ Stamp creation test successful!', 'success');
+                // 6. Show what the response would look like
+                log('📊 Expected Turnkey API response:');
+                log('   {');
+                log('     "activity": {');
+                log('       "result": {');
+                log('         "signRawPayloadResult": {');
+                log('           "r": "signature_r_component",');
+                log('           "s": "signature_s_component",');
+                log('           "v": "signature_v_component"');
+                log('         }');
+                log('       }');
+                log('     }');
+                log('   }');
+
+                showStatus('signing-status', '✅ Custom stamper transaction signing test successful!', 'success');
                 testResults.signing = true;
 
             } catch (error) {
