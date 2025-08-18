@@ -378,33 +378,50 @@
                 const payload = JSON.stringify(mockRequest);
                 log(`📋 Payload to sign: ${payload.substring(0, 100)}...`);
                 
-                // Import private key using JWK format (correct for hex strings)
+                // Import private key using raw format (more reliable)
                 const privateKeyBuffer = hexToUint8Array(apiKey.apiPrivateKey);
                 log('✅ Private key converted to buffer');
                 
-                // Convert to base64url for JWK
-                function bytesToBase64url(bytes) {
-                    const base64 = btoa(String.fromCharCode(...bytes));
-                    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                let privateKeyCrypto;
+                
+                // Try raw import first (most reliable)
+                try {
+                    privateKeyCrypto = await crypto.subtle.importKey(
+                        "raw",
+                        privateKeyBuffer,
+                        { name: "ECDSA", namedCurve: "P-256" },
+                        true,
+                        ["sign"]
+                    );
+                    log('✅ Private key imported successfully (raw format)');
+                } catch (rawError) {
+                    log('⚠️ Raw import failed, trying JWK format...');
+                    
+                    // Fallback to JWK format
+                    function bytesToBase64url(bytes) {
+                        const base64 = btoa(String.fromCharCode(...bytes));
+                        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                    }
+                    
+                    const d = bytesToBase64url(privateKeyBuffer);
+                    log('✅ Private key converted to base64url');
+                    
+                    // Create minimal JWK (some browsers accept this)
+                    const privateJwk = {
+                        kty: "EC",
+                        crv: "P-256",
+                        d: d
+                    };
+                    
+                    privateKeyCrypto = await crypto.subtle.importKey(
+                        "jwk",
+                        privateJwk,
+                        { name: "ECDSA", namedCurve: "P-256" },
+                        true,
+                        ["sign"]
+                    );
+                    log('✅ Private key imported successfully (JWK format)');
                 }
-                
-                const d = bytesToBase64url(privateKeyBuffer);
-                log('✅ Private key converted to base64url');
-                
-                // Create JWK for P-256
-                const privateJwk = {
-                    kty: "EC",
-                    crv: "P-256",
-                    d: d
-                };
-                
-                const privateKeyCrypto = await crypto.subtle.importKey(
-                    "jwk",
-                    privateJwk,
-                    { name: "ECDSA", namedCurve: "P-256" },
-                    true,
-                    ["sign"]
-                );
                 log('✅ Private key imported successfully');
                 
                 // Sign the payload
@@ -535,31 +552,48 @@
                     return arrayBufferToHex(der);
                 }
                 
-                // Import and sign using JWK format
+                // Import and sign using raw format (more reliable)
                 const privateKeyBuffer = hexToUint8Array(apiKey.apiPrivateKey);
                 
-                // Convert to base64url for JWK
-                function bytesToBase64url(bytes) {
-                    const base64 = btoa(String.fromCharCode(...bytes));
-                    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                let privateKeyCrypto;
+                
+                // Try raw import first (most reliable)
+                try {
+                    privateKeyCrypto = await crypto.subtle.importKey(
+                        "raw",
+                        privateKeyBuffer,
+                        { name: "ECDSA", namedCurve: "P-256" },
+                        true,
+                        ["sign"]
+                    );
+                    log('✅ Private key imported successfully (raw format)');
+                } catch (rawError) {
+                    log('⚠️ Raw import failed, trying JWK format...');
+                    
+                    // Fallback to JWK format
+                    function bytesToBase64url(bytes) {
+                        const base64 = btoa(String.fromCharCode(...bytes));
+                        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                    }
+                    
+                    const d = bytesToBase64url(privateKeyBuffer);
+                    
+                    // Create minimal JWK (some browsers accept this)
+                    const privateJwk = {
+                        kty: "EC",
+                        crv: "P-256",
+                        d: d
+                    };
+                    
+                    privateKeyCrypto = await crypto.subtle.importKey(
+                        "jwk",
+                        privateJwk,
+                        { name: "ECDSA", namedCurve: "P-256" },
+                        true,
+                        ["sign"]
+                    );
+                    log('✅ Private key imported successfully (JWK format)');
                 }
-                
-                const d = bytesToBase64url(privateKeyBuffer);
-                
-                // Create JWK for P-256
-                const privateJwk = {
-                    kty: "EC",
-                    crv: "P-256",
-                    d: d
-                };
-                
-                const privateKeyCrypto = await crypto.subtle.importKey(
-                    "jwk",
-                    privateJwk,
-                    { name: "ECDSA", namedCurve: "P-256" },
-                    true,
-                    ["sign"]
-                );
                 
                 const payloadBytes = new TextEncoder().encode(payload);
                 const sigBuffer = await crypto.subtle.sign(
