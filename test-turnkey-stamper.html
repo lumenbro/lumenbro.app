@@ -239,28 +239,34 @@
                 const mockTxHash = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
                 log(`📝 Mock transaction hash: ${mockTxHash}`);
 
-                // Test signing with Turnkey
-                log('🔐 Attempting to sign with Turnkey Cloud Stamper...');
+                // Test creating a stamp for Turnkey API call
+                log('🔐 Creating stamp for Turnkey API call...');
                 
-                const signature = await stamper.signRawPayload(mockTxHash, {
-                    encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
-                    hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
-                });
+                // Create the request body for signRawPayload
+                const requestBody = {
+                    type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+                    timestampMs: Date.now().toString(),
+                    organizationId: "test-org-id", // This would come from user's stored data
+                    parameters: {
+                        signWith: "test-key-id", // This would come from user's stored data
+                        payload: mockTxHash,
+                        encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
+                        hashFunction: "HASH_FUNCTION_NO_OP"
+                    }
+                };
 
-                log('✅ Turnkey signing successful!');
-                log(`📊 Signature received: ${JSON.stringify(signature, null, 2)}`);
+                log(`📋 Request body: ${JSON.stringify(requestBody, null, 2)}`);
 
-                // Process signature components
-                const r = signature.r;
-                const s = signature.s;
-                const combinedSignature = r + s;
-                
-                log(`🔢 Signature components:`);
-                log(`   R: ${r}`);
-                log(`   S: ${s}`);
-                log(`   Combined: ${combinedSignature}`);
+                // Create a stamp using the stamper
+                const stamp = await stamper.stamp(requestBody);
+                log(`✅ Stamp created successfully: ${stamp}`);
 
-                showStatus('signing-status', '✅ Mock signing test successful!', 'success');
+                // In a real implementation, we would now use this stamp to call the Turnkey API
+                log('📡 In production, this stamp would be used to call Turnkey API');
+                log('🔗 API endpoint: POST https://api.turnkey.com/public/v1/submit/sign_raw_payload');
+                log('📋 Headers: { "X-Stamp": stamp, "Content-Type": "application/json" }');
+
+                showStatus('signing-status', '✅ Stamp creation test successful!', 'success');
                 testResults.signing = true;
 
             } catch (error) {
