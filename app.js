@@ -116,7 +116,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-const host = process.env.NODE_ENV === 'development' ? '0.0.0.0' : 'localhost';
+const host = '0.0.0.0'; // Always bind to all interfaces for EC2 communication
 server.listen(port, host, () => {
   if (process.env.NODE_ENV === 'development') {
     console.log(`🚀 Development mode - Network access enabled`);
@@ -124,8 +124,8 @@ server.listen(port, host, () => {
     console.log(`Local access: http://localhost:${port}`);
     console.log(`Network access: http://192.168.1.247:${port}`);
   } else {
-    console.log(`🔒 Production mode - Localhost only`);
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`🔒 Production mode - All interfaces enabled for EC2 communication`);
+    console.log(`Server running on http://0.0.0.0:${port}`);
   }
   
   // Start sync service

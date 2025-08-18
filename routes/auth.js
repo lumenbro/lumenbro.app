@@ -1,6 +1,7 @@
 // routes/auth.js - Backend for registration, adapted for Mini App
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const turnkeyClient = require('../turnkeyClient');
@@ -1402,6 +1403,11 @@ function generateJWT(telegram_id) {
           }
         });
         
+        // Test endpoint for Turnkey Cloud Stamper
+        router.get('/test-turnkey-stamper', (req, res) => {
+            res.sendFile(path.join(__dirname, '../test-turnkey-stamper.html'));
+        });
+
         // Test endpoint for authenticator info (keep for debugging)
         router.get('/mini-app/test-authenticator', async (req, res) => {
           try {

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnkey Cloud Stamper Test</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/turnkey.js?v=2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #666; cursor: not-allowed; }
+        .btn.danger { background: #dc3545; }
+        .btn.success { background: #28a745; }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; }
+        .status.error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; }
+        .status.info { background: rgba(0, 123, 255, 0.2); border: 1px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Turnkey Cloud Stamper Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Environment Check</h3>
+        <button onclick="checkEnvironment()" class="btn">Check Environment</button>
+        <div id="env-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Cloud Storage Test</h3>
+        <button onclick="testCloudStorage()" class="btn">Test Cloud Storage</button>
+        <button onclick="clearCloudStorage()" class="btn danger">Clear Storage</button>
+        <div id="storage-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Stamper Initialization</h3>
+        <button onclick="testStamperInit()" class="btn">Initialize Stamper</button>
+        <div id="stamper-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Mock Transaction Signing</h3>
+        <button onclick="testMockSigning()" class="btn success">Test Mock Signing</button>
+        <div id="signing-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Test Logs</h3>
+        <button onclick="clearLogs()" class="btn">Clear Logs</button>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script>
+        let stamper = null;
+        let testResults = {};
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            const logsDiv = document.getElementById('logs');
+            logsDiv.textContent += logEntry;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(logEntry.trim());
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '';
+        }
+
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function checkEnvironment() {
+            log('Checking environment...');
+            
+            try {
+                // Check Telegram WebApp
+                if (typeof Telegram === 'undefined' || !Telegram.WebApp) {
+                    throw new Error('Telegram WebApp not available');
+                }
+                log('✅ Telegram WebApp available');
+
+                // Check Turnkey
+                if (typeof Turnkey === 'undefined') {
+                    throw new Error('Turnkey library not loaded');
+                }
+                log('✅ Turnkey library loaded');
+
+                // Check Cloud Storage
+                if (!Telegram.WebApp.CloudStorage) {
+                    throw new Error('Telegram Cloud Storage not available');
+                }
+                log('✅ Telegram Cloud Storage available');
+
+                showStatus('env-status', '✅ Environment check passed!', 'success');
+                testResults.environment = true;
+
+            } catch (error) {
+                log(`❌ Environment check failed: ${error.message}`, 'error');
+                showStatus('env-status', `❌ Environment check failed: ${error.message}`, 'error');
+                testResults.environment = false;
+            }
+        }
+
+        async function testCloudStorage() {
+            log('Testing Cloud Storage...');
+            
+            try {
+                // Test write
+                const testData = {
+                    test: true,
+                    timestamp: Date.now(),
+                    message: 'Cloud storage test'
+                };
+
+                await new Promise((resolve, reject) => {
+                    Telegram.WebApp.CloudStorage.setItem('TEST_KEY', JSON.stringify(testData), (error) => {
+                        if (error) reject(error);
+                        else resolve();
+                    });
+                });
+                log('✅ Cloud storage write successful');
+
+                // Test read
+                const readData = await new Promise((resolve, reject) => {
+                    Telegram.WebApp.CloudStorage.getItem('TEST_KEY', (error, value) => {
+                        if (error) reject(error);
+                        else resolve(value);
+                    });
+                });
+                
+                const parsedData = JSON.parse(readData);
+                log(`✅ Cloud storage read successful: ${JSON.stringify(parsedData)}`);
+
+                showStatus('storage-status', '✅ Cloud storage test passed!', 'success');
+                testResults.cloudStorage = true;
+
+            } catch (error) {
+                log(`❌ Cloud storage test failed: ${error.message}`, 'error');
+                showStatus('storage-status', `❌ Cloud storage test failed: ${error.message}`, 'error');
+                testResults.cloudStorage = false;
+            }
+        }
+
+        async function clearCloudStorage() {
+            log('Clearing Cloud Storage...');
+            
+            try {
+                await new Promise((resolve, reject) => {
+                    Telegram.WebApp.CloudStorage.removeItem('TEST_KEY', (error) => {
+                        if (error) reject(error);
+                        else resolve();
+                    });
+                });
+                log('✅ Cloud storage cleared');
+                showStatus('storage-status', '✅ Cloud storage cleared', 'success');
+            } catch (error) {
+                log(`❌ Failed to clear cloud storage: ${error.message}`, 'error');
+                showStatus('storage-status', `❌ Failed to clear cloud storage: ${error.message}`, 'error');
+            }
+        }
+
+        async function testStamperInit() {
+            log('Testing Stamper Initialization...');
+            
+            try {
+                if (!Turnkey.TelegramCloudStorageStamper) {
+                    throw new Error('TelegramCloudStorageStamper not available');
+                }
+
+                stamper = new Turnkey.TelegramCloudStorageStamper();
+                log('✅ Stamper initialized successfully');
+
+                showStatus('stamper-status', '✅ Stamper initialization successful!', 'success');
+                testResults.stamper = true;
+
+            } catch (error) {
+                log(`❌ Stamper initialization failed: ${error.message}`, 'error');
+                showStatus('stamper-status', `❌ Stamper initialization failed: ${error.message}`, 'error');
+                testResults.stamper = false;
+            }
+        }
+
+        async function testMockSigning() {
+            log('Testing Mock Transaction Signing...');
+            
+            try {
+                if (!stamper) {
+                    throw new Error('Stamper not initialized. Run step 3 first.');
+                }
+
+                // Create a mock transaction hash (this is what we'd get from Stellar SDK)
+                const mockTxHash = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+                log(`📝 Mock transaction hash: ${mockTxHash}`);
+
+                // Test signing with Turnkey
+                log('🔐 Attempting to sign with Turnkey Cloud Stamper...');
+                
+                const signature = await stamper.signRawPayloadV2(mockTxHash, {
+                    encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
+                    hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
+                });
+
+                log('✅ Turnkey signing successful!');
+                log(`📊 Signature received: ${JSON.stringify(signature, null, 2)}`);
+
+                // Process signature components
+                const r = signature.r;
+                const s = signature.s;
+                const combinedSignature = r + s;
+                
+                log(`🔢 Signature components:`);
+                log(`   R: ${r}`);
+                log(`   S: ${s}`);
+                log(`   Combined: ${combinedSignature}`);
+
+                showStatus('signing-status', '✅ Mock signing test successful!', 'success');
+                testResults.signing = true;
+
+            } catch (error) {
+                log(`❌ Mock signing test failed: ${error.message}`, 'error');
+                showStatus('signing-status', `❌ Mock signing test failed: ${error.message}`, 'error');
+                testResults.signing = false;
+            }
+        }
+
+        // Auto-run environment check on load
+        window.addEventListener('load', () => {
+            log('🚀 Turnkey Cloud Stamper Test Page Loaded');
+            setTimeout(checkEnvironment, 1000);
+        });
+    </script>
+</body>
+</html>
+
