@@ -1485,10 +1485,26 @@ function generateJWT(telegram_id) {
             }
             
             if (!assetMatch) {
-              console.log(`Asset ${assetCode} (${assetIssuer}) not found in TOML, returning fallback metadata`);
-              // Return fallback metadata instead of throwing error
+              console.log(`Asset ${assetCode} (${assetIssuer}) not found in TOML, using xBull-style fallback`);
+              
+              // Try to generate predictable icon URL like xBull does
+              let fallbackIcon = null;
+              try {
+                // Create a hash from asset code + issuer (similar to xBull's approach)
+                const crypto = require('crypto');
+                const hashInput = `${assetCode}-${assetIssuer}`;
+                const hash = crypto.createHash('sha256').update(hashInput).digest('hex');
+                const shortHash = hash.substring(0, 32); // Take first 32 chars like xBull
+                
+                // Use the same CDN pattern as xBull
+                fallbackIcon = `https://cdn.${issuerData.home_domain}/prod/meme/meme-${shortHash}.png`;
+                console.log(`Generated xBull-style fallback icon: ${fallbackIcon}`);
+              } catch (error) {
+                console.log('Could not generate fallback icon URL:', error.message);
+              }
+              
               const metadata = {
-                icon: null,
+                icon: fallbackIcon,
                 name: assetCode,
                 description: `${assetCode} token on Stellar`,
                 home_domain: issuerData.home_domain
@@ -1497,7 +1513,7 @@ function generateJWT(telegram_id) {
               res.json({
                 success: true,
                 data: metadata,
-                source: 'fallback'
+                source: 'xbull_fallback'
               });
               return;
             }
