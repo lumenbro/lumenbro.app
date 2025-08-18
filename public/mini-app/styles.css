@@ -48,7 +48,7 @@ body {
   background: var(--panel);
   border-radius: var(--radius);
   padding: 30px;
-  padding-bottom: 100px; /* Ensure content doesn't get cut off by bottom nav */
+  padding-bottom: 120px; /* Increased padding to ensure all buttons are visible above bottom nav */
   box-shadow: var(--shadow-1);
   border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(10px);
