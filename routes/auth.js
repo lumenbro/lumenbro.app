@@ -1466,10 +1466,30 @@ function generateJWT(telegram_id) {
             const tomlText = tomlResponse.data;
             
             // Parse TOML for the specific asset
-            const assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+            let assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+            
+            // If not found by asset code, try to find by issuer
+            if (!assetMatch) {
+              const issuerMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.[^\\]]+\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'gi'));
+              
+              if (issuerMatch) {
+                for (const match of issuerMatch) {
+                  const issuerLine = match.match(/issuer\s*=\s*"([^"]+)"/i);
+                  if (issuerLine && issuerLine[1] === assetIssuer) {
+                    // Found the asset by issuer, now extract the code
+                    const codeMatch = match.match(/code\s*=\s*"([^"]+)"/i);
+                    if (codeMatch) {
+                      console.log(`Found asset by issuer: ${assetIssuer} -> ${codeMatch[1]}`);
+                      assetMatch = [match, match]; // Use the full match as both groups
+                      break;
+                    }
+                  }
+                }
+              }
+            }
             
             if (!assetMatch) {
-              throw new Error('Asset not found in TOML');
+              throw new Error(`Asset not found in TOML for ${assetCode} (${assetIssuer})`);
             }
             
             const assetSection = assetMatch[1];
