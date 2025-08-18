@@ -1598,10 +1598,106 @@ function generateJWT(telegram_id) {
               message: 'Failed to fetch TOML metadata'
             });
           }
+                });
+        
+        // Build transaction endpoint
+        router.post('/mini-app/build-transaction', async (req, res) => {
+          try {
+            const { recipient, asset, amount, memo } = req.body;
+            
+            // Validation
+            if (!recipient || !asset || !amount) {
+              return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: recipient, asset, amount'
+              });
+            }
+            
+            if (!recipient.startsWith('G')) {
+              return res.status(400).json({
+                success: false,
+                error: 'Invalid Stellar address'
+              });
+            }
+            
+            // Get user's public key (for now, using test user)
+            const telegramId = 5014800072; // TODO: Get from proper auth
+            
+            // Get user's public key from Python bot
+            const authResponse = await fetch('http://172.31.2.184:8080/api/authenticator', {
+              method: 'GET',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${generateJWT(telegramId)}`
+              }
+            });
+            
+            if (!authResponse.ok) {
+              throw new Error('Failed to get user data');
+            }
+            
+            const authData = await authResponse.json();
+            const publicKey = authData.user.public_key;
+            
+            // Get current network fee from Stellar
+            const feeResponse = await fetch('https://horizon.stellar.org/fee_stats');
+            const feeData = await feeResponse.json();
+            const networkFee = feeData.fee_charged.mode || '0.00001';
+            
+            // Calculate service fee based on user status
+            const serviceFee = calculateServiceFee(amount, asset, telegramId);
+            
+            // Build transaction object (we'll use Stellar SDK on server)
+            const transaction = {
+              source: publicKey,
+              recipient: recipient,
+              asset: asset,
+              amount: amount,
+              memo: memo || '',
+              networkFee: networkFee
+            };
+            
+            // Calculate total fees
+            const totalFees = parseFloat(networkFee) + parseFloat(serviceFee);
+            
+            res.json({
+              success: true,
+              transaction: transaction,
+              fees: {
+                networkFee: networkFee,
+                serviceFee: serviceFee,
+                total: totalFees.toFixed(5)
+              }
+            });
+            
+          } catch (error) {
+            console.error('Transaction build failed:', error);
+            res.status(500).json({
+              success: false,
+              error: error.message,
+              message: 'Failed to build transaction'
+            });
+          }
         });
-
-// Test endpoint for local development
-router.get('/mini-app/test-python-connection', async (req, res) => {
+        
+        // Calculate service fee based on user status
+        function calculateServiceFee(amount, asset, telegramId) {
+          // TODO: Get user status from database (pioneer, referred, etc.)
+          // For now, using base 1% fee
+          const baseFee = 0.01; // 1%
+          
+          // Convert non-XLM assets to XLM equivalent for fee calculation
+          if (asset === 'XLM') {
+            return (parseFloat(amount) * baseFee).toFixed(5);
+          } else {
+            // TODO: Get asset price from Stellar DEX for XLM conversion
+            // For now, using a simple conversion
+            return (parseFloat(amount) * baseFee * 0.1).toFixed(5); // Assume 10:1 ratio
+          }
+        }
+        
+        // Test endpoint for local development
+        router.get('/mini-app/test-python-connection', async (req, res) => {
   try {
     console.log('🧪 Testing Python bot connection...');
     
