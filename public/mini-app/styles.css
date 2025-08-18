@@ -767,9 +767,11 @@ input::placeholder {
 .detail-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .detail-row:last-child {
@@ -787,11 +789,18 @@ input::placeholder {
 
 .detail-row .label {
   color: var(--text-muted);
+  min-width: 100px;
+  flex-shrink: 0;
 }
 
 .detail-row .value {
   color: var(--text);
   font-weight: 500;
+  word-break: break-all;
+  text-align: right;
+  flex: 1;
+  font-family: monospace;
+  font-size: 14px;
 }
 }
 

@@ -1642,7 +1642,7 @@ function generateJWT(telegram_id) {
             // Get current network fee from Stellar
             const feeResponse = await fetch('https://horizon.stellar.org/fee_stats');
             const feeData = await feeResponse.json();
-            const networkFee = feeData.fee_charged.mode || '0.00001';
+            const networkFee = (feeData.fee_charged.mode / 100000).toFixed(5) || '0.00001';
             
             // Calculate service fee based on user status
             const serviceFee = calculateServiceFee(amount, asset, telegramId);
