@@ -212,6 +212,10 @@
 
                 stamper = new Turnkey.TelegramCloudStorageStamper();
                 log('✅ Stamper initialized successfully');
+                
+                // Debug: Log available methods
+                log(`🔍 Available stamper methods: ${Object.getOwnPropertyNames(Object.getPrototypeOf(stamper)).join(', ')}`);
+                log(`🔍 Stamper object keys: ${Object.keys(stamper).join(', ')}`);
 
                 showStatus('stamper-status', '✅ Stamper initialization successful!', 'success');
                 testResults.stamper = true;
@@ -238,7 +242,7 @@
                 // Test signing with Turnkey
                 log('🔐 Attempting to sign with Turnkey Cloud Stamper...');
                 
-                const signature = await stamper.signRawPayloadV2(mockTxHash, {
+                const signature = await stamper.signRawPayload(mockTxHash, {
                     encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
                     hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
                 });
