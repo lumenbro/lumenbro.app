@@ -1465,31 +1465,41 @@ function generateJWT(telegram_id) {
             
             const tomlText = tomlResponse.data;
             
-            // Parse TOML for the specific asset
-            let assetMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.${assetCode}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'i'));
+            // Parse TOML for the specific asset using [[CURRENCIES]] format
+            let assetMatch = tomlText.match(new RegExp(`\\[\\[CURRENCIES\\]\\]\\s*([\\s\\S]*?)(?=\\n\\[\\[|$)`, 'gi'));
             
-            // If not found by asset code, try to find by issuer
-            if (!assetMatch) {
-              const issuerMatch = tomlText.match(new RegExp(`\\[CURRENCIES\\.[^\\]]+\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`, 'gi'));
-              
-              if (issuerMatch) {
-                for (const match of issuerMatch) {
-                  const issuerLine = match.match(/issuer\s*=\s*"([^"]+)"/i);
-                  if (issuerLine && issuerLine[1] === assetIssuer) {
-                    // Found the asset by issuer, now extract the code
-                    const codeMatch = match.match(/code\s*=\s*"([^"]+)"/i);
-                    if (codeMatch) {
-                      console.log(`Found asset by issuer: ${assetIssuer} -> ${codeMatch[1]}`);
-                      assetMatch = [match, match]; // Use the full match as both groups
-                      break;
-                    }
+            if (assetMatch) {
+              for (const match of assetMatch) {
+                const codeMatch = match.match(/code\s*=\s*"([^"]+)"/i);
+                const issuerMatch = match.match(/issuer\s*=\s*"([^"]+)"/i);
+                
+                if (codeMatch && issuerMatch) {
+                  // Check if this section matches our asset code or issuer
+                  if (codeMatch[1] === assetCode || issuerMatch[1] === assetIssuer) {
+                    console.log(`Found asset in TOML: ${codeMatch[1]} (${issuerMatch[1]})`);
+                    assetMatch = [match, match];
+                    break;
                   }
                 }
               }
             }
             
             if (!assetMatch) {
-              throw new Error(`Asset not found in TOML for ${assetCode} (${assetIssuer})`);
+              console.log(`Asset ${assetCode} (${assetIssuer}) not found in TOML, returning fallback metadata`);
+              // Return fallback metadata instead of throwing error
+              const metadata = {
+                icon: null,
+                name: assetCode,
+                description: `${assetCode} token on Stellar`,
+                home_domain: issuerData.home_domain
+              };
+              
+              res.json({
+                success: true,
+                data: metadata,
+                source: 'fallback'
+              });
+              return;
             }
             
             const assetSection = assetMatch[1];
