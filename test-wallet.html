@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar-Plus Wallet Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .wallet-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .balance-display {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 20px 0;
+        }
+        
+        .address-display {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .test-account {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Stellar-Plus Wallet Test</h1>
+        
+        <div class="test-account">
+            <h3>🔑 Test Account</h3>
+            <p><strong>Public Key:</strong> GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</p>
+            <p><strong>Network:</strong> Testnet</p>
+            <p><strong>Status:</strong> Mock Mode (simulates your Python bot API)</p>
+        </div>
+        
+        <div class="wallet-section">
+            <h3>💰 Wallet Balance</h3>
+            <div class="balance-display" id="balance">Loading...</div>
+            <div class="address-display" id="address">Loading address...</div>
+            <button onclick="loadBalance()">🔄 Refresh Balance</button>
+        </div>
+        
+        <div class="wallet-section">
+            <h3>📤 Send Payment</h3>
+            <div class="form-group">
+                <label for="destination">Destination Address:</label>
+                <input type="text" id="destination" placeholder="G... (Stellar public key)" value="GCCD6AJOYZCUAQLX32ZJF2MKFFAUJ53PVCFQI3RHWKL3K47PKFMH2VTL">
+            </div>
+            <div class="form-group">
+                <label for="amount">Amount (XLM):</label>
+                <input type="number" id="amount" placeholder="10.0000000" value="1" step="0.0000001" min="0">
+            </div>
+            <button onclick="sendPayment()" id="sendBtn">📤 Send Payment</button>
+            <button onclick="testStellarPlus()" id="testBtn">🧪 Test Stellar-Plus</button>
+        </div>
+        
+        <div class="wallet-section">
+            <h3>🔐 Transaction Signing Test</h3>
+            <div class="form-group">
+                <label for="xdrInput">XDR Envelope (optional):</label>
+                <textarea id="xdrInput" rows="3" placeholder="Paste XDR envelope here or leave empty for mock test">AAAA...</textarea>
+            </div>
+            <button onclick="testSigning()">🔐 Test Signing</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="log" id="log">
+            <div>🚀 Wallet test initialized...</div>
+            <div>📱 This simulates your mini-app wallet interface</div>
+            <div>🔧 All API calls go to localhost:3000/api/*</div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Simulate Stellar-Plus (since we can't import it directly in browser)
+        window.StellarPlus = {
+            // Mock Stellar-Plus functionality
+            account: {
+                create: ({ publicKey, secretKey }) => ({
+                    publicKey,
+                    secretKey,
+                    getBalance: async () => '100.0000000'
+                })
+            },
+            transaction: {
+                build: async ({ source, operations }) => ({
+                    toXDR: () => 'AAAA' + Math.random().toString(36).substring(7),
+                    submit: async (xdr) => ({ hash: 'mock-tx-' + Date.now() })
+                })
+            },
+            operation: {
+                payment: ({ destination, asset, amount }) => ({
+                    destination,
+                    asset,
+                    amount
+                })
+            }
+        };
+
+        // Global variables
+        window.testAccount = {
+            publicKey: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            secretKey: 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+        };
+
+        // Utility functions
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Wallet functions
+        window.loadBalance = async function() {
+            try {
+                showStatus('Loading balance...', 'loading');
+                log('💰 Loading balance...');
+                
+                const response = await fetch(`/api/balance/${window.testAccount.publicKey}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('balance').textContent = `${data.balance} ${data.asset}`;
+                    document.getElementById('address').textContent = data.publicKey;
+                    showStatus('Balance loaded successfully!', 'success');
+                    log('✅ Balance loaded: ' + data.balance + ' ' + data.asset);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showStatus('Failed to load balance: ' + error.message, 'error');
+                log('❌ Balance error: ' + error.message);
+            }
+        };
+
+        window.sendPayment = async function() {
+            try {
+                const destination = document.getElementById('destination').value;
+                const amount = document.getElementById('amount').value;
+                
+                if (!destination || !amount) {
+                    showStatus('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                showStatus('Building transaction...', 'loading');
+                log('📤 Building payment transaction...');
+                
+                // Simulate Stellar-Plus transaction building
+                const stellarPlus = window.StellarPlus;
+                const account = stellarPlus.account.create({
+                    publicKey: window.testAccount.publicKey
+                });
+                
+                const transaction = await stellarPlus.transaction.build({
+                    source: account,
+                    operations: [
+                        stellarPlus.operation.payment({
+                            destination,
+                            asset: 'XLM',
+                            amount: amount.toString()
+                        })
+                    ]
+                });
+                
+                const xdr = transaction.toXDR();
+                log('📝 Generated XDR: ' + xdr.substring(0, 50) + '...');
+                
+                showStatus('Signing transaction...', 'loading');
+                log('🔐 Sending to signing API...');
+                
+                // Send to mock signing API
+                const response = await fetch('/api/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        xdr: xdr,
+                        telegram_id: 123456789 // Mock Telegram ID
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('Transaction signed successfully!', 'success');
+                    log('✅ Transaction signed: ' + result.hash);
+                    log('💰 Fee: ' + result.fee + ' XLM');
+                    
+                    // Simulate submission
+                    showStatus('Submitting to network...', 'loading');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    const submitResult = await transaction.submit(result.signed_xdr);
+                    showStatus('Payment sent successfully!', 'success');
+                    log('🎉 Payment submitted: ' + submitResult.hash);
+                    
+                    // Refresh balance
+                    setTimeout(loadBalance, 1000);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showStatus('Payment failed: ' + error.message, 'error');
+                log('❌ Payment error: ' + error.message);
+            }
+        };
+
+        window.testStellarPlus = async function() {
+            try {
+                showStatus('Testing Stellar-Plus...', 'loading');
+                log('🧪 Testing Stellar-Plus functionality...');
+                
+                const stellarPlus = window.StellarPlus;
+                const account = stellarPlus.account.create({
+                    publicKey: window.testAccount.publicKey
+                });
+                
+                const balance = await account.getBalance();
+                log('✅ Stellar-Plus account created');
+                log('✅ Balance check: ' + balance + ' XLM');
+                
+                showStatus('Stellar-Plus test successful!', 'success');
+                log('🎉 All Stellar-Plus tests passed!');
+            } catch (error) {
+                showStatus('Stellar-Plus test failed: ' + error.message, 'error');
+                log('❌ Stellar-Plus error: ' + error.message);
+            }
+        };
+
+        window.testSigning = async function() {
+            try {
+                const xdrInput = document.getElementById('xdrInput').value;
+                const xdr = xdrInput || 'AAAA' + Math.random().toString(36).substring(7);
+                
+                showStatus('Testing signing API...', 'loading');
+                log('🔐 Testing signing with XDR: ' + xdr.substring(0, 50) + '...');
+                
+                const response = await fetch('/api/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        xdr: xdr,
+                        telegram_id: 123456789
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('Signing test successful!', 'success');
+                    log('✅ Signed XDR: ' + result.signed_xdr.substring(0, 50) + '...');
+                    log('✅ Transaction hash: ' + result.hash);
+                    log('✅ Fee: ' + result.fee + ' XLM');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showStatus('Signing test failed: ' + error.message, 'error');
+                log('❌ Signing error: ' + error.message);
+            }
+        };
+
+        // Test wallet functionality
+        let currentAccount = null;
+        
+        // Initialize wallet
+        async function initWallet() {
+            console.log('🚀 Initializing test wallet...');
+            
+            // Mock account setup
+            currentAccount = {
+                publicKey: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+                secretKey: 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+                network: 'testnet'
+            };
+            
+            console.log('✅ Wallet initialized:', currentAccount);
+            updateBalance();
+        }
+        
+        // Update balance display
+        async function updateBalance() {
+            try {
+                console.log('💰 Fetching balance...');
+                const response = await fetch(`/api/balance/${currentAccount.publicKey}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('balance').textContent = data.balance;
+                    document.getElementById('publicKey').textContent = data.publicKey;
+                    console.log('✅ Balance updated:', data);
+                } else {
+                    console.error('❌ Balance fetch failed:', data.error);
+                }
+            } catch (error) {
+                console.error('❌ Balance error:', error);
+            }
+        }
+        
+        // Send payment
+        async function sendPayment() {
+            try {
+                const amount = document.getElementById('amount').value;
+                const destination = document.getElementById('destination').value;
+                
+                if (!amount || !destination) {
+                    alert('Please enter amount and destination');
+                    return;
+                }
+                
+                console.log('📤 Sending payment:', { amount, destination });
+                
+                // Mock XDR creation
+                const mockXdr = 'AAAA' + Math.random().toString(36).substring(7);
+                
+                // Send to signing API
+                const response = await fetch('/api/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        xdr: mockXdr,
+                        telegram_id: 123456789 // Mock telegram ID
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Payment signed:', data);
+                    alert('Payment sent successfully!');
+                    updateBalance();
+                } else {
+                    console.error('❌ Payment failed:', data.error);
+                    alert('Payment failed: ' + data.error);
+                }
+            } catch (error) {
+                console.error('❌ Payment error:', error);
+                alert('Payment error: ' + error.message);
+            }
+        }
+        
+        // Test Python bot API calls
+        window.testPythonBotAPI = async function(testType = 'connection') {
+            try {
+                console.log('🧪 Testing Python bot API...');
+                console.log('Test type:', testType);
+                
+                // Get your actual Telegram ID from the mini-app
+                const telegramId = 123456789; // Replace with your actual ID
+                
+                const response = await fetch('/api/test-python-bot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: telegramId,
+                        test_type: testType
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('📡 Python bot test result:', data);
+                
+                return data;
+                
+            } catch (error) {
+                console.error('❌ Python bot test error:', error);
+                return { success: false, error: error.message };
+            }
+        };
+        
+        // Test with Telegram Cloud keys
+        window.testWithTelegramKeys = async function() {
+            try {
+                console.log('🔑 Testing with Telegram Cloud keys...');
+                
+                // This would normally get keys from Telegram Cloud Storage
+                // For now, we'll simulate the key structure you showed
+                const mockKeys = {
+                    encryptedPrivateKey: [120, 144, 169, 47, 195, 181, 133, 63, 254, 4, 65, 183, 208, 74, 190, 156, 220, 68, 203, 248, 183, 25, 122, 3, 149, 179, 88, 72, 0, 48, 194, 104, 191, 110, 244, 64, 222, 167, 194, 120, 80, 103, 251, 122, 104, 133, 126, 134, 102, 228, 111, 160, 104, 106, 98, 84, 49, 247, 93, 160, 62, 19, 25, 186, 195, 15, 229, 115, 246, 2, 183, 132, 35, 182, 19, 64, 164, 234, 203, 39],
+                    iv: [198, 87, 7, 82, 230, 175, 229, 97, 164, 8, 4, 138],
+                    publicKey: "020874891f50c0f0575c078954ed296be6ee49e667aad40aab33ca77be799d4cd8",
+                    salt: [245, 235, 57, 36, 160, 179, 171, 37, 134, 149, 4, 91, 253, 58, 76, 120]
+                };
+                
+                console.log('📋 Mock Telegram keys loaded:', {
+                    publicKey: mockKeys.publicKey,
+                    encryptedPrivateKeyLength: mockKeys.encryptedPrivateKey.length,
+                    ivLength: mockKeys.iv.length,
+                    saltLength: mockKeys.salt.length
+                });
+                
+                // Test different API endpoints
+                const tests = ['connection', 'sign', 'balance'];
+                
+                for (const test of tests) {
+                    console.log(`\n🧪 Running ${test} test...`);
+                    const result = await window.testPythonBotAPI(test);
+                    console.log(`${test} test result:`, result);
+                }
+                
+                console.log('\n✅ All Python bot API tests completed!');
+                
+            } catch (error) {
+                console.error('❌ Telegram keys test error:', error);
+            }
+        };
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initWallet);
+    </script>
+</body>
+</html>
+

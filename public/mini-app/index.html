@@ -7,7 +7,7 @@
     <title>LumenBro Mini App</title>
     <link rel="stylesheet" href="/mini-app/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="/turnkey.js?v=2"></script> <!-- Updated to esbuild output with cache busting -->
+    <script src="/turnkey.js?v=2"></script> <!-- Updated to esbuild output with cache busting -->   
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
 
@@ -23,13 +23,13 @@
                     <div class="balance-currency">XLM</div>
                 </div>
             </div>
-            
+
             <div class="wallet-actions">
-                <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>
+                <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>    
                 <button onclick="showAssetManagement()" class="btn-success">🔄 Manage Assets</button>
-                <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>
+                <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>     
             </div>
-            
+
             <div class="wallet-status">
                 <div id="connection-status" class="status-indicator">
                     <span class="status-dot"></span>
@@ -37,22 +37,22 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Auth Interface (Fallback) -->
         <div id="auth-interface">
             <h1>Welcome to LumenBro Trading Bot</h1>
             <div class="flex flex-col items-center gap-4">
-                <button onclick="window.register()" class="btn-primary">📝 Register</button>
+                <button onclick="window.register()" class="btn-primary">📝 Register</button>        
                 <button onclick="window.login()" class="btn-success">🔐 Login</button>
                 <button onclick="window.recover()" class="btn-warning">🔑 Recover</button>
             </div>
-            
+
             <!-- Quick access to wallet (if authenticated) -->
             <div id="quick-wallet-access" style="display: none; margin-top: 20px;">
                 <button onclick="showWallet()" class="btn-info">💼 Open Wallet</button>
             </div>
         </div>
-        
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav" style="display: none;">
             <div class="nav-item active" onclick="showWallet()">
@@ -74,7 +74,7 @@
     <script src="/mini-app/recovery.js"></script>
     <script src="/mini-app/clear.js"></script>  <!-- New script for clear -->
     <script src="/mini-app/mobile-debug.js"></script>  <!-- Mobile debugging -->
-    <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
+    <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->    
     <style>
         .status {
             padding: 15px;
@@ -101,7 +101,7 @@
         }
     </style>
     <script>
-        window.addEventListener('load', function () {  // Wait for all resources (including bundle)
+        window.addEventListener('load', function () {  // Wait for all resources (including bundle) 
             console.log('All loaded – checking Turnkey...');
             if (!window.Turnkey) {
                 console.error('Turnkey global not set after load. Check bundle content for errors.');
@@ -111,7 +111,7 @@
             const telegramApp = window.Telegram.WebApp;
             window.params = new URLSearchParams(window.location.search);
             window.orgId = window.params.get('orgId') || 'global-org-id';  // Set global orgId from query param
-            window.email = window.params.get('email') || '';  // Set global email from query param
+            window.email = window.params.get('email') || '';  // Set global email from query param  
             const action = window.params.get('action');
             if (action === 'register') {
                 window.register();
@@ -131,7 +131,7 @@
             // Debug function and button (made global)
             window.checkCloudStorage = async function() {
                 return new Promise((resolve, reject) => {
-                    Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+                    Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {     
                         if (error) {
                             console.error('Cloud storage error:', error);
                             reject(error);
@@ -147,22 +147,22 @@
             const sensitiveActions = ['login', 'export', 'recover'];
             const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
             const showDebugButtons = isDevelopment && !sensitiveActions.includes(action);
-            
+
             if (showDebugButtons) {
                 document.getElementById('content').innerHTML += '<button onclick="window.checkCloudStorage()" class="btn-info">🔍 Check Cloud Storage</button>';
                 document.getElementById('content').innerHTML += '<button onclick="window.showClearWarning()" class="btn-danger">⚠️ Clear Data</button>';
             }
-            
+
             // Only initialize wallet interface if no specific action is requested
             if (!action) {
                 initializeWalletInterface();
             }
         });
-        
+
         // Wallet interface functions
         function initializeWalletInterface() {
             console.log('Initializing wallet interface...');
-            
+
             // Check if user is authenticated
             checkUserAuthentication().then(isAuthenticated => {
                 if (isAuthenticated) {
@@ -172,7 +172,7 @@
                 }
             });
         }
-        
+
         async function checkUserAuthentication() {
             try {
                 // Check if user has stored keys
@@ -183,7 +183,7 @@
                 return false;
             }
         }
-        
+
         function showWallet() {
             // Recreate the wallet interface
             document.getElementById('content').innerHTML = `
@@ -198,20 +198,20 @@
                                 <div class="balance-currency">XLM</div>
                             </div>
                         </div>
-                        
+
                         <div class="wallet-assets">
                             <h3>🪙 All Assets</h3>
                             <div id="assets-list" class="assets-list">
                                 <div class="loading-assets">Loading assets...</div>
                             </div>
                         </div>
-                        
+
                         <div class="wallet-actions">
                             <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>
                             <button onclick="showAssetManagement()" class="btn-success">🔄 Manage Assets</button>
                             <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>
                         </div>
-                        
+
                         <div class="wallet-status">
                             <div id="connection-status" class="status-indicator">
                                 <span class="status-dot"></span>
@@ -220,7 +220,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Bottom Navigation -->
                 <nav class="bottom-nav">
                     <div class="nav-item active" onclick="showWallet()">
@@ -233,37 +233,37 @@
                     </div>
                 </nav>
             `;
-            
+
             // Load wallet data
             loadWalletData();
         }
-        
+
         function showAuth() {
             const walletInterface = document.getElementById('wallet-interface');
             const authInterface = document.getElementById('auth-interface');
             const bottomNav = document.querySelector('.bottom-nav');
-            
+
             if (walletInterface) walletInterface.style.display = 'none';
             if (authInterface) authInterface.style.display = 'block';
             if (bottomNav) bottomNav.style.display = 'flex';
-            
+
             // Show the main menu (settings) with all functions
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>🔧 Settings</h1>
                     <div class="flex flex-col items-center gap-4">
                         <button onclick="window.register()" class="btn-primary">📝 Register</button>
-                        <button onclick="window.login()" class="btn-success">🔐 Login</button>
-                        <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button>
-                        <button onclick="window.export()" class="btn-info">📤 Export Keys</button>
+                        <button onclick="window.login()" class="btn-success">🔐 Login</button>      
+                        <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button> 
+                        <button onclick="window.export()" class="btn-info">📤 Export Keys</button>  
                     </div>
-                    
+
                     <!-- Quick access to wallet (if authenticated) -->
                     <div id="quick-wallet-access" style="display: none; margin-top: 20px;">
-                        <button onclick="showWallet()" class="btn-info">💼 Open Wallet</button>
+                        <button onclick="showWallet()" class="btn-info">💼 Open Wallet</button>     
                     </div>
                 </div>
-                
+
                 <!-- Bottom Navigation -->
                 <nav class="bottom-nav">
                     <div class="nav-item" onclick="showWallet()">
@@ -277,56 +277,56 @@
                 </nav>
             `;
         }
-        
+
         async function loadWalletData() {
             try {
                 // Update connection status
                 updateConnectionStatus('Loading balance...', 'connecting');
-                
+
                 // Get user's public key from authenticator endpoint
                 const authResponse = await fetch('/mini-app/authenticator');
                 const authData = await authResponse.json();
-                
+
                 if (!authData.success) {
                     throw new Error('Failed to get user data');
                 }
-                
+
                 const publicKey = authData.authenticator_info.user.public_key;
                 console.log('Loading balance for public key:', publicKey);
-                
+
                 // Use Stellar-Plus to get real balance
                 // For now, we'll use a simple fetch to Stellar RPC
                 // Later we can add the full Stellar-Plus library
                 const stellarResponse = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
                 const accountData = await stellarResponse.json();
-                
+
                 if (accountData.detail) {
                     throw new Error('Account not found on Stellar network');
                 }
-                
+
                 // Find XLM balance
-                const xlmBalance = accountData.balances.find(balance => 
+                const xlmBalance = accountData.balances.find(balance =>
                     balance.asset_type === 'native'
                 );
-                
+
                 const balanceAmount = document.querySelector('.balance-amount');
                 if (balanceAmount && xlmBalance) {
                     balanceAmount.textContent = parseFloat(xlmBalance.balance).toFixed(2);
                 }
-                
+
                 // Display all assets
                 displayAllAssets(accountData.balances);
-                
+
                 // Show total assets count
                 const totalAssets = accountData.balances.length;
                 console.log(`Account has ${totalAssets} assets (including XLM)`);
-                
+
                 updateConnectionStatus('Connected', 'connected');
-                
+
             } catch (error) {
                 console.error('Error loading wallet data:', error);
                 updateConnectionStatus('Connection failed', 'error');
-                
+
                 // Show error in balance
                 const balanceAmount = document.querySelector('.balance-amount');
                 if (balanceAmount) {
@@ -334,32 +334,32 @@
                 }
             }
         }
-        
+
         function updateConnectionStatus(text, status) {
             const statusElement = document.getElementById('connection-status');
             if (!statusElement) return;
-            
+
             const statusDot = statusElement.querySelector('.status-dot');
             const statusText = statusElement.querySelector('.status-text');
-            
+
             if (statusText) statusText.textContent = text;
             if (statusDot) statusDot.className = `status-dot ${status}`;
         }
-        
+
         async function displayAllAssets(balances) {
             const assetsList = document.getElementById('assets-list');
             if (!assetsList) return;
-            
+
             // Clear loading message
             assetsList.innerHTML = '';
-            
+
             // Process each balance and fetch asset metadata
             for (const balance of balances) {
                 const assetCard = document.createElement('div');
                 assetCard.className = 'asset-card';
-                
+
                 let assetName, assetCode, assetIcon, assetIssuer;
-                
+
                 if (balance.asset_type === 'native') {
                     // XLM
                     assetName = 'Stellar Lumens';
@@ -379,15 +379,15 @@
                     assetIcon = '🤖';
                     assetIssuer = null;
                 }
-                
+
                 // Create initial card with fallback icon
                 const balanceAmount = parseFloat(balance.balance).toFixed(7);
-                
+
                 assetCard.innerHTML = `
                     <div class="asset-info">
                         <div class="asset-icon">
                             <img alt="${assetCode}" class="asset-icon-img" style="display: ${balance.asset_type === 'native' ? 'block' : 'none'};" src="${balance.asset_type === 'native' ? assetIcon : ''}">
-                            <span class="asset-icon-fallback" style="display: ${balance.asset_type === 'native' ? 'none' : 'inline'}">${balance.asset_type === 'native' ? '' : assetIcon}</span>
+                            <span class="asset-icon-fallback" style="display: ${balance.asset_type === 'native' ? 'none' : 'inline'}">${balance.asset_type === 'native' ? '' : assetIcon}</span>        
                         </div>
                         <div class="asset-details">
                             <div class="asset-name">${assetName}</div>
@@ -399,9 +399,9 @@
                         <div class="balance-limit">${balance.limit ? `Limit: ${balance.limit}` : ''}</div>
                     </div>
                 `;
-                
+
                 assetsList.appendChild(assetCard);
-                
+
                 // Fetch real asset metadata if not XLM
                 if (balance.asset_type !== 'native' && assetIssuer) {
                     try {
@@ -412,34 +412,34 @@
                     }
                 }
             }
-            
+
             // If no assets found
             if (balances.length === 0) {
                 assetsList.innerHTML = '<div class="no-assets">No assets found</div>';
             }
         }
-        
+
         async function fetchAssetMetadata(assetCode, assetIssuer, assetCard) {
             try {
                 // Try Stellar Expert API first (via our proxy)
-                const stellarExpertUrl = `/mini-app/asset-metadata/${assetCode}/${assetIssuer}`;
+                const stellarExpertUrl = `/mini-app/asset-metadata/${assetCode}/${assetIssuer}`;    
                 const response = await fetch(stellarExpertUrl);
-                
+
                 if (response.ok) {
                     const result = await response.json();
-                    
+
                     if (result.success && result.data.icon && result.data.icon !== '') {
                         // Update the asset card with real icon
                         const iconContainer = assetCard.querySelector('.asset-icon');
-                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
+                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');   
                         const imgElement = iconContainer.querySelector('.asset-icon-img');
-                        
+
                         if (imgElement && fallbackSpan) {
                             imgElement.src = result.data.icon;
                             imgElement.style.display = 'block';
                             fallbackSpan.style.display = 'none';
                         }
-                        
+
                         // Update asset name if available
                         if (result.data.name && result.data.name !== assetCode) {
                             const nameElement = assetCard.querySelector('.asset-name');
@@ -447,15 +447,15 @@
                                 nameElement.textContent = result.data.name;
                             }
                         }
-                        
+
                         console.log(`✅ Loaded Stellar Expert metadata for ${assetCode}:`, result.data.name, result.data.icon);
                         return;
                     }
                 }
-                
+
                 // Fallback: Try TOML file if Stellar Expert doesn't have icon
                 await fetchAssetFromToml(assetCode, assetIssuer, assetCard);
-                
+
             } catch (error) {
                 console.log(`❌ Stellar Expert failed for ${assetCode}:`, error);
                 // Try TOML fallback
@@ -466,27 +466,27 @@
                 }
             }
         }
-        
+
         async function fetchAssetFromToml(assetCode, assetIssuer, assetCard) {
             try {
                 // Use our TOML proxy endpoint
                 const tomlUrl = `/mini-app/toml-metadata/${assetCode}/${assetIssuer}`;
                 const tomlResponse = await fetch(tomlUrl);
-                
+
                 if (tomlResponse.ok) {
                     const result = await tomlResponse.json();
-                    
+
                     if (result.success && result.data.icon) {
                         const iconContainer = assetCard.querySelector('.asset-icon');
-                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');
+                        const fallbackSpan = iconContainer.querySelector('.asset-icon-fallback');   
                         const imgElement = iconContainer.querySelector('.asset-icon-img');
-                        
+
                         if (imgElement && fallbackSpan) {
                             imgElement.src = result.data.icon;
                             imgElement.style.display = 'block';
                             fallbackSpan.style.display = 'none';
                         }
-                        
+
                         // Update asset name if available
                         if (result.data.name && result.data.name !== assetCode) {
                             const nameElement = assetCard.querySelector('.asset-name');
@@ -494,7 +494,7 @@
                                 nameElement.textContent = result.data.name;
                             }
                         }
-                        
+
                         console.log(`✅ Loaded TOML metadata for ${assetCode}:`, result.data.name, result.data.icon);
                     }
                 }
@@ -502,19 +502,19 @@
                 console.log(`❌ TOML fetch failed for ${assetCode}:`, error);
             }
         }
-        
+
         function showSendPayment() {
             // Show send payment interface
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>💸 Send Payment</h1>
-                    
+
                     <div class="send-payment-form">
                         <div class="form-group">
                             <label for="recipientAddress">Recipient Address</label>
                             <input type="text" id="recipientAddress" placeholder="G..." class="form-input">
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="assetSelect">Asset</label>
                             <select id="assetSelect" class="form-select">
@@ -522,29 +522,29 @@
                                 <!-- Other assets will be populated dynamically -->
                             </select>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="amount">Amount</label>
                             <input type="number" id="amount" placeholder="0.0000000" step="0.0000001" class="form-input">
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="memo">Memo (Optional)</label>
                             <input type="text" id="memo" placeholder="Payment for..." class="form-input">
                         </div>
-                        
+
                         <div class="fee-info">
                             <p>💰 Fee: <span id="feeAmount">0.00001 XLM</span></p>
                             <p>📊 Service Fee: <span id="serviceFee">0.00001 XLM</span></p>
                         </div>
-                        
+
                         <div class="form-actions">
                             <button onclick="goBackToWallet()" class="btn-secondary">← Back</button>
                             <button onclick="buildAndSignTransaction()" class="btn-primary">🚀 Send Payment</button>
                         </div>
                     </div>
                 </div>
-                
+
                 <nav class="bottom-nav">
                     <div class="nav-item" onclick="showWallet()">
                         <div class="nav-icon">💼</div>
@@ -556,25 +556,25 @@
                     </div>
                 </nav>
             `;
-            
+
             // Populate asset select with user's assets
             populateAssetSelect();
         }
-        
+
         function populateAssetSelect() {
             const assetSelect = document.getElementById('assetSelect');
             if (!assetSelect) return;
-            
+
             // Clear existing options except XLM
             assetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
-            
+
             // Get all asset cards and add them to select
             const assetCards = document.querySelectorAll('.asset-card');
             assetCards.forEach(card => {
                 const assetName = card.querySelector('.asset-name')?.textContent;
                 const assetCode = card.querySelector('.asset-code')?.textContent;
                 const balanceAmount = card.querySelector('.balance-amount')?.textContent;
-                
+
                 if (assetCode && assetCode !== 'XLM') {
                     const option = document.createElement('option');
                     option.value = assetCode;
@@ -583,35 +583,35 @@
                 }
             });
         }
-        
+
         function goBackToWallet() {
             showWallet();
         }
-        
+
         async function buildAndSignTransaction() {
             try {
-                const recipientAddress = document.getElementById('recipientAddress').value.trim();
+                const recipientAddress = document.getElementById('recipientAddress').value.trim();  
                 const assetCode = document.getElementById('assetSelect').value;
                 const amount = document.getElementById('amount').value;
                 const memo = document.getElementById('memo').value.trim();
-                
+
                 // Validation
                 if (!recipientAddress || !amount) {
                     alert('Please fill in recipient address and amount');
                     return;
                 }
-                
+
                 if (!recipientAddress.startsWith('G')) {
                     alert('Invalid Stellar address. Must start with G');
                     return;
                 }
-                
+
                 // Show loading state
                 const sendButton = document.querySelector('.btn-primary');
                 const originalText = sendButton.textContent;
                 sendButton.textContent = '⏳ Building Transaction...';
                 sendButton.disabled = true;
-                
+
                 // Build transaction on server
                 const response = await fetch('/mini-app/build-transaction', {
                     method: 'POST',
@@ -625,36 +625,36 @@
                         memo: memo
                     })
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to build transaction');
                 }
-                
+
                 const result = await response.json();
-                
+
                 if (!result.success) {
                     throw new Error(result.error || 'Transaction build failed');
                 }
-                
+
                 // Show transaction details for confirmation
                 showTransactionConfirmation(result.transaction, result.fees);
-                
+
             } catch (error) {
                 console.error('Transaction build failed:', error);
                 alert(`Transaction failed: ${error.message}`);
-                
+
                 // Reset button
                 const sendButton = document.querySelector('.btn-primary');
                 sendButton.textContent = '🚀 Send Payment';
                 sendButton.disabled = false;
             }
         }
-        
+
         function showTransactionConfirmation(transaction, fees) {
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>🔍 Confirm Transaction</h1>
-                    
+
                     <div class="transaction-details">
                         <div class="detail-row">
                             <span class="label">Recipient:</span>
@@ -662,7 +662,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="label">Amount:</span>
-                            <span class="value">${transaction.amount} ${transaction.asset}</span>
+                            <span class="value">${transaction.amount} ${transaction.asset}</span>   
                         </div>
                         <div class="detail-row">
                             <span class="label">Network Fee:</span>
@@ -677,13 +677,13 @@
                             <span class="value">${fees.total} XLM</span>
                         </div>
                     </div>
-                    
+
                     <div class="form-actions" style="margin-bottom: 100px;">
                         <button onclick="goBackToSendPayment()" class="btn-secondary">← Back</button>
                         <button onclick="signAndSubmitTransaction()" class="btn-primary">✅ Confirm & Sign</button>
                     </div>
                 </div>
-                
+
                 <nav class="bottom-nav">
                     <div class="nav-item" onclick="showWallet()">
                         <div class="nav-icon">💼</div>
@@ -696,384 +696,26 @@
                 </nav>
             `;
         }
-        
+
         function goBackToSendPayment() {
             showSendPayment();
         }
-        
+
         async function signAndSubmitTransaction() {
             try {
-                // Show password prompt
-                const password = await showPasswordPrompt();
-                if (!password) {
-                    return; // User cancelled
-                }
-                
-                // Show loading state
-                const confirmButton = document.querySelector('.btn-primary');
-                const originalText = confirmButton.textContent;
-                confirmButton.textContent = '⏳ Signing Transaction...';
-                confirmButton.disabled = true;
-                
-                // Sign transaction with Turnkey Cloud Stamper
-                try {
-                    const signedXDR = await signTransactionWithTurnkey(password);
-                    console.log('Transaction signed successfully:', signedXDR);
-                    showTransactionSuccess(signedXDR);
-                } catch (error) {
-                    console.error('Signing failed:', error);
-                    alert(`Signing failed: ${error.message}`);
-                    
-                    // Reset button
-                    const confirmButton = document.querySelector('.btn-primary');
-                    confirmButton.textContent = '✅ Confirm & Sign';
-                    confirmButton.disabled = false;
-                }
-                
+                // TODO: Implement password prompt and signing
+                alert('Transaction signing coming soon!');
             } catch (error) {
                 console.error('Transaction signing failed:', error);
                 alert(`Signing failed: ${error.message}`);
-                
-                // Reset button
-                const confirmButton = document.querySelector('.btn-primary');
-                confirmButton.textContent = '✅ Confirm & Sign';
-                confirmButton.disabled = false;
             }
         }
-        
-        function showPasswordPrompt() {
-            return new Promise((resolve) => {
-                // Create modal overlay
-                const modal = document.createElement('div');
-                modal.className = 'password-modal-overlay';
-                modal.innerHTML = `
-                    <div class="password-modal">
-                        <h3>🔐 Enter Password</h3>
-                        <p>Enter your password to sign this transaction:</p>
-                        
-                        <div class="form-group">
-                            <input type="password" id="transactionPassword" 
-                                   placeholder="Enter password" 
-                                   class="form-input" 
-                                   autocomplete="current-password">
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button onclick="cancelPasswordPrompt()" class="btn-secondary">Cancel</button>
-                            <button onclick="confirmPasswordPrompt()" class="btn-primary">Sign Transaction</button>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(modal);
-                
-                // Focus on password input
-                setTimeout(() => {
-                    const passwordInput = document.getElementById('transactionPassword');
-                    if (passwordInput) {
-                        passwordInput.focus();
-                    }
-                }, 100);
-                
-                // Handle Enter key
-                const passwordInput = document.getElementById('transactionPassword');
-                passwordInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        confirmPasswordPrompt();
-                    }
-                });
-                
-                // Store resolve function globally for button handlers
-                window.passwordPromptResolve = resolve;
-            });
-        }
-        
-        function confirmPasswordPrompt() {
-            const password = document.getElementById('transactionPassword').value;
-            if (!password.trim()) {
-                alert('Please enter your password');
-                return;
-            }
-            
-            // Remove modal
-            const modal = document.querySelector('.password-modal-overlay');
-            if (modal) {
-                modal.remove();
-            }
-            
-            // Resolve with password
-            if (window.passwordPromptResolve) {
-                window.passwordPromptResolve(password);
-                window.passwordPromptResolve = null;
-            }
-        }
-        
-        function cancelPasswordPrompt() {
-            // Remove modal
-            const modal = document.querySelector('.password-modal-overlay');
-            if (modal) {
-                modal.remove();
-            }
-            
-            // Resolve with null (cancelled)
-            if (window.passwordPromptResolve) {
-                window.passwordPromptResolve(null);
-                window.passwordPromptResolve = null;
-            }
-        }
-        
-        async function signTransactionWithTurnkey(password) {
-            try {
-                console.log('Starting Turnkey signing process...');
-                
-                // Get transaction data from the confirmation screen
-                const recipient = document.querySelector('.detail-row .value').textContent;
-                const amountElement = document.querySelectorAll('.detail-row .value')[1];
-                const amountText = amountElement.textContent;
-                const [amount, asset] = amountText.split(' ');
-                
-                console.log('Transaction details:', { recipient, amount, asset });
-                
-                // Use Turnkey Cloud Stamper for signing
-                const stamper = new Turnkey.TelegramCloudStorageStamper();
-                
-                // For now, we'll use a mock transaction hash
-                // In production, we'll build the actual transaction
-                const mockTxHash = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-                
-                console.log('Signing transaction hash:', mockTxHash);
-                
-                // Sign with Turnkey (this will use Telegram Cloud Storage for auth)
-                const signature = await stamper.signRawPayloadV2(mockTxHash, {
-                    encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
-                    hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
-                });
-                
-                console.log('Turnkey signature received:', signature);
-                
-                // Process the signature (r + s format)
-                const r = signature.r;
-                const s = signature.s;
-                const combinedSignature = r + s;
-                
-                console.log('Combined signature:', combinedSignature);
-                
-                // For now, return a mock signed XDR
-                // In production, we'll integrate with Stellar SDK
-                const mockSignedXDR = 'AAAAAgAAAAA...'; // Mock signed XDR
-                
-                // Log transaction data for fee tracking and referral rewards
-                await logTransactionData({
-                    type: 'payment',
-                    recipient: recipient,
-                    amount: amount,
-                    asset: asset,
-                    signedXDR: mockSignedXDR,
-                    signingMethod: 'client_side_turnkey'
-                });
-                
-                return mockSignedXDR;
-                
-            } catch (error) {
-                console.error('Turnkey signing error:', error);
-                throw new Error(`Turnkey signing failed: ${error.message}`);
-            }
-        }
-        
-        // Log transaction data for fee tracking and referral rewards
-        async function logTransactionData(transactionData) {
-            try {
-                console.log('Logging transaction data for fee tracking...');
-                
-                const response = await fetch('/mini-app/log-transaction', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ...transactionData,
-                        timestamp: new Date().toISOString(),
-                        telegramId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'unknown'
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to log transaction: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                console.log('Transaction logged successfully:', result);
-                
-                return result;
-                
-            } catch (error) {
-                console.error('Failed to log transaction data:', error);
-                // Don't throw - logging failure shouldn't break the transaction
-            }
-        }
-        
-        function showTransactionSuccess(signedXDR) {
-            document.getElementById('content').innerHTML = `
-                <div class="fade-in">
-                    <h1>✅ Transaction Successful!</h1>
-                    
-                    <div class="success-message">
-                        <div class="success-icon">🎉</div>
-                        <p>Your transaction has been signed successfully!</p>
-                        <p>Signed XDR: <code>${signedXDR || 'Mock signed XDR'}</code></p>
-                        <p><small>Ready for network submission</small></p>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button onclick="showWallet()" class="btn-primary">← Back to Wallet</button>
-                    </div>
-                </div>
-                
-                <nav class="bottom-nav">
-                    <div class="nav-item" onclick="showWallet()">
-                        <div class="nav-icon">💼</div>
-                        <div class="nav-label">Wallet</div>
-                    </div>
-                    <div class="nav-item" onclick="showAuth()">
-                        <div class="nav-icon">⚙️</div>
-                        <div class="nav-label">Settings</div>
-                    </div>
-                </nav>
-            `;
-        }
-        
-        function showPositions() {
-            document.getElementById('content').innerHTML = `
-                <div class="fade-in">
-                    <h1>📊 Positions & P&L</h1>
-                    <div id="positions-content">
-                        <div class="loading">Loading positions...</div>
-                    </div>
-                </div>
-                
-                <nav class="bottom-nav">
-                    <div class="nav-item" onclick="showWallet()">
-                        <div class="nav-icon">💼</div>
-                        <div class="nav-label">Wallet</div>
-                    </div>
-                    <div class="nav-item active" onclick="showPositions()">
-                        <div class="nav-icon">📊</div>
-                        <div class="nav-label">Positions</div>
-                    </div>
-                    <div class="nav-item" onclick="showAuth()">
-                        <div class="nav-icon">⚙️</div>
-                        <div class="nav-label">Settings</div>
-                    </div>
-                </nav>
-            `;
-            
-            loadPositions();
-        }
-        
-        async function loadPositions() {
-            try {
-                const response = await fetch('/mini-app/positions?telegramId=5014800072');
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to load positions');
-                }
-                
-                displayPositions(result.positions, result.portfolioSummary);
-                
-            } catch (error) {
-                console.error('Failed to load positions:', error);
-                document.getElementById('positions-content').innerHTML = `
-                    <div class="error-message">
-                        <p>❌ Failed to load positions: ${error.message}</p>
-                        <button onclick="loadPositions()" class="btn-primary">🔄 Retry</button>
-                    </div>
-                `;
-            }
-        }
-        
-        function displayPositions(positions, portfolioSummary) {
-            const content = document.getElementById('positions-content');
-            
-            if (!positions || positions.length === 0) {
-                content.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📊</div>
-                        <h3>No Positions Yet</h3>
-                        <p>Start trading to see your positions and P&L here!</p>
-                        <button onclick="showWallet()" class="btn-primary">💼 Go to Wallet</button>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Portfolio summary
-            const summaryHtml = `
-                <div class="portfolio-summary">
-                    <div class="summary-card">
-                        <div class="summary-title">Portfolio Value</div>
-                        <div class="summary-value">${portfolioSummary.totalCurrentValue.toFixed(2)} XLM</div>
-                    </div>
-                    <div class="summary-card ${portfolioSummary.totalUnrealizedPnl >= 0 ? 'positive' : 'negative'}">
-                        <div class="summary-title">Unrealized P&L</div>
-                        <div class="summary-value">${portfolioSummary.totalUnrealizedPnl.toFixed(2)} XLM</div>
-                        <div class="summary-percentage">${portfolioSummary.totalPnlPercentage.toFixed(2)}%</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-title">Total Invested</div>
-                        <div class="summary-value">${portfolioSummary.totalInvested.toFixed(2)} XLM</div>
-                    </div>
-                </div>
-            `;
-            
-            // Positions list
-            const positionsHtml = positions.map(position => {
-                const pnlClass = position.unrealized_pnl >= 0 ? 'positive' : 'negative';
-                const pnlIcon = position.unrealized_pnl >= 0 ? '📈' : '📉';
-                
-                return `
-                    <div class="position-card">
-                        <div class="position-header">
-                            <div class="position-asset">
-                                <div class="asset-code">${position.asset_code}</div>
-                                <div class="asset-issuer">${position.asset_issuer ? position.asset_issuer.substring(0, 8) + '...' : 'Native'}</div>
-                            </div>
-                            <div class="position-pnl ${pnlClass}">
-                                <div class="pnl-icon">${pnlIcon}</div>
-                                <div class="pnl-amount">${position.unrealized_pnl.toFixed(2)} XLM</div>
-                                <div class="pnl-percentage">${position.pnl_percentage.toFixed(2)}%</div>
-                            </div>
-                        </div>
-                        <div class="position-details">
-                            <div class="detail-row">
-                                <span class="label">Quantity:</span>
-                                <span class="value">${position.quantity.toFixed(7)}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Avg Buy Price:</span>
-                                <span class="value">${position.avg_buy_price.toFixed(7)} XLM</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Current Price:</span>
-                                <span class="value">${position.current_price ? position.current_price.toFixed(7) + ' XLM' : 'N/A'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Current Value:</span>
-                                <span class="value">${position.current_value.toFixed(2)} XLM</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            content.innerHTML = summaryHtml + positionsHtml;
-        }
-        
+
         function showAssetManagement() {
             // TODO: Implement asset management interface
             alert('Asset Management feature coming soon!');
         }
-        
+
         function showTransactionHistory() {
             // TODO: Implement transaction history interface
             alert('Transaction History feature coming soon!');

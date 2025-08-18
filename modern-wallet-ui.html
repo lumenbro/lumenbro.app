@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumenBro - Modern Stellar Wallet</title>
+    <link rel="stylesheet" href="/styles/site.css">
+    <style>
+        /* Wallet-specific overrides and additions */
+        .wallet-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .wallet-header {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-1);
+            text-align: center;
+        }
+
+        .wallet-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .wallet-subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .protocol-badge {
+            display: inline-block;
+            background: rgba(57,217,138,0.16);
+            color: #a3f2c9;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 10px;
+            border: 1px solid rgba(57,217,138,0.4);
+        }
+
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .wallet-card {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow-1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .wallet-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.08);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .balance-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .balance-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 5px;
+        }
+
+        .balance-label {
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        .address-display {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin: 15px 0;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+            color: var(--text);
+        }
+
+        .address-display:hover {
+            border-color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,138,255,0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--muted);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            color: #0c1225;
+            box-shadow: 0 10px 20px rgba(79,138,255,0.25);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, var(--success), #2bb673);
+            color: #0c1225;
+        }
+
+        .btn-success:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: linear-gradient(180deg, var(--warning), #e0a800);
+            color: #0c1225;
+        }
+
+        .btn-warning:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(180deg, var(--danger), #e55a5a);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-success {
+            background: rgba(57,217,138,0.16);
+            color: #a3f2c9;
+            border: 1px solid rgba(57,217,138,0.4);
+        }
+
+        .status-error {
+            background: rgba(255,107,107,0.16);
+            color: #ffb3b3;
+            border: 1px solid rgba(255,107,107,0.4);
+        }
+
+        .status-loading {
+            background: rgba(79,138,255,0.16);
+            color: #b3d4ff;
+            border: 1px solid rgba(79,138,255,0.4);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        .feature-desc {
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .soroban-section {
+            background: linear-gradient(135deg, rgba(79,138,255,0.18), rgba(19,230,255,0.15));
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .soroban-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .log-container {
+            background: rgba(11,18,37,0.9);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #888;
+        }
+
+        .log-info {
+            color: #00ff00;
+        }
+
+        .log-error {
+            color: #ff4444;
+        }
+
+        .log-success {
+            color: #44ff44;
+        }
+
+        /* Protocol 23 specific styles */
+        .protocol-23-features {
+            background: linear-gradient(135deg, rgba(255,107,107,0.18), rgba(245,177,74,0.15));
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .protocol-23-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .protocol-23-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .protocol-23-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+                 .protocol-23-list li:last-child {
+             border-bottom: none;
+         }
+
+         /* Bottom Navigation Bar */
+         .bottom-nav {
+             position: fixed;
+             bottom: 0;
+             left: 0;
+             right: 0;
+             background: linear-gradient(180deg, rgba(17,26,54,0.95), rgba(11,18,37,0.98));
+             backdrop-filter: blur(20px);
+             border-top: 1px solid rgba(255,255,255,0.08);
+             display: flex;
+             justify-content: space-around;
+             padding: 12px 0 8px 0;
+             z-index: 1000;
+             box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+         }
+
+         .nav-item {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             padding: 8px 12px;
+             border-radius: 12px;
+             cursor: pointer;
+             transition: all 0.3s ease;
+             min-width: 60px;
+         }
+
+         .nav-item:hover {
+             background: rgba(255,255,255,0.06);
+         }
+
+         .nav-item.active {
+             background: rgba(79,138,255,0.15);
+             border: 1px solid rgba(79,138,255,0.3);
+         }
+
+         .nav-icon {
+             font-size: 1.5rem;
+             margin-bottom: 4px;
+             transition: transform 0.3s ease;
+         }
+
+         .nav-item.active .nav-icon {
+             transform: scale(1.1);
+         }
+
+         .nav-label {
+             font-size: 0.75rem;
+             font-weight: 600;
+             color: var(--muted);
+             transition: color 0.3s ease;
+         }
+
+         .nav-item.active .nav-label {
+             color: var(--accent);
+         }
+
+         /* Adjust main content for bottom nav */
+         .wallet-container {
+             padding-bottom: 100px;
+         }
+
+         @media (max-width: 768px) {
+             .wallet-grid {
+                 grid-template-columns: 1fr;
+             }
+             
+             .wallet-title {
+                 font-size: 2rem;
+             }
+             
+             .btn-group {
+                 flex-direction: column;
+             }
+
+             .bottom-nav {
+                 padding: 10px 0 6px 0;
+             }
+
+             .nav-item {
+                 padding: 6px 8px;
+                 min-width: 50px;
+             }
+
+             .nav-icon {
+                 font-size: 1.3rem;
+             }
+
+             .nav-label {
+                 font-size: 0.7rem;
+             }
+         }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--stellar-gradient);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .wallet-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .wallet-header {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-1);
+            text-align: center;
+        }
+
+        .wallet-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .wallet-subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .protocol-badge {
+            display: inline-block;
+            background: var(--success-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 10px;
+        }
+
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .wallet-card {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow-1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .wallet-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-color);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+            color: var(--primary-color);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .balance-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .balance-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--success-color);
+            margin-bottom: 5px;
+        }
+
+        .balance-label {
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        .address-display {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin: 15px 0;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+            color: var(--text);
+        }
+
+        .address-display:hover {
+            border-color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            color: #0c1225;
+            box-shadow: 0 10px 20px rgba(79,138,255,0.25);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, var(--success), #2bb673);
+            color: #0c1225;
+        }
+
+        .btn-success:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: linear-gradient(180deg, var(--warning), #e0a800);
+            color: #0c1225;
+        }
+
+        .btn-warning:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        .feature-desc {
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .soroban-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .soroban-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .log-container {
+            background: rgba(11,18,37,0.9);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #888;
+        }
+
+        .log-info {
+            color: #00ff00;
+        }
+
+        .log-error {
+            color: #ff4444;
+        }
+
+        .log-success {
+            color: #44ff44;
+        }
+
+        @media (max-width: 768px) {
+            .wallet-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .wallet-title {
+                font-size: 2rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Protocol 23 specific styles */
+        .protocol-23-features {
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .protocol-23-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .protocol-23-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .protocol-23-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .protocol-23-list li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+    <body>
+        <div class="starfield"></div>
+        <div class="wallet-container">
+        <!-- Header -->
+        <div class="wallet-header">
+            <h1 class="wallet-title">LumenBro Wallet</h1>
+            <p class="wallet-subtitle">Modern Stellar Wallet with Protocol 23 & Soroban Support</p>
+            <div>
+                <span class="protocol-badge">Protocol 23 Ready</span>
+                <span class="protocol-badge">Soroban Enabled</span>
+                <span class="protocol-badge">Stellar-Plus</span>
+            </div>
+        </div>
+
+        <!-- Protocol 23 Features -->
+        <div class="protocol-23-features">
+            <h3 class="protocol-23-title">🚀 Protocol 23 Features (Coming August 2025)</h3>
+            <ul class="protocol-23-list">
+                <li>✅ Enhanced Smart Contract Support</li>
+                <li>✅ Improved Transaction Performance</li>
+                <li>✅ Advanced DEX Capabilities</li>
+                <li>✅ New Asset Management Features</li>
+                <li>✅ Better Soroban Integration</li>
+            </ul>
+        </div>
+
+        <!-- Main Wallet Grid -->
+        <div class="wallet-grid">
+            <!-- Balance Card -->
+            <div class="wallet-card">
+                <div class="card-header">
+                    <div class="card-icon">💰</div>
+                    <div class="card-title">Wallet Balance</div>
+                </div>
+                
+                <div class="balance-display">
+                    <div class="balance-amount" id="balance">100.0000000</div>
+                    <div class="balance-label">XLM</div>
+                </div>
+                
+                <div class="address-display" id="address">
+                    GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="refreshBalance()">🔄 Refresh</button>
+                    <button class="btn btn-success" onclick="copyAddress()">📋 Copy Address</button>
+                </div>
+            </div>
+
+            <!-- Send Payment Card -->
+            <div class="wallet-card">
+                <div class="card-header">
+                    <div class="card-icon">📤</div>
+                    <div class="card-title">Send Payment</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Destination Address</label>
+                    <input type="text" class="form-input" id="destination" 
+                           placeholder="G... (Stellar public key)" 
+                           value="GCCD6AJOYZCUAQLX32ZJF2MKFFAUJ53PVCFQI3RHWKL3K47PKFMH2VTL">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount (XLM)</label>
+                    <input type="number" class="form-input" id="amount" 
+                           placeholder="10.0000000" value="1" step="0.0000001" min="0">
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="sendPayment()">📤 Send Payment</button>
+                    <button class="btn btn-warning" onclick="testStellarPlus()">🧪 Test Stellar-Plus</button>
+                </div>
+            </div>
+
+            
+
+            <!-- Asset Management -->
+            <div class="wallet-card">
+                <div class="card-header">
+                    <div class="feature-icon">🪙</div>
+                    <div class="card-title">Asset Management</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Asset Code</label>
+                    <input type="text" class="form-input" id="assetCode" placeholder="USDC">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Issuer Address</label>
+                    <input type="text" class="form-input" id="issuerAddress" 
+                           placeholder="G... (Asset issuer)">
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="trustAsset()">🤝 Trust Asset</button>
+                    <button class="btn btn-success" onclick="viewAssets()">👁️ View Assets</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="wallet-card">
+            <div class="card-header">
+                <div class="card-icon">📜</div>
+                <div class="card-title">Recent Transactions</div>
+            </div>
+            
+                         <div id="transactionHistory">
+                 <p style="text-align: center; color: var(--muted);">
+                     No transactions yet. Start by sending a payment!
+                 </p>
+             </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="status-message"></div>
+
+                 <!-- Log Console -->
+         <div class="log-container" id="logConsole">
+             <div class="log-entry">
+                 <span class="log-timestamp">[12:00:00]</span>
+                 <span class="log-info">🚀 Modern Stellar Wallet initialized</span>
+             </div>
+             <div class="log-entry">
+                 <span class="log-timestamp">[12:00:01]</span>
+                 <span class="log-info">📱 Protocol 23 features enabled</span>
+             </div>
+             <div class="log-entry">
+                 <span class="log-timestamp">[12:00:02]</span>
+                 <span class="log-info">🤖 Soroban smart contract support ready</span>
+             </div>
+         </div>
+     </div>
+
+     <!-- Bottom Navigation Bar -->
+     <nav class="bottom-nav">
+         <div class="nav-item active" onclick="showSection('home')">
+             <div class="nav-icon">🏠</div>
+             <div class="nav-label">Home</div>
+         </div>
+         <div class="nav-item" onclick="showSection('swaps')">
+             <div class="nav-icon">🔄</div>
+             <div class="nav-label">Swaps</div>
+         </div>
+         <div class="nav-item" onclick="showSection('apps')">
+             <div class="nav-icon">📱</div>
+             <div class="nav-label">Apps</div>
+         </div>
+         <div class="nav-item" onclick="showSection('missions')">
+             <div class="nav-icon">🎯</div>
+             <div class="nav-label">Missions</div>
+         </div>
+     </nav>
+
+    <script type="module">
+        // Modern Stellar Wallet with Protocol 23 & Soroban Support
+        
+        // Mock Stellar-Plus (replace with real import)
+        window.StellarPlus = {
+            account: {
+                create: ({ publicKey, secretKey }) => ({
+                    publicKey,
+                    secretKey,
+                    getBalance: async () => '100.0000000',
+                    getBalances: async () => [
+                        { asset: 'XLM', balance: '100.0000000' },
+                        { asset: 'USDC', balance: '50.0000000', issuer: 'G...' }
+                    ]
+                })
+            },
+            transaction: {
+                build: async ({ source, operations }) => ({
+                    toXDR: () => 'AAAA' + Math.random().toString(36).substring(7),
+                    submit: async (xdr) => ({ hash: 'mock-tx-' + Date.now() })
+                })
+            },
+            operation: {
+                payment: ({ destination, asset, amount }) => ({
+                    destination,
+                    asset,
+                    amount
+                }),
+                trust: ({ asset, limit }) => ({
+                    asset,
+                    limit
+                })
+            },
+            soroban: {
+                deployContract: async (wasm) => ({ contractId: 'mock-contract-' + Date.now() }),
+                invokeContract: async (contractId, functionName, args) => ({ result: 'mock-result' })
+            }
+        };
+
+        // Global variables
+        window.walletState = {
+            publicKey: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            secretKey: 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            balance: '100.0000000',
+            network: 'testnet'
+        };
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logConsole = document.getElementById('logConsole');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            logConsole.appendChild(logEntry);
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Wallet functions
+        window.refreshBalance = async function() {
+            try {
+                showStatus('Refreshing balance...', 'loading');
+                log('💰 Refreshing wallet balance...');
+                
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const newBalance = (Math.random() * 200 + 50).toFixed(7);
+                document.getElementById('balance').textContent = newBalance;
+                window.walletState.balance = newBalance;
+                
+                showStatus('Balance refreshed successfully!', 'success');
+                log('✅ Balance updated: ' + newBalance + ' XLM', 'success');
+            } catch (error) {
+                showStatus('Failed to refresh balance: ' + error.message, 'error');
+                log('❌ Balance refresh failed: ' + error.message, 'error');
+            }
+        };
+
+        window.copyAddress = function() {
+            const address = document.getElementById('address').textContent;
+            navigator.clipboard.writeText(address).then(() => {
+                showStatus('Address copied to clipboard!', 'success');
+                log('📋 Address copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('Failed to copy address', 'error');
+                log('❌ Failed to copy address', 'error');
+            });
+        };
+
+        window.sendPayment = async function() {
+            try {
+                const destination = document.getElementById('destination').value;
+                const amount = document.getElementById('amount').value;
+                
+                if (!destination || !amount) {
+                    showStatus('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                showStatus('Building transaction...', 'loading');
+                log('📤 Building payment transaction...');
+                
+                // Simulate Stellar-Plus transaction building
+                const stellarPlus = window.StellarPlus;
+                const account = stellarPlus.account.create({
+                    publicKey: window.walletState.publicKey
+                });
+                
+                const transaction = await stellarPlus.transaction.build({
+                    source: account,
+                    operations: [
+                        stellarPlus.operation.payment({
+                            destination,
+                            asset: 'XLM',
+                            amount: amount.toString()
+                        })
+                    ]
+                });
+                
+                const xdr = transaction.toXDR();
+                log('📝 Generated XDR: ' + xdr.substring(0, 50) + '...');
+                
+                showStatus('Signing transaction...', 'loading');
+                log('🔐 Sending to signing API...');
+                
+                // Simulate signing API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                showStatus('Submitting to network...', 'loading');
+                log('🌐 Submitting to Stellar network...');
+                
+                // Simulate network submission
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const submitResult = await transaction.submit(xdr + '-SIGNED');
+                
+                showStatus('Payment sent successfully!', 'success');
+                log('🎉 Payment submitted: ' + submitResult.hash, 'success');
+                
+                // Add to transaction history
+                addTransactionToHistory('Payment', destination, amount + ' XLM', submitResult.hash);
+                
+                // Refresh balance
+                setTimeout(refreshBalance, 1000);
+            } catch (error) {
+                showStatus('Payment failed: ' + error.message, 'error');
+                log('❌ Payment failed: ' + error.message, 'error');
+            }
+        };
+
+        window.testStellarPlus = async function() {
+            try {
+                showStatus('Testing Stellar-Plus...', 'loading');
+                log('🧪 Testing Stellar-Plus functionality...');
+                
+                const stellarPlus = window.StellarPlus;
+                const account = stellarPlus.account.create({
+                    publicKey: window.walletState.publicKey
+                });
+                
+                const balance = await account.getBalance();
+                const balances = await account.getBalances();
+                
+                log('✅ Stellar-Plus account created', 'success');
+                log('✅ Balance check: ' + balance + ' XLM', 'success');
+                log('✅ Multiple assets supported: ' + balances.length + ' assets', 'success');
+                
+                showStatus('Stellar-Plus test successful!', 'success');
+                log('🎉 All Stellar-Plus tests passed!', 'success');
+            } catch (error) {
+                showStatus('Stellar-Plus test failed: ' + error.message, 'error');
+                log('❌ Stellar-Plus error: ' + error.message, 'error');
+            }
+        };
+
+        window.deployContract = async function() {
+            try {
+                showStatus('Deploying smart contract...', 'loading');
+                log('🚀 Deploying Soroban smart contract...');
+                
+                const stellarPlus = window.StellarPlus;
+                const wasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d]); // Mock WASM
+                
+                const result = await stellarPlus.soroban.deployContract(wasm);
+                
+                showStatus('Contract deployed successfully!', 'success');
+                log('✅ Contract deployed: ' + result.contractId, 'success');
+                
+                addTransactionToHistory('Contract Deploy', 'Soroban', 'Smart Contract', result.contractId);
+            } catch (error) {
+                showStatus('Contract deployment failed: ' + error.message, 'error');
+                log('❌ Contract deployment failed: ' + error.message, 'error');
+            }
+        };
+
+        window.invokeContract = async function() {
+            try {
+                showStatus('Invoking smart contract...', 'loading');
+                log('⚡ Invoking Soroban smart contract...');
+                
+                const stellarPlus = window.StellarPlus;
+                const contractId = 'mock-contract-' + Date.now();
+                
+                const result = await stellarPlus.soroban.invokeContract(contractId, 'transfer', []);
+                
+                showStatus('Contract invoked successfully!', 'success');
+                log('✅ Contract invoked: ' + result.result, 'success');
+                
+                addTransactionToHistory('Contract Invoke', contractId, 'Function Call', result.result);
+            } catch (error) {
+                showStatus('Contract invocation failed: ' + error.message, 'error');
+                log('❌ Contract invocation failed: ' + error.message, 'error');
+            }
+        };
+
+        window.trustAsset = async function() {
+            try {
+                const assetCode = document.getElementById('assetCode').value;
+                const issuerAddress = document.getElementById('issuerAddress').value;
+                
+                if (!assetCode || !issuerAddress) {
+                    showStatus('Please fill in asset code and issuer address', 'error');
+                    return;
+                }
+                
+                showStatus('Setting trustline...', 'loading');
+                log('🤝 Setting trustline for ' + assetCode + '...');
+                
+                // Simulate trust operation
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                showStatus('Trustline set successfully!', 'success');
+                log('✅ Trustline set for ' + assetCode, 'success');
+                
+                addTransactionToHistory('Trust Asset', assetCode, 'Trustline Set', 'mock-tx-' + Date.now());
+            } catch (error) {
+                showStatus('Trustline failed: ' + error.message, 'error');
+                log('❌ Trustline failed: ' + error.message, 'error');
+            }
+        };
+
+        window.viewAssets = async function() {
+            try {
+                showStatus('Loading assets...', 'loading');
+                log('👁️ Loading wallet assets...');
+                
+                const stellarPlus = window.StellarPlus;
+                const account = stellarPlus.account.create({
+                    publicKey: window.walletState.publicKey
+                });
+                
+                const balances = await account.getBalances();
+                
+                showStatus('Assets loaded successfully!', 'success');
+                log('✅ Found ' + balances.length + ' assets', 'success');
+                
+                balances.forEach(balance => {
+                    log('💰 ' + balance.balance + ' ' + balance.asset, 'info');
+                });
+            } catch (error) {
+                showStatus('Failed to load assets: ' + error.message, 'error');
+                log('❌ Asset loading failed: ' + error.message, 'error');
+            }
+        };
+
+        function addTransactionToHistory(type, destination, amount, hash) {
+            const historyDiv = document.getElementById('transactionHistory');
+            const transactionDiv = document.createElement('div');
+                         transactionDiv.style.cssText = `
+                 background: rgba(255,255,255,0.06);
+                 padding: 15px;
+                 border-radius: 10px;
+                 margin: 10px 0;
+                 border-left: 4px solid var(--primary);
+             `;
+            transactionDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${type}</strong><br>
+                        <small>To: ${destination}</small><br>
+                        <small>Amount: ${amount}</small>
+                    </div>
+                    <div style="text-align: right;">
+                                                 <small style="color: var(--muted);">${new Date().toLocaleTimeString()}</small><br>
+                         <small style="font-family: monospace; color: var(--primary);">${hash.substring(0, 8)}...</small>
+                    </div>
+                </div>
+            `;
+            historyDiv.appendChild(transactionDiv);
+        }
+
+                 // Navigation functionality
+         window.showSection = function(section) {
+             // Update active nav item
+             document.querySelectorAll('.nav-item').forEach(item => {
+                 item.classList.remove('active');
+             });
+             event.currentTarget.classList.add('active');
+             
+             // Show different content based on section
+             const mainContent = document.querySelector('.wallet-container');
+             
+             switch(section) {
+                 case 'home':
+                     mainContent.innerHTML = `
+                         <div class="wallet-header">
+                             <h1 class="wallet-title">LumenBro Wallet</h1>
+                             <p class="wallet-subtitle">Modern Stellar Wallet with Protocol 23 & Soroban Support</p>
+                             <div>
+                                 <span class="protocol-badge">Protocol 23 Ready</span>
+                                 <span class="protocol-badge">Soroban Enabled</span>
+                                 <span class="protocol-badge">Stellar-Plus</span>
+                             </div>
+                         </div>
+                         
+                         <div class="protocol-23-features">
+                             <h3 class="protocol-23-title">🚀 Protocol 23 Features (Coming August 2025)</h3>
+                             <ul class="protocol-23-list">
+                                 <li>✅ Enhanced Smart Contract Support</li>
+                                 <li>✅ Improved Transaction Performance</li>
+                                 <li>✅ Advanced DEX Capabilities</li>
+                                 <li>✅ New Asset Management Features</li>
+                                 <li>✅ Better Soroban Integration</li>
+                             </ul>
+                         </div>
+                         
+                         <div class="wallet-grid">
+                             <div class="wallet-card">
+                                 <div class="card-header">
+                                     <div class="card-icon">💰</div>
+                                     <div class="card-title">Wallet Balance</div>
+                                 </div>
+                                 
+                                 <div class="balance-display">
+                                     <div class="balance-amount" id="balance">100.0000000</div>
+                                     <div class="balance-label">XLM</div>
+                                 </div>
+                                 
+                                 <div class="address-display" id="address">
+                                     GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                 </div>
+                                 
+                                 <div class="btn-group">
+                                     <button class="btn btn-primary" onclick="refreshBalance()">🔄 Refresh</button>
+                                     <button class="btn btn-success" onclick="copyAddress()">📋 Copy Address</button>
+                                 </div>
+                             </div>
+                             
+                             <div class="wallet-card">
+                                 <div class="card-header">
+                                     <div class="card-icon">📤</div>
+                                     <div class="card-title">Send Payment</div>
+                                 </div>
+                                 
+                                 <div class="form-group">
+                                     <label class="form-label">Destination Address</label>
+                                     <input type="text" class="form-input" id="destination" 
+                                            placeholder="G... (Stellar public key)" 
+                                            value="GCCD6AJOYZCUAQLX32ZJF2MKFFAUJ53PVCFQI3RHWKL3K47PKFMH2VTL">
+                                 </div>
+                                 
+                                 <div class="form-group">
+                                     <label class="form-label">Amount (XLM)</label>
+                                     <input type="number" class="form-input" id="amount" 
+                                            placeholder="10.0000000" value="1" step="0.0000001" min="0">
+                                 </div>
+                                 
+                                 <div class="btn-group">
+                                     <button class="btn btn-primary" onclick="sendPayment()">📤 Send Payment</button>
+                                     <button class="btn btn-warning" onclick="testStellarPlus()">🧪 Test Stellar-Plus</button>
+                                 </div>
+                             </div>
+                             
+                             <div class="wallet-card">
+                                 <div class="card-header">
+                                     <div class="feature-icon">🪙</div>
+                                     <div class="card-title">Asset Management</div>
+                                 </div>
+                                 
+                                 <div class="form-group">
+                                     <label class="form-label">Asset Code</label>
+                                     <input type="text" class="form-input" id="assetCode" placeholder="USDC">
+                                 </div>
+                                 
+                                 <div class="form-group">
+                                     <label class="form-label">Issuer Address</label>
+                                     <input type="text" class="form-input" id="issuerAddress" 
+                                            placeholder="G... (Asset issuer)">
+                                 </div>
+                                 
+                                 <div class="btn-group">
+                                     <button class="btn btn-primary" onclick="trustAsset()">🤝 Trust Asset</button>
+                                     <button class="btn btn-success" onclick="viewAssets()">👁️ View Assets</button>
+                                 </div>
+                             </div>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">📜</div>
+                                 <div class="card-title">Recent Transactions</div>
+                             </div>
+                             
+                             <div id="transactionHistory">
+                                 <p style="text-align: center; color: var(--muted);">
+                                     No transactions yet. Start by sending a payment!
+                                 </p>
+                             </div>
+                         </div>
+                         
+                         <div id="statusMessage" class="status-message"></div>
+                         
+                         <div class="log-container" id="logConsole">
+                             <div class="log-entry">
+                                 <span class="log-timestamp">[12:00:00]</span>
+                                 <span class="log-info">🚀 Modern Stellar Wallet initialized</span>
+                             </div>
+                             <div class="log-entry">
+                                 <span class="log-timestamp">[12:00:01]</span>
+                                 <span class="log-info">📱 Protocol 23 features enabled</span>
+                             </div>
+                             <div class="log-entry">
+                                 <span class="log-timestamp">[12:00:02]</span>
+                                 <span class="log-info">🤖 Soroban smart contract support ready</span>
+                             </div>
+                         </div>
+                     `;
+                     break;
+                     
+                 case 'swaps':
+                     mainContent.innerHTML = `
+                         <div class="wallet-header">
+                             <h1 class="wallet-title">🔄 Token Swaps</h1>
+                             <p class="wallet-subtitle">Swap tokens on Stellar DEX</p>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">💱</div>
+                                 <div class="card-title">Quick Swap</div>
+                             </div>
+                             
+                             <div class="form-group">
+                                 <label class="form-label">From Token</label>
+                                 <select class="form-input">
+                                     <option>XLM</option>
+                                     <option>USDC</option>
+                                     <option>BTC</option>
+                                 </select>
+                             </div>
+                             
+                             <div class="form-group">
+                                 <label class="form-label">To Token</label>
+                                 <select class="form-input">
+                                     <option>USDC</option>
+                                     <option>XLM</option>
+                                     <option>BTC</option>
+                                 </select>
+                             </div>
+                             
+                             <div class="form-group">
+                                 <label class="form-label">Amount</label>
+                                 <input type="number" class="form-input" placeholder="0.00">
+                             </div>
+                             
+                             <div class="btn-group">
+                                 <button class="btn btn-primary">🔄 Swap Tokens</button>
+                                 <button class="btn btn-success">📊 View Rates</button>
+                             </div>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">📈</div>
+                                 <div class="card-title">Market Rates</div>
+                             </div>
+                             
+                             <div style="text-align: center; color: var(--muted); padding: 20px;">
+                                 <p>Market data coming soon...</p>
+                                 <p>Powered by Stellar DEX</p>
+                             </div>
+                         </div>
+                     `;
+                     break;
+                     
+                 case 'apps':
+                     mainContent.innerHTML = `
+                         <div class="wallet-header">
+                             <h1 class="wallet-title">📱 DApps</h1>
+                             <p class="wallet-subtitle">Connect to Stellar applications</p>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">🔗</div>
+                                 <div class="card-title">Connected Apps</div>
+                             </div>
+                             
+                             <div style="text-align: center; color: var(--muted); padding: 20px;">
+                                 <p>No apps connected yet</p>
+                                 <p>Connect to Stellar DApps to get started</p>
+                             </div>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">🌐</div>
+                                 <div class="card-title">Popular DApps</div>
+                             </div>
+                             
+                             <div style="text-align: center; color: var(--muted); padding: 20px;">
+                                 <p>DApp browser coming soon...</p>
+                                 <p>Browse and connect to Stellar applications</p>
+                             </div>
+                         </div>
+                     `;
+                     break;
+                     
+                 case 'missions':
+                     mainContent.innerHTML = `
+                         <div class="wallet-header">
+                             <h1 class="wallet-title">🎯 Missions</h1>
+                             <p class="wallet-subtitle">Complete tasks and earn rewards</p>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">⭐</div>
+                                 <div class="card-title">Daily Missions</div>
+                             </div>
+                             
+                             <div style="text-align: center; color: var(--muted); padding: 20px;">
+                                 <p>No missions available yet</p>
+                                 <p>Complete tasks to earn XLM rewards</p>
+                             </div>
+                         </div>
+                         
+                         <div class="wallet-card">
+                             <div class="card-header">
+                                 <div class="card-icon">🏆</div>
+                                 <div class="card-title">Achievements</div>
+                             </div>
+                             
+                             <div style="text-align: center; color: var(--muted); padding: 20px;">
+                                 <p>Start using your wallet to unlock achievements</p>
+                             </div>
+                         </div>
+                     `;
+                     break;
+             }
+             
+             log('📱 Switched to ' + section + ' section', 'info');
+         };
+
+         // Initialize wallet
+         document.addEventListener('DOMContentLoaded', function() {
+             log('🚀 Modern Stellar Wallet initialized with Protocol 23 support', 'success');
+             log('📱 Soroban smart contract features enabled', 'success');
+             log('🎯 Ready for Protocol 23 launch in August 2025', 'success');
+         });
+    </script>
+</body>
+</html>

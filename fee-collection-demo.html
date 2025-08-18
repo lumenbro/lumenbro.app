@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Collection Demo - LumenBro</title>
+    <link rel="stylesheet" href="/styles/site.css">
+    <style>
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .demo-card {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-1);
+        }
+
+        .demo-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 15px;
+        }
+
+        .user-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .user-type {
+            background: rgba(255,255,255,0.06);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .user-type:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .user-type.selected {
+            border-color: var(--success);
+            background: rgba(57,217,138,0.1);
+        }
+
+        .user-type h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .discount-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 5px 0;
+        }
+
+        .discount-pioneer {
+            background: rgba(255,215,0,0.2);
+            color: #ffd700;
+            border: 1px solid rgba(255,215,0,0.4);
+        }
+
+        .discount-referral {
+            background: rgba(79,138,255,0.2);
+            color: #b3d4ff;
+            border: 1px solid rgba(79,138,255,0.4);
+        }
+
+        .discount-none {
+            background: rgba(255,255,255,0.1);
+            color: var(--muted);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .transaction-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            color: #0c1225;
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, var(--success), #2bb673);
+            color: #0c1225;
+        }
+
+        .btn-warning {
+            background: linear-gradient(180deg, var(--warning), #e0a800);
+            color: #0c1225;
+        }
+
+        .fee-preview {
+            background: rgba(255,255,255,0.06);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid var(--primary);
+        }
+
+        .fee-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .fee-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .fee-item:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .fee-total {
+            background: rgba(79,138,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .log-container {
+            background: rgba(11,18,37,0.9);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .password-content {
+            background: linear-gradient(180deg, rgba(17,26,54,0.95), rgba(11,18,37,0.98));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="starfield"></div>
+    <div class="demo-container">
+        <div class="demo-card">
+            <h1 class="demo-title">💰 Fee Collection Demo</h1>
+            <p style="color: var(--muted); margin-bottom: 20px;">
+                Test fee calculation and collection with different user types and transaction amounts
+            </p>
+        </div>
+
+        <!-- User Type Selection -->
+        <div class="demo-card">
+            <h2 class="demo-title">👤 Select User Type</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Choose your user type to see how fees are calculated
+            </p>
+            
+            <div class="user-types">
+                <div class="user-type" onclick="selectUserType('pioneer')">
+                    <h3>🏆 Pioneer User</h3>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Early adopters and founders
+                    </p>
+                    <span class="discount-badge discount-pioneer">90% Fee Discount</span>
+                </div>
+                
+                <div class="user-type" onclick="selectUserType('referral')">
+                    <h3>🔗 Referral User</h3>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Users with referral codes
+                    </p>
+                    <span class="discount-badge discount-referral">10% Fee Discount</span>
+                </div>
+                
+                <div class="user-type" onclick="selectUserType('regular')">
+                    <h3>👤 Regular User</h3>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Standard users
+                    </p>
+                    <span class="discount-badge discount-none">No Discount</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Form -->
+        <div class="demo-card">
+            <h2 class="demo-title">📝 Transaction Details</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Enter transaction details to calculate fees
+            </p>
+            
+            <div class="transaction-form">
+                <div class="form-group">
+                    <label class="form-label">Transaction Type</label>
+                    <select id="transactionType" class="form-input">
+                        <option value="payment">Payment</option>
+                        <option value="swap">Token Swap</option>
+                        <option value="trust">Trust Asset</option>
+                        <option value="contract">Smart Contract</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount (XLM)</label>
+                    <input type="number" id="transactionAmount" class="form-input" 
+                           placeholder="100" value="100" step="0.01" min="0">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Destination Address</label>
+                    <input type="text" id="destinationAddress" class="form-input" 
+                           placeholder="G..." value="GCCD6AJOYZCUAQLX32ZJF2MKFFAUJ53PVCFQI3RHWKL3K47PKFMH2VTL">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Asset</label>
+                    <select id="asset" class="form-input">
+                        <option value="XLM">XLM</option>
+                        <option value="USDC">USDC</option>
+                        <option value="BTC">BTC</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="calculateFees()">
+                    💰 Calculate Fees
+                </button>
+                <button class="btn btn-success" onclick="previewTransaction()">
+                    👁️ Preview Transaction
+                </button>
+            </div>
+        </div>
+
+        <!-- Fee Preview -->
+        <div class="demo-card" id="feePreviewCard" style="display: none;">
+            <h2 class="demo-title">💰 Fee Preview</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Review fees before signing the transaction
+            </p>
+            
+            <div class="fee-preview" id="feePreview">
+                <!-- Fee breakdown will be populated here -->
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="signTransaction()">
+                    🔐 Sign Transaction
+                </button>
+                <button class="btn btn-warning" onclick="cancelTransaction()">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Signing Process -->
+        <div class="demo-card" id="signingCard" style="display: none;">
+            <h2 class="demo-title">🔐 Transaction Signing</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Complete the signing process with your password
+            </p>
+            
+            <div id="signingSteps">
+                <!-- Signing steps will be populated here -->
+            </div>
+        </div>
+
+        <!-- Log Console -->
+        <div class="demo-card">
+            <h2 class="demo-title">📋 Fee Collection Log</h2>
+            <div class="log-container" id="feeLog">
+                <div class="log-entry">
+                    <span class="log-timestamp">[12:00:00]</span>
+                    <span class="log-info">🚀 Fee collection demo initialized</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-timestamp">[12:00:01]</span>
+                    <span class="log-info">💰 Ready to calculate fees for different user types</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let selectedUserType = 'regular';
+        let currentFeeCalculation = null;
+
+        // User type selection
+        window.selectUserType = function(userType) {
+            selectedUserType = userType;
+            
+            // Update UI
+            document.querySelectorAll('.user-type').forEach(type => {
+                type.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            log(`👤 Selected user type: ${userType}`, 'info');
+        };
+
+        // Fee calculation
+        window.calculateFees = async function() {
+            try {
+                const amount = parseFloat(document.getElementById('transactionAmount').value);
+                const transactionType = document.getElementById('transactionType').value;
+                
+                if (!amount || amount <= 0) {
+                    log('❌ Please enter a valid amount', 'error');
+                    return;
+                }
+                
+                log(`💰 Calculating fees for ${amount} XLM ${transactionType}...`, 'info');
+                
+                // Simulate server fee calculation
+                const feeCalculation = await simulateFeeCalculation(amount, selectedUserType);
+                currentFeeCalculation = feeCalculation;
+                
+                // Show fee preview
+                showFeePreview(feeCalculation);
+                
+                log('✅ Fee calculation completed', 'success');
+                
+            } catch (error) {
+                log('❌ Fee calculation failed: ' + error.message, 'error');
+            }
+        };
+
+        // Simulate server fee calculation
+        async function simulateFeeCalculation(amount, userType) {
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // Base fee rate (1%)
+            const baseFeeRate = 0.01;
+            const baseFee = amount * baseFeeRate;
+            
+            // Apply discounts based on user type
+            let discountRate = 0.00;
+            let discountType = 'none';
+            
+            switch (userType) {
+                case 'pioneer':
+                    discountRate = 0.90;
+                    discountType = 'pioneer';
+                    break;
+                case 'referral':
+                    discountRate = 0.10;
+                    discountType = 'referral';
+                    break;
+                default:
+                    discountRate = 0.00;
+                    discountType = 'none';
+            }
+            
+            const discountAmount = baseFee * discountRate;
+            const finalFee = baseFee - discountAmount;
+            const totalAmount = amount + finalFee;
+            
+            return {
+                transaction_amount: amount,
+                base_fee: baseFee,
+                discount_type: discountType,
+                discount_rate: discountRate * 100,
+                discount_amount: discountAmount,
+                final_fee: finalFee,
+                total_amount: totalAmount,
+                user_type: userType
+            };
+        }
+
+        // Show fee preview
+        function showFeePreview(feeCalculation) {
+            const feePreviewCard = document.getElementById('feePreviewCard');
+            const feePreview = document.getElementById('feePreview');
+            
+            feePreview.innerHTML = `
+                <div class="fee-breakdown">
+                    <div class="fee-item">
+                        <span>Transaction Amount:</span>
+                        <span>${feeCalculation.transaction_amount} XLM</span>
+                    </div>
+                    <div class="fee-item">
+                        <span>Base Fee (1%):</span>
+                        <span>${feeCalculation.base_fee.toFixed(6)} XLM</span>
+                    </div>
+                    <div class="fee-item">
+                        <span>Your Discount:</span>
+                        <span>${feeCalculation.discount_type} (${feeCalculation.discount_rate}%)</span>
+                    </div>
+                    <div class="fee-item">
+                        <span>Discount Amount:</span>
+                        <span>-${feeCalculation.discount_amount.toFixed(6)} XLM</span>
+                    </div>
+                    <div class="fee-item">
+                        <span>Final Fee:</span>
+                        <span>${feeCalculation.final_fee.toFixed(6)} XLM</span>
+                    </div>
+                </div>
+                <div class="fee-total">
+                    Total Amount: ${feeCalculation.total_amount.toFixed(6)} XLM
+                </div>
+            `;
+            
+            feePreviewCard.style.display = 'block';
+            feePreviewCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Preview transaction
+        window.previewTransaction = function() {
+            if (!currentFeeCalculation) {
+                log('❌ Please calculate fees first', 'error');
+                return;
+            }
+            
+            log(`📝 Previewing transaction with fees...`, 'info');
+            log(`💰 Transaction: ${currentFeeCalculation.transaction_amount} XLM`, 'info');
+            log(`💸 Fee: ${currentFeeCalculation.final_fee.toFixed(6)} XLM`, 'info');
+            log(`📊 Total: ${currentFeeCalculation.total_amount.toFixed(6)} XLM`, 'info');
+        };
+
+        // Sign transaction
+        window.signTransaction = async function() {
+            if (!currentFeeCalculation) {
+                log('❌ Please calculate fees first', 'error');
+                return;
+            }
+            
+            log('🔐 Starting transaction signing process...', 'info');
+            
+            // Show signing steps
+            showSigningSteps();
+            
+            try {
+                // 1. Show password prompt
+                log('📝 Requesting password for signing...', 'info');
+                const password = await showPasswordPrompt();
+                
+                if (!password) {
+                    log('❌ Password entry cancelled', 'error');
+                    return;
+                }
+                
+                // 2. Simulate key decryption
+                log('🔓 Decrypting keys from Telegram Cloud...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 3. Simulate transaction signing
+                log('✍️ Signing transaction with fees...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // 4. Simulate network submission
+                log('🌐 Submitting to Stellar network...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                log('✅ Transaction signed and submitted successfully!', 'success');
+                log(`📝 Transaction hash: mock-tx-${Date.now()}`, 'success');
+                log(`💰 Fee collected: ${currentFeeCalculation.final_fee.toFixed(6)} XLM`, 'success');
+                
+            } catch (error) {
+                log('❌ Transaction signing failed: ' + error.message, 'error');
+            }
+        };
+
+        // Show signing steps
+        function showSigningSteps() {
+            const signingCard = document.getElementById('signingCard');
+            const signingSteps = document.getElementById('signingSteps');
+            
+            signingSteps.innerHTML = `
+                <div style="background: rgba(255,255,255,0.06); padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    <h4 style="color: var(--accent); margin-bottom: 10px;">Signing Process:</h4>
+                    <ol style="color: var(--text); line-height: 1.6;">
+                        <li>Enter password to unlock wallet keys</li>
+                        <li>Decrypt keys from Telegram Cloud storage</li>
+                        <li>Sign transaction (including fee payment)</li>
+                        <li>Submit signed transaction to Stellar network</li>
+                    </ol>
+                </div>
+            `;
+            
+            signingCard.style.display = 'block';
+            signingCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Cancel transaction
+        window.cancelTransaction = function() {
+            document.getElementById('feePreviewCard').style.display = 'none';
+            document.getElementById('signingCard').style.display = 'none';
+            currentFeeCalculation = null;
+            log('❌ Transaction cancelled by user', 'error');
+        };
+
+        // Password prompt
+        function showPasswordPrompt() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'password-modal';
+                modal.innerHTML = `
+                    <div class="password-content">
+                        <h3 style="color: var(--text); margin-bottom: 15px;">🔐 Unlock Wallet</h3>
+                        <p style="color: var(--muted); margin-bottom: 20px;">
+                            Enter your password to sign this transaction
+                        </p>
+                        <input type="password" id="wallet-password" class="form-input" 
+                               placeholder="Enter your password" style="margin: 15px 0;">
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="submitPassword()">
+                                🔓 Unlock & Sign
+                            </button>
+                            <button class="btn btn-warning" onclick="cancelSigning()">
+                                ❌ Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Focus on password input
+                setTimeout(() => {
+                    document.getElementById('wallet-password').focus();
+                }, 100);
+                
+                // Handle password submission
+                window.submitPassword = () => {
+                    const password = document.getElementById('wallet-password').value;
+                    document.body.removeChild(modal);
+                    resolve(password);
+                };
+                
+                // Handle cancellation
+                window.cancelSigning = () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                };
+                
+                // Handle Enter key
+                document.getElementById('wallet-password').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        window.submitPassword();
+                    }
+                });
+            });
+        }
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('feeLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Initialize demo
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Fee collection demo ready for testing', 'success');
+            
+            // Select regular user by default
+            document.querySelector('.user-type:last-child').classList.add('selected');
+        });
+    </script>
+</body>
+</html>
+

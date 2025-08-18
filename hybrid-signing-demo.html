@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Signing Demo - LumenBro</title>
+    <link rel="stylesheet" href="/styles/site.css">
+    <style>
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .demo-card {
+            background: linear-gradient(180deg, rgba(17,26,54,0.8), rgba(11,18,37,0.9));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius);
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-1);
+        }
+
+        .demo-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 15px;
+        }
+
+        .signing-flow {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .flow-step {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .flow-step h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .password-content {
+            background: linear-gradient(180deg, rgba(17,26,54,0.95), rgba(11,18,37,0.98));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            font-size: 1rem;
+            margin: 15px 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, var(--accent), var(--primary));
+            color: #0c1225;
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, var(--success), #2bb673);
+            color: #0c1225;
+        }
+
+        .btn-warning {
+            background: linear-gradient(180deg, var(--warning), #e0a800);
+            color: #0c1225;
+        }
+
+        .log-container {
+            background: rgba(11,18,37,0.9);
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        .status-client {
+            background: rgba(79,138,255,0.2);
+            color: #b3d4ff;
+            border: 1px solid rgba(79,138,255,0.4);
+        }
+
+        .status-server {
+            background: rgba(57,217,138,0.2);
+            color: #a3f2c9;
+            border: 1px solid rgba(57,217,138,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="starfield"></div>
+    <div class="demo-container">
+        <div class="demo-card">
+            <h1 class="demo-title">🔐 Hybrid Signing Architecture Demo</h1>
+            <p style="color: var(--muted); margin-bottom: 20px;">
+                Test both client-side and server-side signing methods for your LumenBro wallet
+            </p>
+        </div>
+
+        <!-- Signing Flows -->
+        <div class="signing-flow">
+            <!-- Client-Side Signing -->
+            <div class="demo-card">
+                <h2 class="demo-title">🖥️ Client-Side Signing</h2>
+                <p style="color: var(--muted); margin-bottom: 15px;">
+                    Manual signing with password-protected keys from Telegram Cloud
+                </p>
+                
+                <div class="flow-step">
+                    <h4>1. DApp Connection</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        User connects to external DApp
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>2. Password Prompt</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        User enters password to unlock keys
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>3. Local Signing</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Turnkey SDK signs locally
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>4. Direct Submit</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Signed transaction sent to network
+                    </p>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="testClientSideSigning()">
+                        🔐 Test Client-Side Signing
+                    </button>
+                    <span class="status-badge status-client">Manual</span>
+                </div>
+            </div>
+
+            <!-- Server-Side Signing -->
+            <div class="demo-card">
+                <h2 class="demo-title">🤖 Server-Side Signing</h2>
+                <p style="color: var(--muted); margin-bottom: 15px;">
+                    Automated signing with KMS-encrypted session keys
+                </p>
+                
+                <div class="flow-step">
+                    <h4>1. Copy Trading Signal</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Automated trade signal received
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>2. Send to Bot</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Unsigned XDR sent to Python bot
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>3. KMS Decrypt</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Session keys decrypted server-side
+                    </p>
+                </div>
+                
+                <div class="flow-step">
+                    <h4>4. Auto Submit</h4>
+                    <p style="color: var(--muted); font-size: 0.9rem;">
+                        Bot signs and submits automatically
+                    </p>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-success" onclick="testServerSideSigning()">
+                        🤖 Test Server-Side Signing
+                    </button>
+                    <span class="status-badge status-server">Automated</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DApp Connection Demo -->
+        <div class="demo-card">
+            <h2 class="demo-title">🔗 DApp Connection Demo</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Simulate connecting to a Stellar DApp with client-side signing
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <label style="color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">
+                        DApp URL
+                    </label>
+                    <input type="text" id="dappUrl" class="password-input" 
+                           placeholder="https://stellar-dex.example.com"
+                           value="https://stellar-dex.example.com">
+                </div>
+                
+                <div>
+                    <label style="color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">
+                        Transaction Type
+                    </label>
+                    <select id="transactionType" class="password-input">
+                        <option value="payment">Payment</option>
+                        <option value="swap">Token Swap</option>
+                        <option value="trust">Trust Asset</option>
+                        <option value="contract">Smart Contract</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="connectToDApp()">
+                    🔗 Connect to DApp
+                </button>
+                <button class="btn btn-warning" onclick="simulateDAppRequest()">
+                    📝 Simulate DApp Request
+                </button>
+            </div>
+        </div>
+
+        <!-- Copy Trading Demo -->
+        <div class="demo-card">
+            <h2 class="demo-title">📈 Copy Trading Demo</h2>
+            <p style="color: var(--muted); margin-bottom: 15px;">
+                Simulate automated copy trading with server-side signing
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div>
+                    <label style="color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">
+                        Signal Type
+                    </label>
+                    <select id="signalType" class="password-input">
+                        <option value="buy">Buy Signal</option>
+                        <option value="sell">Sell Signal</option>
+                        <option value="stop_loss">Stop Loss</option>
+                        <option value="take_profit">Take Profit</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">
+                        Asset
+                    </label>
+                    <select id="tradeAsset" class="password-input">
+                        <option value="XLM">XLM</option>
+                        <option value="USDC">USDC</option>
+                        <option value="BTC">BTC</option>
+                        <option value="ETH">ETH</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="color: var(--text); font-weight: 600; display: block; margin-bottom: 8px;">
+                        Amount
+                    </label>
+                    <input type="number" id="tradeAmount" class="password-input" 
+                           placeholder="100" value="100" step="0.01">
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="executeCopyTrade()">
+                    📈 Execute Copy Trade
+                </button>
+                <button class="btn btn-warning" onclick="simulateTradeSignal()">
+                    📊 Simulate Trade Signal
+                </button>
+            </div>
+        </div>
+
+        <!-- Log Console -->
+        <div class="demo-card">
+            <h2 class="demo-title">📋 Signing Log</h2>
+            <div class="log-container" id="signingLog">
+                <div class="log-entry">
+                    <span class="log-timestamp">[12:00:00]</span>
+                    <span class="log-info">🚀 Hybrid signing demo initialized</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-timestamp">[12:00:01]</span>
+                    <span class="log-info">📱 Client-side signing ready (password protected)</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-timestamp">[12:00:02]</span>
+                    <span class="log-info">🤖 Server-side signing ready (automated)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Turnkey SDK (replace with real import)
+        window.Turnkey = {
+            signWithApiKey: async (input) => {
+                // Simulate signing delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return 'mock-signature-' + Date.now();
+            }
+        };
+
+        // Mock Telegram Cloud Storage
+        window.TelegramCloudStorage = {
+            get: async (key) => {
+                // Simulate encrypted keys from Telegram Cloud
+                return {
+                    encryptedPrivateKey: 'encrypted-key-data',
+                    encryptedPublicKey: 'encrypted-public-key'
+                };
+            }
+        };
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('signingLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function showPasswordPrompt() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'password-modal';
+                modal.innerHTML = `
+                    <div class="password-content">
+                        <h3 style="color: var(--text); margin-bottom: 15px;">🔐 Unlock Wallet</h3>
+                        <p style="color: var(--muted); margin-bottom: 20px;">
+                            Enter your password to sign this transaction
+                        </p>
+                        <input type="password" id="wallet-password" class="password-input" 
+                               placeholder="Enter your password">
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="submitPassword()">
+                                🔓 Unlock & Sign
+                            </button>
+                            <button class="btn btn-warning" onclick="cancelSigning()">
+                                ❌ Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Focus on password input
+                setTimeout(() => {
+                    document.getElementById('wallet-password').focus();
+                }, 100);
+                
+                // Handle password submission
+                window.submitPassword = () => {
+                    const password = document.getElementById('wallet-password').value;
+                    document.body.removeChild(modal);
+                    resolve(password);
+                };
+                
+                // Handle cancellation
+                window.cancelSigning = () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                };
+                
+                // Handle Enter key
+                document.getElementById('wallet-password').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        window.submitPassword();
+                    }
+                });
+            });
+        }
+
+        // Client-side signing test
+        window.testClientSideSigning = async function() {
+            try {
+                log('🔐 Starting client-side signing test...', 'info');
+                
+                // 1. Show password prompt
+                log('📝 Requesting password for key unlock...', 'info');
+                const password = await showPasswordPrompt();
+                
+                if (!password) {
+                    log('❌ Password entry cancelled', 'error');
+                    return;
+                }
+                
+                // 2. Simulate key decryption
+                log('🔓 Decrypting keys from Telegram Cloud...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 3. Use Turnkey SDK for signing
+                log('✍️ Signing transaction with Turnkey SDK...', 'info');
+                const signature = await Turnkey.signWithApiKey({
+                    privateKey: 'decrypted-private-key',
+                    content: 'mock-transaction-xdr',
+                    scheme: "SIGNATURE_SCHEME_TK_API_P256"
+                });
+                
+                // 4. Submit to network
+                log('🌐 Submitting signed transaction to network...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                log('✅ Client-side signing completed successfully!', 'success');
+                log(`📝 Signature: ${signature.substring(0, 20)}...`, 'success');
+                
+            } catch (error) {
+                log('❌ Client-side signing failed: ' + error.message, 'error');
+            }
+        };
+
+        // Server-side signing test
+        window.testServerSideSigning = async function() {
+            try {
+                log('🤖 Starting server-side signing test...', 'info');
+                
+                // 1. Build transaction
+                log('📝 Building automated transaction...', 'info');
+                const transaction = {
+                    type: 'copy_trading',
+                    amount: '100',
+                    asset: 'XLM'
+                };
+                
+                // 2. Send to Python bot
+                log('📤 Sending unsigned XDR to Python bot...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // 3. Simulate KMS decryption
+                log('🔓 Decrypting session keys with KMS...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 600));
+                
+                // 4. Server-side signing
+                log('✍️ Signing transaction server-side...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 700));
+                
+                // 5. Submit to network
+                log('🌐 Submitting to Stellar network...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                log('✅ Server-side signing completed successfully!', 'success');
+                log('🤖 Automated transaction executed without user interaction', 'success');
+                
+            } catch (error) {
+                log('❌ Server-side signing failed: ' + error.message, 'error');
+            }
+        };
+
+        // DApp connection demo
+        window.connectToDApp = async function() {
+            const dappUrl = document.getElementById('dappUrl').value;
+            const txType = document.getElementById('transactionType').value;
+            
+            log(`🔗 Connecting to DApp: ${dappUrl}`, 'info');
+            log(`📝 Transaction type: ${txType}`, 'info');
+            
+            // Simulate DApp connection
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            log('✅ DApp connection established', 'success');
+            log('🔐 Ready for client-side signing', 'success');
+        };
+
+        // Simulate DApp request
+        window.simulateDAppRequest = async function() {
+            const txType = document.getElementById('transactionType').value;
+            
+            log(`📝 DApp requesting ${txType} transaction...`, 'info');
+            
+            // Trigger client-side signing
+            await testClientSideSigning();
+        };
+
+        // Copy trading demo
+        window.executeCopyTrade = async function() {
+            const signalType = document.getElementById('signalType').value;
+            const asset = document.getElementById('tradeAsset').value;
+            const amount = document.getElementById('tradeAmount').value;
+            
+            log(`📈 Executing copy trade: ${signalType} ${amount} ${asset}`, 'info');
+            
+            // Trigger server-side signing
+            await testServerSideSigning();
+        };
+
+        // Simulate trade signal
+        window.simulateTradeSignal = async function() {
+            log('📊 Trade signal received from copy trading service', 'info');
+            log('🤖 Initiating automated execution...', 'info');
+            
+            // Trigger server-side signing
+            await testServerSideSigning();
+        };
+
+        // Initialize demo
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Hybrid signing demo ready for testing', 'success');
+        });
+    </script>
+</body>
+</html>
+

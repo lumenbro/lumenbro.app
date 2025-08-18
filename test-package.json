@@ -1,0 +1,20 @@
+{
+  "name": "stellar-plus-wallet-test",
+  "version": "1.0.0",
+  "description": "Test wallet for Stellar-Plus integration",
+  "main": "test-wallet-server.js",
+  "scripts": {
+    "start": "node test-wallet-server.js",
+    "dev": "nodemon test-wallet-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["stellar", "wallet", "test", "stellar-plus"],
+  "author": "LumenBro",
+  "license": "MIT"
+}
+
