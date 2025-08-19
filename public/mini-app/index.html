@@ -185,11 +185,15 @@
 
         async function checkUserAuthentication() {
             try {
+                console.log('🔍 Checking user authentication...');
                 // Check if user has stored keys
                 const storedKey = await window.checkCloudStorage();
-                return !!storedKey;
+                console.log('🔍 Stored key result:', storedKey ? 'Found' : 'Not found');
+                const isAuthenticated = !!storedKey;
+                console.log('🔍 Authentication result:', isAuthenticated);
+                return isAuthenticated;
             } catch (error) {
-                console.log('User not authenticated:', error);
+                console.log('❌ User not authenticated:', error);
                 return false;
             }
         }
@@ -266,7 +270,8 @@
                         <button onclick="window.login()" class="btn-success">🔐 Login</button>      
                         <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button> 
                         <button onclick="window.export()" class="btn-info">📤 Export Keys</button>  
-                        <button onclick="testTurnkeyStamper()" class="btn-secondary">🧪 Test Turnkey</button>  
+                        <button onclick="testTurnkeyStamper()" class="btn-secondary">🧪 Test Turnkey</button>
+                        <button onclick="showWallet()" class="btn-warning">🔧 Force Show Wallet</button>  
                     </div>
 
                     <!-- Quick access to wallet (if authenticated) -->
@@ -854,7 +859,6 @@
 
                     const result = await response.json();
                     return result;
-                }
 
             } catch (error) {
                 console.error('Signing with password failed:', error);
