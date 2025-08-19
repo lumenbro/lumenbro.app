@@ -601,6 +601,50 @@ router.post('/mini-app/sign-payload', async (req, res) => {
 
     console.log('✅ Mobile backend signing successful');
 
+    // Log trade and calculate referral rewards (if this is a transaction)
+    try {
+      // Check if this is a transaction (XDR format)
+      if (payloadString && payloadString.length > 100) {
+        console.log('💾 Logging transaction to database...');
+        
+        // Extract transaction hash from payload
+        const txHash = payloadString.substring(0, 64); // First 64 chars as hash
+        
+        // Calculate XLM volume (you can adjust this based on your needs)
+        const xlmVolume = 0; // Will need to parse XDR to get actual volume
+        
+        // Log to trades table
+        const tradeLogQuery = `
+          INSERT INTO trades (
+            user_id, 
+            xlm_volume,
+            tx_hash,
+            turnkey_activity_id,
+            fee_amount,
+            fee_asset,
+            timestamp
+          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        `;
+        
+        await pool.query(tradeLogQuery, [
+          telegramIdForUpdate,
+          xlmVolume,
+          txHash,
+          'mobile-signing', // Activity ID for mobile signing
+          0, // Fee amount (will need to parse from XDR)
+          'XLM' // Fee asset
+        ]);
+        
+        console.log('✅ Trade logged successfully');
+        
+        // Calculate referral rewards (same logic as Python bot)
+        // await handleReferralRewards(telegramIdForUpdate, feeAmount);
+      }
+    } catch (dbError) {
+      console.error('⚠️ Trade logging failed:', dbError);
+      // Don't fail the transaction if logging fails
+    }
+
     res.json({ 
       signature: signatureHex,
       publicKey: dbApiPublicKey, // ensure we return the active API key used
@@ -1868,6 +1912,135 @@ function generateJWT(telegram_id) {
       message: 'Python bot connection failed. Check if Python bot is running on 172.31.2.184:8080.',
       node_env: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Add endpoint for wallet transaction signing with HPKE (like login module)
+router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
+  try {
+    const { body: bodyStr, stamp: stampStr, ephemeralPrivateKey, initData } = req.body;
+    
+    console.log('🔐 Processing wallet transaction signing with HPKE...');
+    
+    // Validate required fields
+    if (!bodyStr || !stampStr || !ephemeralPrivateKey) {
+      return res.status(400).json({ error: 'Missing required fields: body, stamp, ephemeralPrivateKey' });
+    }
+
+    // Validate ephemeralPrivateKey
+    if (!ephemeralPrivateKey || typeof ephemeralPrivateKey !== 'string' || !/^[0-9a-fA-F]{64}$/.test(ephemeralPrivateKey)) {
+      throw new Error('Invalid ephemeralPrivateKey format');
+    }
+
+    console.log('EphemeralPrivateKey received: [redacted] type:', typeof ephemeralPrivateKey);
+
+    // Parse the request body
+    let body;
+    try {
+      body = JSON.parse(bodyStr);
+    } catch (e) {
+      throw new Error('Invalid body JSON');
+    }
+
+    // Validate it's a transaction signing request
+    if (body.type !== 'ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2') {
+      throw new Error('Invalid activity type for wallet transaction');
+    }
+
+    // Forward to Turnkey with stamp
+    console.log('📡 Forwarding to Turnkey API...');
+    const turnkeyResponse = await fetch('https://api.turnkey.com/v1/activities', {
+      method: 'POST',
+      headers: {
+        'X-Stamp': stampStr,
+        'Content-Type': 'application/json'
+      },
+      body: bodyStr
+    });
+    
+    const turnkeyResult = await turnkeyResponse.json();
+    
+    if (!turnkeyResponse.ok) {
+      console.error('❌ Turnkey API error:', turnkeyResult);
+      return res.status(turnkeyResponse.status).json(turnkeyResult);
+    }
+    
+    console.log('✅ Turnkey signing successful');
+
+    // Extract signed XDR from Turnkey response
+    const signedXdr = turnkeyResult.activity?.result?.signRawPayloadResult?.signedPayload || null;
+    
+    if (!signedXdr) {
+      console.error('❌ No signed XDR in Turnkey response');
+      return res.status(500).json({ 
+        error: 'No signed XDR received from Turnkey',
+        details: turnkeyResult 
+      });
+    }
+
+    // Log trade to database (consistent with Python bot)
+    try {
+      console.log('💾 Logging trade to database...');
+      
+      // Extract transaction hash from the original XDR
+      const originalXdr = body.parameters?.payload || 'unknown';
+      
+      // Extract Turnkey activity ID from response
+      const activityId = turnkeyResult.activity?.id || 'unknown';
+      
+      // Calculate XLM volume (you can adjust this based on your needs)
+      const xlmVolume = 0; // Will need to parse XDR to get actual volume
+      
+      // Get telegram_id from the request (you'll need to add this to the frontend)
+      const telegram_id = body.parameters?.telegram_id || null;
+      
+      if (telegram_id) {
+        const tradeLogQuery = `
+          INSERT INTO trades (
+            user_id, 
+            xlm_volume,
+            tx_hash,
+            turnkey_activity_id,
+            fee_amount,
+            fee_asset,
+            timestamp
+          ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        `;
+        
+        await pool.query(tradeLogQuery, [
+          telegram_id,
+          xlmVolume,
+          originalXdr,
+          activityId,
+          0, // Fee amount (will need to parse from XDR)
+          'XLM' // Fee asset
+        ]);
+        
+        console.log('✅ Trade logged successfully');
+        
+        // Calculate referral rewards (same logic as Python bot)
+        // await handleReferralRewards(telegram_id, feeAmount);
+      }
+      
+    } catch (dbError) {
+      console.error('⚠️ Trade logging failed:', dbError);
+      // Don't fail the transaction if logging fails
+    }
+
+    // Return signed XDR for client-side network submission
+    res.json({
+      success: true,
+      signed_xdr: signedXdr,
+      turnkey_response: turnkeyResult,
+      message: 'Transaction signed successfully - ready for network submission'
+    });
+    
+  } catch (error) {
+    console.error('❌ Wallet transaction signing error:', error);
+    res.status(500).json({ 
+      error: 'Wallet transaction signing failed',
+      details: error.message 
     });
   }
 });
