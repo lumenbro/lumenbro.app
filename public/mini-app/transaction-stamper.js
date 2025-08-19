@@ -64,6 +64,19 @@ class TransactionStamper {
       
       console.log('✅ TelegramCloudStorageStamper signing successful');
       
+      console.log('🔍 Stamp result:', stampResult);
+      
+      // Check if the stamper returned a signed XDR directly
+      if (stampResult.signedXdr) {
+        console.log('✅ TelegramCloudStorageStamper returned signed XDR directly');
+        return {
+          publicKey: this.publicKey,
+          scheme: "SIGNATURE_SCHEME_TK_API_P256",
+          signature: "embedded", // Signature is embedded in XDR
+          signedXdr: stampResult.signedXdr
+        };
+      }
+      
       // Extract signature from the stamp result
       const stampData = JSON.parse(atob(stampResult.stampHeaderValue.replace(/-/g, '+').replace(/_/g, '/')));
       
