@@ -40,30 +40,25 @@ class TransactionStamper {
     try {
       console.log('🔍 Starting transaction stamping process...');
       
-      // Use Turnkey's ApiKeyStamper which has built-in fallback to purejs
-      const apiKeyStamper = new window.Turnkey.ApiKeyStamper({
-        apiPublicKey: this.publicKey,
-        apiPrivateKey: this.privateKey
-      });
+      // Use Turnkey's signWithApiKey directly (available in the bundled version)
+      console.log('✅ Using Turnkey signWithApiKey with fallback support');
       
-      console.log('✅ Using Turnkey ApiKeyStamper with fallback support');
-      
-      // The ApiKeyStamper will automatically handle:
+      // The signWithApiKey will automatically handle:
       // - Web Crypto API on desktop
       // - Pure JS fallback on mobile
       // - All the complex key import logic
-      const stampResult = await apiKeyStamper.stamp(payload);
+      const signature = await window.Turnkey.signWithApiKey({
+        publicKey: this.publicKey,
+        privateKey: this.privateKey,
+        content: payload
+      });
       
-      console.log('✅ ApiKeyStamper signing successful');
-      
-      // ApiKeyStamper returns { stampHeaderName, stampHeaderValue }
-      // We need to extract the signature from stampHeaderValue
-      const stampData = JSON.parse(atob(stampResult.stampHeaderValue.replace(/-/g, '+').replace(/_/g, '/')));
+      console.log('✅ signWithApiKey signing successful');
       
       return {
-        publicKey: stampData.publicKey,
-        scheme: stampData.scheme,
-        signature: stampData.signature
+        publicKey: this.publicKey,
+        scheme: "SIGNATURE_SCHEME_TK_API_P256",
+        signature: signature
       };
 
     } catch (error) {
