@@ -1746,9 +1746,20 @@ router.post('/mini-app/build-xdr', async (req, res) => {
     // Import standard Stellar SDK
     const StellarSdk = require('@stellar/stellar-sdk');
     
+    // Get account sequence number from Horizon
+    const accountResponse = await axios.get(`https://horizon.stellar.org/accounts/${sourcePublicKey}`);
+    const accountData = accountResponse.data;
+    
+    if (accountData.detail) {
+      throw new Error('Account not found on Stellar network');
+    }
+    
+    const sequenceNumber = accountData.sequence;
+    console.log('Account sequence number:', sequenceNumber);
+    
     // Create a simple payment transaction
     const transaction = new StellarSdk.TransactionBuilder(
-      new StellarSdk.Account(sourcePublicKey, '0'),
+      new StellarSdk.Account(sourcePublicKey, sequenceNumber),
       {
         fee: StellarSdk.BASE_FEE,
         networkPassphrase: StellarSdk.Networks.PUBLIC
