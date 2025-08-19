@@ -766,18 +766,10 @@
                 }
 
                 // Retrieve and decrypt API keys from Telegram Cloud Storage
-                const telegramKey = await EncryptionUtils.retrieveTelegramKey(password);
-                if (!telegramKey) {
+                const apiKeys = await EncryptionUtils.retrieveTelegramKey(password);
+                if (!apiKeys) {
                     throw new Error('No Telegram Cloud Storage key found');
                 }
-
-                const encryptedData = await Telegram.WebApp.CloudStorage.getItem('encrypted_api_keys');
-                if (!encryptedData) {
-                    throw new Error('No encrypted API keys found');
-                }
-
-                const decryptedData = await EncryptionUtils.decryptData(encryptedData, password, telegramKey);
-                const apiKeys = JSON.parse(decryptedData);
 
                 // Create custom stamper with decrypted keys
                 const stamper = createManualStamper(apiKeys.private_key, apiKeys.public_key);
