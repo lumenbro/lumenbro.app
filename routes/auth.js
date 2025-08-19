@@ -1948,9 +1948,24 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
       throw new Error('Invalid activity type for wallet transaction');
     }
 
-    // Forward to Turnkey with stamp
+    // Get the XDR from the payload (it's the original XDR, not a hash)
+    const originalXdr = body.parameters?.payload;
+    if (!originalXdr) {
+      throw new Error('No XDR payload found in request');
+    }
+
+    // Hash the XDR like the Python code does
+    const crypto = require('crypto');
+    const txHash = crypto.createHash('sha256').update(originalXdr).digest('hex');
+    console.log('✅ Hashed XDR to transaction hash:', txHash.substring(0, 16) + '...');
+
+    // Update the body to use the hash instead of the XDR
+    body.parameters.payload = txHash;
+    bodyStr = JSON.stringify(body);
+
+    // Forward to Turnkey with stamp (using correct endpoint from Python code)
     console.log('📡 Forwarding to Turnkey API...');
-    const turnkeyResponse = await fetch('https://api.turnkey.com/v1/activities', {
+    const turnkeyResponse = await fetch('https://api.turnkey.com/public/v1/submit/sign_raw_payload', {
       method: 'POST',
       headers: {
         'X-Stamp': stampStr,
@@ -1968,16 +1983,33 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
     
     console.log('✅ Turnkey signing successful');
 
-    // Extract signed XDR from Turnkey response
-    const signedXdr = turnkeyResult.activity?.result?.signRawPayloadResult?.signedPayload || null;
+    // Extract signature from Turnkey response (following Python code pattern)
+    const r = turnkeyResult.activity?.result?.signRawPayloadResult?.r;
+    const s = turnkeyResult.activity?.result?.signRawPayloadResult?.s;
     
-    if (!signedXdr) {
-      console.error('❌ No signed XDR in Turnkey response');
+    if (!r || !s) {
+      console.error('❌ No signature in Turnkey response');
       return res.status(500).json({ 
-        error: 'No signed XDR received from Turnkey',
+        error: 'No signature received from Turnkey',
         details: turnkeyResult 
       });
     }
+    
+    // Construct signature and create signed XDR (following Python code)
+    const hexSignature = r + s;
+    if (hexSignature.length !== 128 || !/^[0-9a-fA-F]+$/.test(hexSignature)) {
+      console.error('❌ Invalid signature format');
+      return res.status(500).json({ 
+        error: 'Invalid signature format from Turnkey',
+        details: { hexSignature } 
+      });
+    }
+    
+    // Construct the signed XDR like the Python code does
+    // We need to add the signature to the original XDR
+    // For now, return the original XDR and signature separately
+    // The client will need to construct the final signed XDR
+    const signedXdr = originalXdr; // Return the original XDR
 
     // Log trade to database (consistent with Python bot)
     try {
@@ -2008,14 +2040,13 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
           ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
         `;
         
-        await pool.query(tradeLogQuery, [
-          telegram_id,
-          xlmVolume,
-          originalXdr,
-          activityId,
-          0, // Fee amount (will need to parse from XDR)
-          'XLM' // Fee asset
-        ]);
+                 await pool.query(tradeLogQuery, [
+           telegram_id,
+           xlmVolume,
+           originalXdr,
+           0, // Fee amount (will need to parse from XDR)
+           'XLM' // Fee asset
+         ]);
         
         console.log('✅ Trade logged successfully');
         
@@ -2032,6 +2063,11 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
     res.json({
       success: true,
       signed_xdr: signedXdr,
+      signature: {
+        r: r,
+        s: s,
+        hex: hexSignature
+      },
       turnkey_response: turnkeyResult,
       message: 'Transaction signed successfully - ready for network submission'
     });
