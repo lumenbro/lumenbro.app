@@ -142,9 +142,14 @@ class StellarTransactionBuilder {
   async initialize() {
     if (typeof window.StellarSdk !== 'undefined') {
       this.stellarSdk = window.StellarSdk;
-      this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
-      console.log('✅ Stellar SDK initialized for transaction building');
-      return true;
+      try {
+        this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+        console.log('✅ Stellar SDK initialized for transaction building');
+        return true;
+      } catch (error) {
+        console.error('❌ Failed to initialize Stellar Server:', error);
+        return false;
+      }
     } else {
       console.log('⚠️ Stellar SDK not available, will use backend for transaction building');
       return false;
@@ -153,11 +158,16 @@ class StellarTransactionBuilder {
 
   async buildPaymentTransaction(sourceAccount, destination, amount, asset = 'XLM', memo = null) {
     try {
-      if (this.stellarSdk) {
+      if (this.stellarSdk && this.server) {
         // Client-side transaction building
         console.log('🔧 Building payment transaction client-side...');
+        console.log('Source account:', sourceAccount);
+        console.log('Destination:', destination);
+        console.log('Amount:', amount);
+        console.log('Asset:', asset);
         
         const account = await this.server.loadAccount(sourceAccount);
+        console.log('✅ Account loaded:', account.accountId());
         
         const transaction = new this.stellarSdk.TransactionBuilder(account, {
           fee: this.stellarSdk.BASE_FEE,
@@ -210,8 +220,37 @@ class StellarTransactionBuilder {
       }
       
     } catch (error) {
-      console.error('❌ Payment transaction building failed:', error);
-      throw error;
+      console.error('❌ Client-side transaction building failed:', error);
+      console.log('🔄 Falling back to backend transaction building...');
+      
+      // Fallback to backend
+      try {
+        const response = await fetch('/mini-app/build-transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourcePublicKey: sourceAccount,
+            transactionData: {
+              recipient: destination,
+              amount: amount,
+              asset: asset,
+              memo: memo
+            },
+            operationType: 'payment'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Backend transaction building failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Payment transaction built by backend fallback');
+        return { xdr: result.xdr, source: 'server-fallback' };
+      } catch (fallbackError) {
+        console.error('❌ Backend fallback also failed:', fallbackError);
+        throw error; // Throw original error
+      }
     }
   }
 

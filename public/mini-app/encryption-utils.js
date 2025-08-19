@@ -145,5 +145,63 @@ window.EncryptionUtils = {
     return !!(storedData.encryptedPrivateKey && storedData.iv && storedData.salt && storedData.publicKey);
   },
 
+  // Migrate legacy plaintext key (apiPublicKey/apiPrivateKey) to encrypted format
+  async migrateLegacyKey(password) {
+    if (!password) {
+      throw new Error('Password required to migrate legacy key');
+    }
+
+    // Read existing stored value
+    const legacyData = await new Promise((resolve) => {
+      window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+        resolve(value ? JSON.parse(value) : null);
+      });
+    });
+
+    if (!legacyData) {
+      throw new Error('No stored key to migrate');
+    }
+
+    // If already encrypted, do nothing
+    if (legacyData.encryptedPrivateKey && legacyData.iv && legacyData.salt && legacyData.publicKey) {
+      return legacyData;
+    }
+
+    // Validate legacy plaintext format
+    if (!legacyData.apiPublicKey || !legacyData.apiPrivateKey) {
+      throw new Error('Invalid legacy key format');
+    }
+
+    // Backup legacy record for safety
+    await new Promise((resolve, reject) => {
+      window.Telegram.WebApp.CloudStorage.setItem(
+        'TURNKEY_API_KEY_BACKUP',
+        JSON.stringify(legacyData),
+        (error) => (error ? reject(new Error(`Backup failed: ${error}`)) : resolve())
+      );
+    });
+
+    // Encrypt the private key with the provided password
+    const encryptionData = await this.encryptPrivateKey(legacyData.apiPrivateKey, password);
+
+    const newStoredData = {
+      publicKey: legacyData.apiPublicKey,
+      encryptedPrivateKey: encryptionData.encryptedPrivateKey,
+      iv: encryptionData.iv,
+      salt: encryptionData.salt
+    };
+
+    // Store the migrated encrypted record
+    await new Promise((resolve, reject) => {
+      window.Telegram.WebApp.CloudStorage.setItem(
+        'TURNKEY_API_KEY',
+        JSON.stringify(newStoredData),
+        (error) => (error ? reject(new Error(`Cloud storage failed: ${error}`)) : resolve())
+      );
+    });
+
+    return newStoredData;
+  },
+
 
 };
