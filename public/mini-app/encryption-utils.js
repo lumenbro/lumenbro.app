@@ -107,9 +107,13 @@ window.EncryptionUtils = {
       data: encryptedData
     });
 
-    // Check for legacy unencrypted format - these should be handled by Python bot
+    // Check for legacy unencrypted format - handle these directly
     if (encryptedData.apiPublicKey && encryptedData.apiPrivateKey) {
-      throw new Error('Legacy keys detected. Please use the Python bot for legacy key export.');
+      console.log('⚠️ Legacy keys detected - using plaintext keys directly');
+      return {
+        apiPublicKey: encryptedData.apiPublicKey,
+        apiPrivateKey: encryptedData.apiPrivateKey
+      };
     }
 
     // For encrypted format, password is required
