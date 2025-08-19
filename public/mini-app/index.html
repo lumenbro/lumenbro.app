@@ -772,7 +772,7 @@
                 }
 
                 // Create custom stamper with decrypted keys
-                const stamper = createManualStamper(apiKeys.private_key, apiKeys.public_key);
+                const stamper = createManualStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
 
                 // Sign the transaction
                 const requestBody = {
