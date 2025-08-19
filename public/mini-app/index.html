@@ -953,10 +953,10 @@
             window.location.href = '/test-turnkey-stamper';
         }
 
-        // XDR building using backend stellar-plus
+        // XDR building using backend Stellar SDK
         async function buildTransactionXDR(transactionData) {
             try {
-                console.log('🔍 Building XDR using backend stellar-plus...');
+                console.log('🔍 Building XDR using backend Stellar SDK...');
                 console.log('Transaction data:', transactionData);
                 
                 // Get user's public key from the wallet
@@ -990,8 +990,14 @@
                 console.error('❌ Error building XDR:', error);
                 // Fallback to simple template
                 console.log('🔄 Falling back to simple XDR template...');
+                
+                // Get user's public key for fallback
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const fallbackPublicKey = authData.authenticator_info.user.public_key;
+                
                 const xdrTemplate = 'AAAAAgAAAAB' + 
-                    btoa(sourcePublicKey).replace(/=/g, '') + // Source account
+                    btoa(fallbackPublicKey).replace(/=/g, '') + // Source account
                     'AAAAAA' + // Sequence number (will be filled by network)
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Time bounds
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Memo

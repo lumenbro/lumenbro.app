@@ -1734,38 +1734,38 @@ function generateJWT(telegram_id) {
           }
         });
 
-// Build XDR using stellar-plus
+// Build XDR using Stellar SDK
 router.post('/mini-app/build-xdr', async (req, res) => {
   try {
     const { sourcePublicKey, transactionData } = req.body;
     
-    console.log('🔍 Building XDR with stellar-plus...');
+    console.log('🔍 Building XDR with Stellar SDK...');
     console.log('Source public key:', sourcePublicKey);
     console.log('Transaction data:', transactionData);
     
-    // Import stellar-plus
-    const { StellarPlus } = require('stellar-plus');
+    // Import standard Stellar SDK
+    const StellarSdk = require('@stellar/stellar-sdk');
     
     // Create a simple payment transaction
-    const transaction = new StellarPlus.TransactionBuilder(
-      new StellarPlus.Account(sourcePublicKey, '0'),
+    const transaction = new StellarSdk.TransactionBuilder(
+      new StellarSdk.Account(sourcePublicKey, '0'),
       {
-        fee: StellarPlus.BASE_FEE,
-        networkPassphrase: StellarPlus.Networks.PUBLIC
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: StellarSdk.Networks.PUBLIC
       }
     )
     .addOperation(
-      StellarPlus.Operation.payment({
+      StellarSdk.Operation.payment({
         destination: transactionData.recipient,
-        asset: transactionData.asset === 'XLM' ? StellarPlus.Asset.native() : 
-               new StellarPlus.Asset(transactionData.asset, transactionData.assetIssuer),
+        asset: transactionData.asset === 'XLM' ? StellarSdk.Asset.native() : 
+               new StellarSdk.Asset(transactionData.asset, transactionData.assetIssuer),
         amount: transactionData.amount
       })
     );
     
     // Add memo if provided
     if (transactionData.memo) {
-      transaction.addMemo(StellarPlus.Memo.text(transactionData.memo));
+      transaction.addMemo(StellarSdk.Memo.text(transactionData.memo));
     }
     
     // Set timeout
@@ -1777,11 +1777,11 @@ router.post('/mini-app/build-xdr', async (req, res) => {
     // Get the XDR
     const xdr = builtTransaction.toXDR();
     
-    console.log('✅ XDR built successfully with stellar-plus');
+    console.log('✅ XDR built successfully with Stellar SDK');
     res.json({ success: true, xdr: xdr });
     
   } catch (error) {
-    console.error('❌ Error building XDR with stellar-plus:', error);
+    console.error('❌ Error building XDR with Stellar SDK:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Failed to build XDR',
