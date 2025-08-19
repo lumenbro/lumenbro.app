@@ -1801,6 +1801,8 @@ router.post('/mini-app/build-xdr', async (req, res) => {
   }
 });
 
+
+
 // Log transaction to backend (for fees and rewards)
 router.post('/mini-app/log-transaction', async (req, res) => {
   try {
