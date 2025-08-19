@@ -581,8 +581,18 @@ router.post('/mini-app/sign-payload', async (req, res) => {
     // Convert hex private key to buffer (use the private key from Telegram Cloud Storage)
     const privateKeyBuffer = Buffer.from(privateKey, 'hex');
     
+    // Handle payload - it might be an object or string
+    let payloadString;
+    if (typeof payload === 'object') {
+      // If payload is an object, stringify it
+      payloadString = JSON.stringify(payload);
+    } else {
+      // If payload is already a string, use it as is
+      payloadString = payload;
+    }
+    
     // Create SHA-256 hash of the payload
-    const payloadHash = crypto.createHash('sha256').update(payload).digest();
+    const payloadHash = crypto.createHash('sha256').update(payloadString).digest();
 
     // Sign with P-256 (secp256r1) using elliptic, enforce low-s (canonical)
     const keyPair = ecP256.keyFromPrivate(privateKeyBuffer);
