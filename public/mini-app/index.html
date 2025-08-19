@@ -766,7 +766,7 @@
                 }
 
                 // Retrieve and decrypt API keys from Telegram Cloud Storage
-                const telegramKey = await EncryptionUtils.retrieveTelegramKey();
+                const telegramKey = await EncryptionUtils.retrieveTelegramKey(password);
                 if (!telegramKey) {
                     throw new Error('No Telegram Cloud Storage key found');
                 }
