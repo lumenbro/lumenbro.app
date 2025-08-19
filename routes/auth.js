@@ -619,18 +619,14 @@ router.post('/mini-app/sign-payload', async (req, res) => {
             user_id, 
             xlm_volume,
             tx_hash,
-            fee_amount,
-            fee_asset,
             timestamp
-          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+          ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
         `;
         
         await pool.query(tradeLogQuery, [
           telegramIdForUpdate,
           xlmVolume,
-          txHash,
-          0, // Fee amount (will need to parse from XDR)
-          'XLM' // Fee asset
+          txHash
         ]);
         
         console.log('✅ Trade logged successfully');
@@ -2040,18 +2036,14 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
             user_id, 
             xlm_volume,
             tx_hash,
-            fee_amount,
-            fee_asset,
             timestamp
-          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+          ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
         `;
         
         await pool.query(tradeLogQuery, [
           telegram_id,
           xlmVolume,
-          originalXdr,
-          0, // Fee amount (will need to parse from XDR)
-          'XLM' // Fee asset
+          originalXdr
         ]);
         
         console.log('✅ Trade logged successfully');

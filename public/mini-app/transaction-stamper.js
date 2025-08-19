@@ -29,42 +29,54 @@ function bytesToBase64url(bytes) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Transaction-specific stamper using Turnkey's ApiKeyStamper
+// Secure transaction stamper using TelegramCloudStorageStamper with decrypted keys
 class TransactionStamper {
   constructor(privateKey, publicKey) {
     this.privateKey = privateKey;
     this.publicKey = publicKey;
+    this.stamper = null; // Will be initialized in stamp method
   }
 
   async stamp(payload) {
     try {
-      console.log('🔍 Starting transaction stamping process...');
+      console.log('🔍 Starting secure transaction stamping process...');
       
-      // Use Turnkey's signWithApiKey directly (available in the bundled version)
-      console.log('✅ Using Turnkey signWithApiKey with fallback support');
+      // Initialize the TelegramCloudStorageStamper with our decrypted keys
+      if (!this.stamper) {
+        console.log('🔧 Initializing TelegramCloudStorageStamper with decrypted keys...');
+        
+        this.stamper = new window.Turnkey.TelegramCloudStorageStamper();
+        
+        // Pass decrypted keys directly (they won't be stored in plaintext)
+        await this.stamper.setSigningKey({
+          cloudStorageAPIKey: {
+            apiPublicKey: this.publicKey,
+            apiPrivateKey: this.privateKey
+          }
+        });
+        
+        console.log('✅ TelegramCloudStorageStamper initialized with decrypted keys');
+      }
       
-      // The signWithApiKey will automatically handle:
-      // - Web Crypto API on desktop
-      // - Pure JS fallback on mobile
-      // - All the complex key import logic
-      const signature = await window.Turnkey.signWithApiKey({
-        publicKey: this.publicKey,
-        privateKey: this.privateKey,
-        content: payload
-      });
+      // Use the stamper to sign the payload
+      console.log('✅ Using TelegramCloudStorageStamper with fallback support');
+      const stampResult = await this.stamper.stamp(payload);
       
-      console.log('✅ signWithApiKey signing successful');
+      console.log('✅ TelegramCloudStorageStamper signing successful');
+      
+      // Extract signature from the stamp result
+      const stampData = JSON.parse(atob(stampResult.stampHeaderValue.replace(/-/g, '+').replace(/_/g, '/')));
       
       return {
-        publicKey: this.publicKey,
-        scheme: "SIGNATURE_SCHEME_TK_API_P256",
-        signature: signature
+        publicKey: stampData.publicKey,
+        scheme: stampData.scheme,
+        signature: stampData.signature
       };
 
     } catch (error) {
       console.error('❌ TransactionStamper.stamp failed:', error);
       
-      // Fallback to backend signing if ApiKeyStamper fails
+      // Fallback to backend signing if TelegramCloudStorageStamper fails
       console.log('🔄 Attempting backend signing as fallback...');
       
       try {
