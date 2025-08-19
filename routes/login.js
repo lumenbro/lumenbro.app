@@ -2,7 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const fetch = require('node-fetch');
+// Prefer native fetch (Node 18+) with fallback to node-fetch dynamic import
+const fetch = global.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 const crypto = require('crypto');
 const { decryptCredentialBundle } = require('@turnkey/crypto');
 const KMSService = require('../services/kmsService');

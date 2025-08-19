@@ -37258,12 +37258,13 @@ ${prettyStateOverride(stateOverride)}`;
         return hex;
       };
       var base64urlToHex = base64urlToHex2;
-      const { TurnkeyBrowserClient: TurnkeyBrowserClient2 } = await Promise.resolve().then(() => (init_dist10(), dist_exports4));
+      const { TurnkeyBrowserClient: TurnkeyBrowserClient2, ApiKeyStamper: ApiKeyStamper2 } = await Promise.resolve().then(() => (init_dist10(), dist_exports4));
       const { IframeStamper: IframeStamper2 } = await Promise.resolve().then(() => (init_dist4(), dist_exports2));
       const { getWebAuthnAttestation: getWebAuthnAttestation2 } = await Promise.resolve().then(() => (init_dist3(), dist_exports));
       const { TelegramCloudStorageStamper: TelegramCloudStorageStamper2 } = await Promise.resolve().then(() => (init_dist11(), dist_exports5));
       window.Turnkey = {
         TurnkeyBrowserClient: TurnkeyBrowserClient2,
+        ApiKeyStamper: ApiKeyStamper2,
         IframeStamper: IframeStamper2,
         getWebAuthnAttestation: getWebAuthnAttestation2,
         TelegramCloudStorageStamper: TelegramCloudStorageStamper2,

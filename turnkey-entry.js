@@ -3,7 +3,7 @@ console.log('turnkey-entry.js starting...');
 
 (async () => {
   try {
-    const { TurnkeyBrowserClient } = await import('@turnkey/sdk-browser');
+    const { TurnkeyBrowserClient, ApiKeyStamper } = await import('@turnkey/sdk-browser');
     const { IframeStamper } = await import('@turnkey/iframe-stamper');
     const { getWebAuthnAttestation } = await import('@turnkey/http');
     const { TelegramCloudStorageStamper } = await import('@turnkey/telegram-cloud-storage-stamper');
@@ -11,6 +11,7 @@ console.log('turnkey-entry.js starting...');
     // Initialize base object
     window.Turnkey = {
       TurnkeyBrowserClient,
+      ApiKeyStamper,
       IframeStamper,
       getWebAuthnAttestation,
              TelegramCloudStorageStamper,
