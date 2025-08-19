@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="/mini-app/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script> <!-- Updated to esbuild output with cache busting -->
-    <!-- Stellar SDK for browser -->
-    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/lib/index.min.js"></script>
+    <!-- Stellar SDK for browser - try different CDN -->
+    <script src="https://unpkg.com/@stellar/stellar-sdk@13.3.0/lib/index.min.js"></script>
     <script>
         // Debug: Check what's available
         console.log('🔍 Checking available packages...');
@@ -959,7 +959,9 @@
                 
                 // Check if Stellar SDK is available
                 if (typeof StellarSdk === 'undefined') {
-                    throw new Error('Stellar SDK not loaded');
+                    console.log('⚠️ Stellar SDK not loaded, trying fallback...');
+                    // Fallback to backend XDR building
+                    return await buildXDRWithBackend(transactionData);
                 }
                 
                 // Get user's public key from the wallet
@@ -1016,6 +1018,42 @@
                 
             } catch (error) {
                 console.error('❌ Error building XDR:', error);
+                throw error;
+            }
+        }
+
+        // Fallback: Build XDR using backend
+        async function buildXDRWithBackend(transactionData) {
+            try {
+                console.log('🔄 Using backend XDR building as fallback...');
+                
+                // Get user's public key from the wallet
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const sourcePublicKey = authData.authenticator_info.user.public_key;
+                
+                // Use backend to build proper XDR with Stellar SDK
+                const response = await fetch('/mini-app/build-xdr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sourcePublicKey: sourcePublicKey,
+                        transactionData: transactionData
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Backend XDR building failed: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('✅ XDR built by backend fallback:', result.xdr);
+                return result.xdr;
+                
+            } catch (error) {
+                console.error('❌ Backend XDR building also failed:', error);
                 throw error;
             }
         }
