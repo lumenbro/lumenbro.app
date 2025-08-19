@@ -83,9 +83,21 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
        // Just log the error and continue
      }
     
-    // Return Turnkey response to frontend
+    // Extract signed XDR from Turnkey response
+    const signedXdr = turnkeyResult.activity?.result?.signRawPayloadResult?.signedPayload || null;
+    
+    if (!signedXdr) {
+      console.error('❌ No signed XDR in Turnkey response');
+      return res.status(500).json({ 
+        error: 'No signed XDR received from Turnkey',
+        details: turnkeyResult 
+      });
+    }
+    
+    // Return signed XDR to frontend
     res.json({
       success: true,
+      signed_xdr: signedXdr,
       turnkey_response: turnkeyResult,
       fee_logged: !!(fee_amount && fee_asset)
     });

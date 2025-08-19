@@ -637,6 +637,13 @@
                     throw new Error(result.error || 'Transaction build failed');
                 }
 
+                // Store transaction data for signing
+                window.currentTransactionData = {
+                    xdr: result.xdr,
+                    transaction: result.transaction,
+                    fees: result.fees
+                };
+
                 // Show transaction details for confirmation
                 showTransactionConfirmation(result.transaction, result.fees);
 
@@ -704,12 +711,185 @@
 
         async function signAndSubmitTransaction() {
             try {
-                // TODO: Implement password prompt and signing
-                alert('Transaction signing coming soon!');
+                // Show password prompt
+                const password = prompt('Enter your password to sign this transaction:');
+                if (!password) {
+                    alert('Password required to sign transaction');
+                    return;
+                }
+
+                // Show loading state
+                const confirmButton = document.querySelector('.btn-primary');
+                const originalText = confirmButton.textContent;
+                confirmButton.textContent = '⏳ Signing Transaction...';
+                confirmButton.disabled = true;
+
+                // Get the transaction data from the confirmation screen
+                const transactionData = window.currentTransactionData;
+                if (!transactionData) {
+                    throw new Error('No transaction data found');
+                }
+
+                // Sign the transaction using the custom stamper
+                const signedResult = await signTransactionWithPassword(transactionData.xdr, password);
+
+                if (!signedResult.success) {
+                    throw new Error(signedResult.error || 'Transaction signing failed');
+                }
+
+                // Submit the signed transaction to the network
+                const submitResult = await submitTransactionToNetwork(signedResult.signed_xdr);
+
+                if (!submitResult.success) {
+                    throw new Error(submitResult.error || 'Transaction submission failed');
+                }
+
+                // Show success message
+                showTransactionSuccess(submitResult.hash);
+
             } catch (error) {
                 console.error('Transaction signing failed:', error);
                 alert(`Signing failed: ${error.message}`);
+
+                // Reset button
+                const confirmButton = document.querySelector('.btn-primary');
+                confirmButton.textContent = '✅ Confirm & Sign';
+                confirmButton.disabled = false;
             }
+        }
+
+        async function signTransactionWithPassword(xdr, password) {
+            try {
+                // Import the encryption utilities
+                if (typeof EncryptionUtils === 'undefined') {
+                    throw new Error('Encryption utilities not loaded');
+                }
+
+                // Retrieve and decrypt API keys from Telegram Cloud Storage
+                const telegramKey = await EncryptionUtils.retrieveTelegramKey();
+                if (!telegramKey) {
+                    throw new Error('No Telegram Cloud Storage key found');
+                }
+
+                const encryptedData = await Telegram.WebApp.CloudStorage.getItem('encrypted_api_keys');
+                if (!encryptedData) {
+                    throw new Error('No encrypted API keys found');
+                }
+
+                const decryptedData = await EncryptionUtils.decryptData(encryptedData, password, telegramKey);
+                const apiKeys = JSON.parse(decryptedData);
+
+                // Create custom stamper with decrypted keys
+                const stamper = createManualStamper(apiKeys.private_key, apiKeys.public_key);
+
+                // Sign the transaction
+                const requestBody = {
+                    type: 'ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2',
+                    timestampMs: Date.now().toString(),
+                    organizationId: '7997e541-d441-460f-8c4a-5f7fcb919cc8',
+                    parameters: {
+                        signWith: apiKeys.public_key,
+                        payload: xdr,
+                        encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
+                        hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE'
+                    }
+                };
+
+                const stamp = await stamper.stamp(requestBody);
+
+                // Get telegram_id from the current user session
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const telegram_id = authData.authenticator_info.user.telegram_id;
+
+                // Send to Node.js backend for processing
+                const response = await fetch('/mini-app/sign-transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stamp: stamp,
+                        requestBody: requestBody,
+                        xdr: xdr,
+                        telegram_id: telegram_id
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to process signed transaction');
+                }
+
+                const result = await response.json();
+                return result;
+
+            } catch (error) {
+                console.error('Signing with password failed:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function submitTransactionToNetwork(signedXdr) {
+            try {
+                // Submit to Stellar network via Horizon
+                const response = await fetch('https://horizon.stellar.org/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `tx=${encodeURIComponent(signedXdr)}`
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    return {
+                        success: true,
+                        hash: result.hash,
+                        ledger: result.ledger
+                    };
+                } else {
+                    return {
+                        success: false,
+                        error: result.extras?.result_codes?.operations?.join(', ') || result.detail || 'Transaction failed'
+                    };
+                }
+
+            } catch (error) {
+                console.error('Network submission failed:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        function showTransactionSuccess(hash) {
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <div class="success-message">
+                        <div class="success-icon">✅</div>
+                        <h1>Transaction Successful!</h1>
+                        <p>Your payment has been sent successfully.</p>
+                        <div class="transaction-hash">
+                            <strong>Transaction Hash:</strong><br>
+                            <code>${hash}</code>
+                        </div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button onclick="showWallet()" class="btn-primary">🏠 Back to Wallet</button>
+                            <button onclick="window.open('https://stellar.expert/explorer/public/tx/${hash}', '_blank')" class="btn-secondary">🔍 View on Explorer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
         }
 
         function showAssetManagement() {
