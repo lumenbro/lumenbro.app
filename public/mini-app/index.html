@@ -731,6 +731,9 @@
                     throw new Error('No transaction data found');
                 }
 
+                console.log('🔍 Transaction data for signing:', transactionData);
+                console.log('🔍 XDR to sign:', transactionData.xdr);
+
                 // Sign the transaction using the custom stamper
                 const signedResult = await signTransactionWithPassword(transactionData.xdr, password);
 
@@ -943,6 +946,8 @@
             try {
                 console.log('🔍 Constructing signed XDR...');
                 console.log('Original XDR:', originalXdr);
+                console.log('Original XDR type:', typeof originalXdr);
+                console.log('Original XDR length:', originalXdr ? originalXdr.length : 'undefined');
                 console.log('Signature:', signature);
                 console.log('Public Key:', publicKey);
                 
