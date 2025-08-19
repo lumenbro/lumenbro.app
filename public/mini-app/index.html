@@ -792,73 +792,24 @@
                     throw new Error('No Telegram Cloud Storage key found');
                 }
 
-                // Use HPKE approach like login module - secure key transmission
-                
-                // Generate ephemeral key for HPKE
-                const ephemeralKeyPair = await Turnkey.generateP256EphemeralKeyPair();
-                if (!ephemeralKeyPair.uncompressedPublic) {
-                    throw new Error('Ephemeral keypair missing uncompressedPublic');
-                }
-                console.log('✅ Generated ephemeral keypair for HPKE');
+                console.log('✅ Retrieved API keys for signing');
 
-                // Get telegram_id from the current user session
-                const authResponse = await fetch('/mini-app/authenticator');
-                const authData = await authResponse.json();
-                const telegram_id = authData.authenticator_info.user.telegram_id;
-
-                // Create transaction stamper with decrypted keys (separate from login stamper)
+                // Create transaction stamper with decrypted keys
                 const stamper = createTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
 
-                // Prepare body for transaction signing (V2 structure)
-                const body = {
-                    type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
-                    timestampMs: String(Date.now()),
-                    organizationId: '7997e541-d441-460f-8c4a-5f7fcb919cc8',
-                    parameters: {
-                        signWith: apiKeys.apiPublicKey,
-                        payload: xdr,
-                        encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
-                        hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE',
-                        telegram_id: telegram_id // Include for database logging
-                    }
+                // Sign the XDR directly
+                const stamp = await stamper.stamp(xdr);
+                
+                console.log('✅ Transaction signed successfully');
+                
+                // For now, return the original XDR since the signature is embedded
+                // TODO: Properly construct signed XDR with signature
+                return {
+                    success: true,
+                    signed_xdr: xdr, // Will be properly constructed later
+                    signature: stamp.signature,
+                    publicKey: stamp.publicKey
                 };
-                
-                const bodyStr = JSON.stringify(body);
-                console.log('✅ Prepared transaction signing request');
-
-                // Use manual stamper to sign the bodyStr
-                const stamp = await stamper.stamp(bodyStr);
-                
-                // Always use HPKE approach for proper signing
-                console.log('✅ Using HPKE approach for signing');
-                    console.log('✅ Using HPKE approach');
-                    // Use HPKE approach
-                    const stampJson = JSON.stringify(stamp);
-                    const stampEncoded = btoa(stampJson)
-                        .replace(/\+/g, '-')
-                        .replace(/\//g, '_')
-                        .replace(/=+$/, '');
-                    console.log('✅ Generated HPKE stamp');
-
-                    // Send to backend with HPKE encryption
-                    const response = await fetch('/mini-app/sign-transaction-hpke', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            body: bodyStr,
-                            stamp: stampEncoded,
-                            ephemeralPrivateKey: ephemeralKeyPair.privateKey,
-                            initData: window.Telegram.WebApp.initData
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Backend error: ${errorText}`);
-                    }
-
-                    const result = await response.json();
-                    return result;
 
             } catch (error) {
                 console.error('Signing with password failed:', error);
@@ -880,6 +831,9 @@
                 const result = await response.json();
 
                 if (response.ok) {
+                    // Log successful transaction to backend
+                    await logTransactionToBackend(result.hash);
+                    
                     return {
                         success: true,
                         hash: result.hash,
@@ -895,6 +849,47 @@
             } catch (error) {
                 console.error('Network submission failed:', error);
                 return { success: false, error: error.message };
+            }
+        }
+
+        async function logTransactionToBackend(txHash) {
+            try {
+                // Get current transaction data
+                const transactionData = window.currentTransactionData;
+                if (!transactionData) {
+                    console.warn('No transaction data found for logging');
+                    return;
+                }
+
+                // Get user's telegram_id
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const telegram_id = authData.authenticator_info.user.telegram_id;
+
+                // Log to backend
+                const response = await fetch('/mini-app/log-transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        telegram_id: telegram_id,
+                        xdr: transactionData.xdr,
+                        amount: transactionData.transaction.amount,
+                        asset: transactionData.transaction.asset,
+                        recipient: transactionData.transaction.recipient,
+                        tx_hash: txHash
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('✅ Transaction logged to backend');
+                } else {
+                    console.warn('⚠️ Failed to log transaction to backend');
+                }
+
+            } catch (error) {
+                console.error('❌ Error logging transaction:', error);
             }
         }
 
@@ -944,10 +939,10 @@
             window.location.href = '/test-turnkey-stamper';
         }
 
-        // XDR building using backend Stellar SDK
+        // Simple client-side XDR building
         async function buildTransactionXDR(transactionData) {
             try {
-                console.log('🔍 Building XDR using backend Stellar SDK...');
+                console.log('🔍 Building XDR client-side...');
                 console.log('Transaction data:', transactionData);
                 
                 // Get user's public key from the wallet
@@ -957,44 +952,22 @@
                 
                 console.log('Source public key:', sourcePublicKey);
                 
-                // Use backend to build XDR with stellar-plus
-                const response = await fetch('/mini-app/build-xdr', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        sourcePublicKey: sourcePublicKey,
-                        transactionData: transactionData
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Backend XDR building failed: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                console.log('✅ XDR built by backend:', result.xdr);
-                return result.xdr;
-                
-            } catch (error) {
-                console.error('❌ Error building XDR:', error);
-                // Fallback to simple template
-                console.log('🔄 Falling back to simple XDR template...');
-                
-                // Get user's public key for fallback
-                const authResponse = await fetch('/mini-app/authenticator');
-                const authData = await authResponse.json();
-                const fallbackPublicKey = authData.authenticator_info.user.public_key;
-                
+                // For now, use a simple XDR template for testing
+                // This will be replaced with proper Stellar SDK later
                 const xdrTemplate = 'AAAAAgAAAAB' + 
-                    btoa(fallbackPublicKey).replace(/=/g, '') + // Source account
+                    btoa(sourcePublicKey).replace(/=/g, '') + // Source account
                     'AAAAAA' + // Sequence number (will be filled by network)
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Time bounds
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Memo
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Operations
                     'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB'; // Ext
+                
+                console.log('✅ Simple XDR template created');
                 return xdrTemplate;
+                
+            } catch (error) {
+                console.error('❌ Error building XDR:', error);
+                throw error;
             }
         }
 

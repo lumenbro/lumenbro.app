@@ -1790,6 +1790,56 @@ router.post('/mini-app/build-xdr', async (req, res) => {
   }
 });
 
+// Log transaction to backend (for fees and rewards)
+router.post('/mini-app/log-transaction', async (req, res) => {
+  try {
+    const { telegram_id, xdr, amount, asset, recipient, tx_hash } = req.body;
+    
+    console.log('📊 Logging transaction to backend:', { telegram_id, amount, asset, recipient });
+    
+    // Calculate XLM volume for fee calculation
+    let xlmVolume = parseFloat(amount);
+    if (asset !== 'XLM') {
+      // TODO: Get asset price from Stellar DEX for XLM conversion
+      xlmVolume = parseFloat(amount) * 0.1; // Assume 10:1 ratio for now
+    }
+    
+    // Log to trades table
+    const tradeLogQuery = `
+      INSERT INTO trades (
+        user_id, 
+        xlm_volume,
+        tx_hash,
+        timestamp
+      ) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+    `;
+    
+    await pool.query(tradeLogQuery, [
+      telegram_id,
+      xlmVolume,
+      tx_hash || 'pending'
+    ]);
+    
+    console.log('✅ Transaction logged successfully');
+    
+    // TODO: Add fee wallet payment operation here
+    // TODO: Calculate and distribute referral rewards
+    
+    res.json({ 
+      success: true, 
+      message: 'Transaction logged successfully' 
+    });
+    
+  } catch (error) {
+    console.error('❌ Error logging transaction:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to log transaction',
+      details: error.message 
+    });
+  }
+});
+
 // Calculate service fee based on user status
         function calculateServiceFee(amount, asset, telegramId) {
           // TODO: Get user status from database (pioneer, referred, etc.)
@@ -2075,7 +2125,7 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
       console.log('💾 Logging trade to database...');
       
       // Extract transaction hash from the original XDR
-      const originalXdr = body.parameters?.payload || 'unknown';
+      const txHashForLogging = body.parameters?.payload || 'unknown';
       
       // Extract Turnkey activity ID from response
       const activityId = turnkeyResult.activity?.id || 'unknown';
@@ -2099,7 +2149,7 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
         await pool.query(tradeLogQuery, [
           telegram_id,
           xlmVolume,
-          originalXdr
+          txHashForLogging
         ]);
         
         console.log('✅ Trade logged successfully');
