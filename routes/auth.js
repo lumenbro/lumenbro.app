@@ -1922,6 +1922,8 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
     const { body: bodyStr, stamp: stampStr, ephemeralPrivateKey, initData } = req.body;
     
     console.log('🔐 Processing wallet transaction signing with HPKE...');
+    console.log('🔍 Request body length:', bodyStr ? bodyStr.length : 0);
+    console.log('🔍 Request body preview:', bodyStr ? bodyStr.substring(0, 200) + '...' : 'empty');
     
     // Validate required fields
     if (!bodyStr || !stampStr || !ephemeralPrivateKey) {
@@ -1939,7 +1941,14 @@ router.post('/mini-app/sign-transaction-hpke', async (req, res) => {
     let body;
     try {
       body = JSON.parse(bodyStr);
+      console.log('🔍 Parsed request body:', {
+        type: body.type,
+        hasParameters: !!body.parameters,
+        parametersKeys: body.parameters ? Object.keys(body.parameters) : [],
+        payloadLength: body.parameters?.payload ? body.parameters.payload.length : 0
+      });
     } catch (e) {
+      console.error('❌ Failed to parse body JSON:', e);
       throw new Error('Invalid body JSON');
     }
 

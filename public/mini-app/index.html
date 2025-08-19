@@ -75,6 +75,7 @@
     <script src="/mini-app/clear.js"></script>  <!-- New script for clear -->
     <script src="/mini-app/mobile-debug.js"></script>  <!-- Mobile debugging -->
     <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
+    <script src="/mini-app/transaction-stamper.js"></script>  <!-- Transaction signing stamper -->
     <style>
         .status {
             padding: 15px;
@@ -785,8 +786,8 @@
                 const authData = await authResponse.json();
                 const telegram_id = authData.authenticator_info.user.telegram_id;
 
-                // Create manual stamper with decrypted keys
-                const stamper = createManualStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
+                // Create transaction stamper with decrypted keys (separate from login stamper)
+                const stamper = createTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
 
                 // Prepare body for transaction signing (V2 structure)
                 const body = {
@@ -807,32 +808,46 @@
 
                 // Use manual stamper to sign the bodyStr
                 const stamp = await stamper.stamp(bodyStr);
-                const stampJson = JSON.stringify(stamp);
-                const stampEncoded = btoa(stampJson)
-                    .replace(/\+/g, '-')
-                    .replace(/\//g, '_')
-                    .replace(/=+$/, '');
-                console.log('✅ Generated HPKE stamp');
+                
+                // TransactionStamper returns signature directly (no stampHeaderValue)
+                if (stamp.signature) {
+                    console.log('✅ Using TransactionStamper result');
+                    return {
+                        success: true,
+                        signed_xdr: xdr, // Use original XDR
+                        signature: stamp.signature,
+                        publicKey: stamp.publicKey
+                    };
+                } else {
+                    console.log('✅ Using HPKE approach');
+                    // Use HPKE approach
+                    const stampJson = JSON.stringify(stamp);
+                    const stampEncoded = btoa(stampJson)
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    console.log('✅ Generated HPKE stamp');
 
-                // Send to backend with HPKE encryption
-                const response = await fetch('/mini-app/sign-transaction-hpke', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        body: bodyStr,
-                        stamp: stampEncoded,
-                        ephemeralPrivateKey: ephemeralKeyPair.privateKey,
-                        initData: window.Telegram.WebApp.initData
-                    })
-                });
+                    // Send to backend with HPKE encryption
+                    const response = await fetch('/mini-app/sign-transaction-hpke', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            body: bodyStr,
+                            stamp: stampEncoded,
+                            ephemeralPrivateKey: ephemeralKeyPair.privateKey,
+                            initData: window.Telegram.WebApp.initData
+                        })
+                    });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Backend error: ${errorText}`);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Backend error: ${errorText}`);
+                    }
+
+                    const result = await response.json();
+                    return result;
                 }
-
-                const result = await response.json();
-                return result;
 
             } catch (error) {
                 console.error('Signing with password failed:', error);

@@ -203,6 +203,7 @@ function derEncodeSignature(sigBuffer) {
 }
 
 // Manual stamper implementation using our encrypted key storage
+// Now uses Turnkey's ApiKeyStamper internally for better mobile compatibility
 class ManualStamper {
   constructor(privateKey, publicKey) {
     this.privateKey = privateKey;
@@ -213,236 +214,79 @@ class ManualStamper {
     try {
       console.log('🔍 Starting manual stamping process...');
       
-      // For mobile, we need to handle Web Crypto API limitations differently
-      if (window.mobileEncryptionFix && window.mobileEncryptionFix.isMobile) {
-        console.log('🔧 Using mobile-compatible key import approach...');
-        
-        // Mobile approach: Use JWK import with proper ECDSA setup
-        try {
-          const privateBytes = hexToUint8Array(this.privateKey);
-          console.log('✅ Private bytes converted for mobile, length:', privateBytes.length);
-          
-          // Convert private key to base64url
-          const d = bytesToBase64url(privateBytes);
-          console.log('✅ Private key base64url encoded for mobile');
-          
-          // Create a proper JWK for mobile ECDSA
-          const privateJwk = {
-            kty: "EC",
-            crv: "P-256",
-            d: d,
-            // Add required public key components for mobile compatibility
-            x: "", // Will be derived
-            y: ""  // Will be derived
-          };
-          
-          // Try to derive public key components from private key
-          try {
-            // Use the raw key import approach directly (simpler and more reliable)
-            const privateKeyBuffer = hexToUint8Array(this.privateKey);
-            
-            // Create a CryptoKey from the private key bytes
-            const privateKeyCrypto = await crypto.subtle.importKey(
-              "raw",
-              privateKeyBuffer,
-              { name: "ECDSA", namedCurve: "P-256" },
-              true,
-              ["sign"]
-            );
-            
-            console.log('✅ Private key imported successfully for mobile (raw approach)');
-            
-            // Sign the payload
-            const payloadBytes = new TextEncoder().encode(payload);
-            const sigBuffer = await crypto.subtle.sign(
-              { name: "ECDSA", hash: "SHA-256" },
-              privateKeyCrypto,
-              payloadBytes
-            );
-            
-            // Encode signature in DER format
-            const sigHex = derEncodeSignature(sigBuffer);
-            
-            return {
-              publicKey: this.publicKey,
-              scheme: "SIGNATURE_SCHEME_TK_API_P256",
-              signature: sigHex
-            };
-            
-          } catch (jwkError) {
-            console.log('🔄 JWK approach failed, trying PKCS8 method...');
-            
-            // Alternative: Use PKCS8 format (more widely supported on mobile)
-            try {
-              // Convert private key to PKCS8 format
-              const privateKeyBuffer = hexToUint8Array(this.privateKey);
-              
-              // Create PKCS8 structure for P-256
-              const pkcs8Header = new Uint8Array([
-                0x30, 0x81, 0x87, // SEQUENCE
-                0x02, 0x01, 0x00, // INTEGER 0 (version)
-                0x30, 0x13,       // SEQUENCE
-                0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, // OID for P-256
-                0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, // OID for ECDSA
-                0x04, 0x6D,       // OCTET STRING
-                0x30, 0x6B,       // SEQUENCE
-                0x02, 0x01, 0x01, // INTEGER 1 (version)
-                0x04, 0x20        // OCTET STRING (32 bytes for private key)
-              ]);
-              
-              const pkcs8Key = new Uint8Array(pkcs8Header.length + privateKeyBuffer.length);
-              pkcs8Key.set(pkcs8Header);
-              pkcs8Key.set(privateKeyBuffer, pkcs8Header.length);
-              
-              const privateKeyCrypto = await crypto.subtle.importKey(
-                "pkcs8",
-                pkcs8Key,
-                { name: "ECDSA", namedCurve: "P-256" },
-                true,
-                ["sign"]
-              );
-              
-                            console.log('✅ PKCS8 import successful for mobile');
-              
-              // Sign the payload
-              const payloadBytes = new TextEncoder().encode(payload);
-              const sigBuffer = await crypto.subtle.sign(
-                { name: "ECDSA", hash: "SHA-256" },
-                privateKeyCrypto,
-                payloadBytes
-              );
-              
-              // Encode signature in DER format
-              const sigHex = derEncodeSignature(sigBuffer);
-              
-              return {
-                publicKey: this.publicKey,
-                scheme: "SIGNATURE_SCHEME_TK_API_P256",
-                signature: sigHex
-              };
-              
-            } catch (pkcs8Error) {
-              console.log('🔄 PKCS8 approach failed, trying raw key method...');
-              
-              // Last resort: Try raw key import
-              const privateKeyCrypto = await crypto.subtle.importKey(
-                "raw",
-                privateBytes,
-                { 
-                  name: "ECDSA", 
-                  namedCurve: "P-256"
-                },
-                true,
-                ["sign"]
-              );
-              
-              console.log('✅ Raw key import successful for mobile');
-              
-              // Sign the payload
-              const payloadBytes = new TextEncoder().encode(payload);
-              const sigBuffer = await crypto.subtle.sign(
-                { name: "ECDSA", hash: "SHA-256" },
-                privateKeyCrypto,
-                payloadBytes
-              );
-              
-              // Encode signature in DER format
-              const sigHex = derEncodeSignature(sigBuffer);
-              
-              return {
-                publicKey: this.publicKey,
-                scheme: "SIGNATURE_SCHEME_TK_API_P256",
-                signature: sigHex
-              };
-            }
-          }
-          
-        } catch (mobileError) {
-          console.error('❌ All mobile approaches failed:', mobileError);
-          
-          // Last resort: Try to use the backend signing endpoint
-          console.log('🔄 Attempting backend signing as last resort...');
-          
-          try {
-            const response = await fetch('/mini-app/sign-payload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                payload: payload,
-                privateKey: this.privateKey,
-                publicKey: this.publicKey
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Backend signing failed: ${response.status}`);
-            }
-            
-                         const stampResult = await response.json();
-             console.log('✅ Backend signing successful for mobile');
-             
-             // Store the correct sub-org ID for use in the login process
-             if (stampResult.subOrgId) {
-               window.correctSubOrgId = stampResult.subOrgId;
-               console.log('🔧 Using correct sub-org ID:', stampResult.subOrgId);
-             }
-             
-             return {
-               publicKey: stampResult.publicKey || this.publicKey, // Use returned public key if available
-               scheme: "SIGNATURE_SCHEME_TK_API_P256",
-               signature: stampResult.signature
-             };
-            
-          } catch (backendError) {
-            console.error('❌ Backend signing also failed:', backendError);
-            throw new Error('Mobile signing not supported - please use desktop version');
-          }
-        }
-      }
-      
-      // Desktop approach - import and sign locally
-      console.log('🔍 Importing private key...');
-      const privateKeyCrypto = await importPrivateKey(this.privateKey, this.publicKey);
-      console.log('✅ Private key imported successfully');
-      
-      // Sign the payload
-      console.log('🔍 Signing payload...');
-      const payloadBytes = new TextEncoder().encode(payload);
-      console.log('Payload length:', payloadBytes.length);
-      
-      const sigBuffer = await crypto.subtle.sign(
-        { name: "ECDSA", hash: "SHA-256" },
-        privateKeyCrypto,
-        payloadBytes
-      );
-      console.log('✅ Payload signed successfully');
-      
-      // Encode signature in DER format
-      console.log('🔍 Encoding signature...');
-      const sigHex = derEncodeSignature(sigBuffer);
-      console.log('✅ Signature encoded successfully');
-      
-      // Return stamp object
-      return {
-        publicKey: this.publicKey,
-        scheme: "SIGNATURE_SCHEME_TK_API_P256",
-        signature: sigHex
-      };
-    } catch (error) {
-      console.error('❌ Manual stamping failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        line: error.line,
-        column: error.column
+      // Use Turnkey's ApiKeyStamper internally for better mobile compatibility
+      // This gives us the same fallback logic as TelegramCloudStorageStamper
+      const apiKeyStamper = new window.Turnkey.ApiKeyStamper({
+        apiPublicKey: this.publicKey,
+        apiPrivateKey: this.privateKey
       });
-      throw error;
+      
+      console.log('✅ Using Turnkey ApiKeyStamper with fallback support');
+      
+      // The ApiKeyStamper will automatically handle:
+      // - Web Crypto API on desktop
+      // - Pure JS fallback on mobile
+      // - All the complex key import logic
+      const stampResult = await apiKeyStamper.stamp(payload);
+      
+      console.log('✅ ApiKeyStamper signing successful');
+      
+      // ApiKeyStamper returns { stampHeaderName, stampHeaderValue }
+      // We need to extract the signature from stampHeaderValue
+      const stampData = JSON.parse(atob(stampResult.stampHeaderValue.replace(/-/g, '+').replace(/_/g, '/')));
+      
+      return {
+        publicKey: stampData.publicKey,
+        scheme: stampData.scheme,
+        signature: stampData.signature
+      };
+
+    } catch (error) {
+      console.error('❌ ManualStamper.stamp failed:', error);
+      
+      // Fallback to backend signing if ApiKeyStamper fails
+      console.log('🔄 Attempting backend signing as fallback...');
+      
+      try {
+        const response = await fetch('/mini-app/sign-payload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: payload,
+            privateKey: this.privateKey,
+            publicKey: this.publicKey
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Backend signing failed: ${response.status}`);
+        }
+        
+        const stampResult = await response.json();
+        console.log('✅ Backend signing successful as fallback');
+        
+        // Store the correct sub-org ID for use in the login process
+        if (stampResult.subOrgId) {
+          window.correctSubOrgId = stampResult.subOrgId;
+          console.log('🔧 Using correct sub-org ID:', stampResult.subOrgId);
+        }
+        
+        return {
+          publicKey: stampResult.publicKey || this.publicKey,
+          scheme: "SIGNATURE_SCHEME_TK_API_P256",
+          signature: stampResult.signature
+        };
+        
+      } catch (backendError) {
+        console.error('❌ Backend signing also failed:', backendError);
+        throw new Error('Signing failed - please try again');
+      }
     }
   }
 }
 
 function createManualStamper(privateKey, publicKey) {
-  console.log('✅ Manual stamper created with encrypted keys');
+  console.log('✅ Creating ManualStamper with encrypted keys');
   return new ManualStamper(privateKey, publicKey);
 }
 
