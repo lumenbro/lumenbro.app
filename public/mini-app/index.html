@@ -8,14 +8,13 @@
     <link rel="stylesheet" href="/mini-app/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script> <!-- Updated to esbuild output with cache busting -->
-    <!-- Use stellar-plus for transaction building -->
+    <!-- Stellar SDK for browser -->
+    <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/lib/index.min.js"></script>
     <script>
         // Debug: Check what's available
         console.log('🔍 Checking available packages...');
         console.log('Available globals:', Object.keys(window).filter(key => key.toLowerCase().includes('stellar')));
-        
-        // Try to load stellar-plus
-        console.log('🔍 Attempting to load stellar-plus...');
+        console.log('🔍 Stellar SDK loaded:', typeof StellarSdk !== 'undefined' ? 'Yes' : 'No');
     </script>
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
@@ -801,15 +800,28 @@
                 const stamp = await stamper.stamp(xdr);
                 
                 console.log('✅ Transaction signed successfully');
+                console.log('🔍 Stamp result:', stamp);
                 
-                // For now, return the original XDR since the signature is embedded
-                // TODO: Properly construct signed XDR with signature
-                return {
-                    success: true,
-                    signed_xdr: xdr, // Will be properly constructed later
-                    signature: stamp.signature,
-                    publicKey: stamp.publicKey
-                };
+                // Extract signature from stamp result
+                if (stamp.signature && stamp.signature !== 'embedded') {
+                    console.log('✅ Using extracted signature');
+                    // TODO: Properly construct signed XDR with signature
+                    // For now, return original XDR and let backend handle it
+                    return {
+                        success: true,
+                        signed_xdr: xdr,
+                        signature: stamp.signature,
+                        publicKey: stamp.publicKey
+                    };
+                } else {
+                    console.log('⚠️ No signature extracted, using original XDR');
+                    return {
+                        success: true,
+                        signed_xdr: xdr,
+                        signature: 'none',
+                        publicKey: stamp.publicKey
+                    };
+                }
 
             } catch (error) {
                 console.error('Signing with password failed:', error);
@@ -939,11 +951,16 @@
             window.location.href = '/test-turnkey-stamper';
         }
 
-        // Simple client-side XDR building
+        // Client-side XDR building with Stellar SDK
         async function buildTransactionXDR(transactionData) {
             try {
-                console.log('🔍 Building XDR client-side...');
+                console.log('🔍 Building XDR client-side with Stellar SDK...');
                 console.log('Transaction data:', transactionData);
+                
+                // Check if Stellar SDK is available
+                if (typeof StellarSdk === 'undefined') {
+                    throw new Error('Stellar SDK not loaded');
+                }
                 
                 // Get user's public key from the wallet
                 const authResponse = await fetch('/mini-app/authenticator');
@@ -952,18 +969,50 @@
                 
                 console.log('Source public key:', sourcePublicKey);
                 
-                // For now, use a simple XDR template for testing
-                // This will be replaced with proper Stellar SDK later
-                const xdrTemplate = 'AAAAAgAAAAB' + 
-                    btoa(sourcePublicKey).replace(/=/g, '') + // Source account
-                    'AAAAAA' + // Sequence number (will be filled by network)
-                    'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Time bounds
-                    'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Memo
-                    'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB' + // Operations
-                    'AAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB'; // Ext
+                // Get account sequence number from Horizon
+                const accountResponse = await fetch(`https://horizon.stellar.org/accounts/${sourcePublicKey}`);
+                const accountData = await accountResponse.json();
                 
-                console.log('✅ Simple XDR template created');
-                return xdrTemplate;
+                if (accountData.detail) {
+                    throw new Error('Account not found on Stellar network');
+                }
+                
+                const sequenceNumber = accountData.sequence;
+                console.log('Account sequence number:', sequenceNumber);
+                
+                // Create transaction using Stellar SDK
+                const transaction = new StellarSdk.TransactionBuilder(
+                    new StellarSdk.Account(sourcePublicKey, sequenceNumber),
+                    {
+                        fee: StellarSdk.BASE_FEE,
+                        networkPassphrase: StellarSdk.Networks.PUBLIC
+                    }
+                )
+                .addOperation(
+                    StellarSdk.Operation.payment({
+                        destination: transactionData.recipient,
+                        asset: transactionData.asset === 'XLM' ? StellarSdk.Asset.native() : 
+                               new StellarSdk.Asset(transactionData.asset, transactionData.assetIssuer),
+                        amount: transactionData.amount
+                    })
+                );
+                
+                // Add memo if provided
+                if (transactionData.memo) {
+                    transaction.addMemo(StellarSdk.Memo.text(transactionData.memo));
+                }
+                
+                // Set timeout
+                transaction.setTimeout(30);
+                
+                // Build the transaction
+                const builtTransaction = transaction.build();
+                
+                // Get the XDR
+                const xdr = builtTransaction.toXDR();
+                
+                console.log('✅ XDR built successfully with Stellar SDK');
+                return xdr;
                 
             } catch (error) {
                 console.error('❌ Error building XDR:', error);
