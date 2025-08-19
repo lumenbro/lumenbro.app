@@ -1733,8 +1733,64 @@ function generateJWT(telegram_id) {
             });
           }
         });
-        
-        // Calculate service fee based on user status
+
+// Build XDR using stellar-plus
+router.post('/mini-app/build-xdr', async (req, res) => {
+  try {
+    const { sourcePublicKey, transactionData } = req.body;
+    
+    console.log('🔍 Building XDR with stellar-plus...');
+    console.log('Source public key:', sourcePublicKey);
+    console.log('Transaction data:', transactionData);
+    
+    // Import stellar-plus
+    const { StellarPlus } = require('stellar-plus');
+    
+    // Create a simple payment transaction
+    const transaction = new StellarPlus.TransactionBuilder(
+      new StellarPlus.Account(sourcePublicKey, '0'),
+      {
+        fee: StellarPlus.BASE_FEE,
+        networkPassphrase: StellarPlus.Networks.PUBLIC
+      }
+    )
+    .addOperation(
+      StellarPlus.Operation.payment({
+        destination: transactionData.recipient,
+        asset: transactionData.asset === 'XLM' ? StellarPlus.Asset.native() : 
+               new StellarPlus.Asset(transactionData.asset, transactionData.assetIssuer),
+        amount: transactionData.amount
+      })
+    );
+    
+    // Add memo if provided
+    if (transactionData.memo) {
+      transaction.addMemo(StellarPlus.Memo.text(transactionData.memo));
+    }
+    
+    // Set timeout
+    transaction.setTimeout(30);
+    
+    // Build the transaction
+    const builtTransaction = transaction.build();
+    
+    // Get the XDR
+    const xdr = builtTransaction.toXDR();
+    
+    console.log('✅ XDR built successfully with stellar-plus');
+    res.json({ success: true, xdr: xdr });
+    
+  } catch (error) {
+    console.error('❌ Error building XDR with stellar-plus:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to build XDR',
+      details: error.message 
+    });
+  }
+});
+
+// Calculate service fee based on user status
         function calculateServiceFee(amount, asset, telegramId) {
           // TODO: Get user status from database (pioneer, referred, etc.)
           // For now, using base 1% fee
