@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stellar SDK Bundle Test</title>
+</head>
+<body>
+    <h1>Stellar SDK Bundle Test</h1>
+    <div id="results"></div>
+    
+    <script src="public/stellar.js"></script>
+    <script>
+        console.log('🧪 Testing Stellar SDK Bundle...');
+        
+        function log(message) {
+            console.log(message);
+            document.getElementById('results').innerHTML += '<p>' + message + '</p>';
+        }
+        
+        // Test 1: Check if Stellar SDK is loaded
+        log('1. Checking if Stellar SDK is loaded...');
+        if (typeof window.StellarSdk !== 'undefined') {
+            log('✅ Stellar SDK loaded successfully');
+            log('Available methods: ' + Object.keys(window.StellarSdk).filter(key => typeof window.StellarSdk[key] === 'function').join(', '));
+        } else {
+            log('❌ Stellar SDK not loaded');
+        }
+        
+        // Test 2: Test basic functionality
+        if (typeof window.StellarSdk !== 'undefined') {
+            log('2. Testing basic functionality...');
+            try {
+                // Test Networks
+                log('Networks.PUBLIC: ' + window.StellarSdk.Networks.PUBLIC);
+                log('Networks.TESTNET: ' + window.StellarSdk.Networks.TESTNET);
+                
+                // Test BASE_FEE
+                log('BASE_FEE: ' + window.StellarSdk.BASE_FEE);
+                
+                // Test Asset
+                const nativeAsset = window.StellarSdk.Asset.native();
+                log('Native Asset: ' + nativeAsset.getCode());
+                
+                log('✅ Basic functionality test passed');
+            } catch (error) {
+                log('❌ Basic functionality test failed: ' + error.message);
+            }
+        }
+        
+        log('🎯 Test completed!');
+    </script>
+</body>
+</html>

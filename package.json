@@ -5,6 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-turnkey": "esbuild turnkey-entry.js --bundle --outfile=public/turnkey.js --global-name=Turnkey --format=iife --sourcemap --loader:.js=js",
+    "build-stellar": "esbuild stellar-entry.js --bundle --outfile=public/stellar.js --global-name=StellarSdk --format=iife --sourcemap --loader:.js=js",
+    "build-all": "npm run build-turnkey && npm run build-stellar",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "setup": "node scripts/setup.js",

@@ -1801,7 +1801,53 @@ router.post('/mini-app/build-xdr', async (req, res) => {
   }
 });
 
-
+// Construct signed XDR with signature
+router.post('/mini-app/construct-signed-xdr', async (req, res) => {
+  try {
+    const { originalXdr, signature, publicKey } = req.body;
+    
+    console.log('🔧 Constructing signed XDR with signature...');
+    console.log('Original XDR:', originalXdr);
+    console.log('Signature:', signature);
+    console.log('Public Key:', publicKey);
+    
+    // Import standard Stellar SDK
+    const StellarSdk = require('@stellar/stellar-sdk');
+    
+    // Parse the original XDR into a transaction envelope
+    const txEnvelope = StellarSdk.TransactionEnvelope.fromXDR(originalXdr, StellarSdk.Networks.PUBLIC);
+    
+    // Convert signature from hex to bytes
+    const signatureBytes = Buffer.from(signature, 'hex');
+    
+    // Create keypair from public key to get signature hint
+    const keypair = StellarSdk.Keypair.fromPublicKey(publicKey);
+    const hint = keypair.signatureHint();
+    
+    // Create decorated signature
+    const decoratedSignature = new StellarSdk.xdr.DecoratedSignature({
+      hint: hint,
+      signature: signatureBytes
+    });
+    
+    // Add signature to transaction envelope
+    txEnvelope.signatures.push(decoratedSignature);
+    
+    // Convert back to XDR
+    const signedXdr = txEnvelope.toXDR();
+    
+    console.log('✅ Signed XDR constructed successfully');
+    res.json({ success: true, signedXdr: signedXdr });
+    
+  } catch (error) {
+    console.error('❌ Error constructing signed XDR:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to construct signed XDR',
+      details: error.message 
+    });
+  }
+});
 
 // Log transaction to backend (for fees and rewards)
 router.post('/mini-app/log-transaction', async (req, res) => {

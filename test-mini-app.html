@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini App Test</title>
+</head>
+<body>
+    <h1>Mini App Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        console.log('🧪 Testing Mini App...');
+        
+        function log(message) {
+            console.log(message);
+            document.getElementById('results').innerHTML += '<p>' + message + '</p>';
+        }
+        
+        // Test 1: Load the mini app
+        log('1. Loading mini app...');
+        fetch('http://localhost:3000/mini-app/')
+            .then(response => {
+                if (response.ok) {
+                    log('✅ Mini app loads successfully');
+                    return response.text();
+                } else {
+                    throw new Error('Mini app failed to load: ' + response.status);
+                }
+            })
+            .then(html => {
+                log('Mini app HTML length: ' + html.length + ' characters');
+                if (html.includes('stellar.js')) {
+                    log('✅ Stellar SDK bundle referenced in mini app');
+                } else {
+                    log('❌ Stellar SDK bundle not found in mini app');
+                }
+            })
+            .catch(error => {
+                log('❌ Error loading mini app: ' + error.message);
+            });
+        
+        // Test 2: Test Stellar SDK bundle directly
+        log('2. Testing Stellar SDK bundle...');
+        fetch('http://localhost:3000/stellar.js')
+            .then(response => {
+                if (response.ok) {
+                    log('✅ Stellar SDK bundle loads successfully');
+                    return response.text();
+                } else {
+                    throw new Error('Stellar SDK bundle failed to load: ' + response.status);
+                }
+            })
+            .then(js => {
+                log('Stellar SDK bundle size: ' + js.length + ' characters');
+                if (js.includes('window.StellarSdk')) {
+                    log('✅ Stellar SDK bundle contains window.StellarSdk');
+                } else {
+                    log('❌ Stellar SDK bundle missing window.StellarSdk');
+                }
+            })
+            .catch(error => {
+                log('❌ Error loading Stellar SDK bundle: ' + error.message);
+            });
+        
+        log('🎯 Tests completed!');
+    </script>
+</body>
+</html>

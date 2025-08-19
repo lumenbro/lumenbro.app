@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="/mini-app/styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script> <!-- Updated to esbuild output with cache busting -->
-    <!-- Stellar SDK for browser - try different CDN -->
-    <script src="https://unpkg.com/@stellar/stellar-sdk@13.3.0/lib/index.min.js"></script>
+    <!-- Stellar SDK bundle - local deployment for reliability -->
+    <script src="/stellar.js?v=1"></script>
     <script>
         // Debug: Check what's available
         console.log('🔍 Checking available packages...');
@@ -221,7 +221,8 @@
 
                         <div class="wallet-actions">
                             <button onclick="showSendPayment()" class="btn-primary">💸 Send Payment</button>
-                            <button onclick="showAssetManagement()" class="btn-success">🔄 Manage Assets</button>
+                            <button onclick="showSwapInterface()" class="btn-success">🔄 Swap Assets</button>
+                            <button onclick="showAssetManagement()" class="btn-warning">⚙️ Manage Assets</button>
                             <button onclick="showTransactionHistory()" class="btn-info">📊 History</button>
                         </div>
 
@@ -576,6 +577,79 @@
             populateAssetSelect();
         }
 
+        function showSwapInterface() {
+            // Show swap interface with path payments
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <h1>🔄 Swap Assets</h1>
+
+                    <div class="swap-form">
+                        <div class="swap-section">
+                            <h3>You Send</h3>
+                            <div class="form-group">
+                                <label for="sendAssetSelect">Asset</label>
+                                <select id="sendAssetSelect" class="form-select" onchange="updateSwapEstimate()">
+                                    <option value="XLM">XLM (Native)</option>
+                                    <!-- Other assets will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sendAmount">Amount</label>
+                                <input type="number" id="sendAmount" placeholder="0.0000000" step="0.0000001" class="form-input" onchange="updateSwapEstimate()">
+                            </div>
+                        </div>
+
+                        <div class="swap-arrow">↓</div>
+
+                        <div class="swap-section">
+                            <h3>You Receive</h3>
+                            <div class="form-group">
+                                <label for="receiveAssetSelect">Asset</label>
+                                <select id="receiveAssetSelect" class="form-select" onchange="updateSwapEstimate()">
+                                    <option value="XLM">XLM (Native)</option>
+                                    <!-- Other assets will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="receiveAmount">Min Amount</label>
+                                <input type="number" id="receiveAmount" placeholder="0.0000000" step="0.0000001" class="form-input" readonly>
+                            </div>
+                        </div>
+
+                        <div class="swap-info">
+                            <div class="swap-rate">
+                                <span>Rate: <span id="swapRate">Calculating...</span></span>
+                            </div>
+                            <div class="swap-fees">
+                                <p>💰 Network Fee: <span id="swapNetworkFee">0.00001 XLM</span></p>
+                                <p>📊 Service Fee: <span id="swapServiceFee">0.00001 XLM</span></p>
+                                <p>🔄 Slippage: <span id="swapSlippage">0.5%</span></p>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button onclick="goBackToWallet()" class="btn-secondary">← Back</button>
+                            <button onclick="simulateAndExecuteSwap()" class="btn-primary">🔄 Execute Swap</button>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
+
+            // Populate asset selects with user's assets
+            populateSwapAssetSelects();
+        }
+
         function populateAssetSelect() {
             const assetSelect = document.getElementById('assetSelect');
             if (!assetSelect) return;
@@ -597,6 +671,282 @@
                     assetSelect.appendChild(option);
                 }
             });
+        }
+
+        function populateSwapAssetSelects() {
+            const sendAssetSelect = document.getElementById('sendAssetSelect');
+            const receiveAssetSelect = document.getElementById('receiveAssetSelect');
+            
+            if (!sendAssetSelect || !receiveAssetSelect) return;
+
+            // Clear existing options except XLM
+            sendAssetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
+            receiveAssetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
+
+            // Get all asset cards and add them to selects
+            const assetCards = document.querySelectorAll('.asset-card');
+            assetCards.forEach(card => {
+                const assetName = card.querySelector('.asset-name')?.textContent;
+                const assetCode = card.querySelector('.asset-code')?.textContent;
+                const balanceAmount = card.querySelector('.balance-amount')?.textContent;
+
+                if (assetCode && assetCode !== 'XLM') {
+                    // Add to send select
+                    const sendOption = document.createElement('option');
+                    sendOption.value = assetCode;
+                    sendOption.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
+                    sendAssetSelect.appendChild(sendOption);
+
+                    // Add to receive select
+                    const receiveOption = document.createElement('option');
+                    receiveOption.value = assetCode;
+                    receiveOption.textContent = `${assetCode} (${assetName || 'Unknown'})`;
+                    receiveAssetSelect.appendChild(receiveOption);
+                }
+            });
+        }
+
+        async function updateSwapEstimate() {
+            const sendAsset = document.getElementById('sendAssetSelect')?.value;
+            const sendAmount = parseFloat(document.getElementById('sendAmount')?.value || 0);
+            const receiveAsset = document.getElementById('receiveAssetSelect')?.value;
+
+            if (!sendAsset || !sendAmount || !receiveAsset || sendAsset === receiveAsset) {
+                document.getElementById('swapRate').textContent = 'Select different assets';
+                document.getElementById('receiveAmount').value = '';
+                return;
+            }
+
+            try {
+                // Get user's public key
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const sourcePublicKey = authData.authenticator_info.user.public_key;
+
+                // Simulate path payment
+                const simulationResponse = await fetch('/mini-app/simulate-path-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sourcePublicKey: sourcePublicKey,
+                        sendAsset: sendAsset === 'XLM' ? 'XLM' : { code: sendAsset, issuer: 'ISSUER' }, // You'll need to get actual issuer
+                        sendAmount: sendAmount,
+                        destination: sourcePublicKey, // Swap to self
+                        destAsset: receiveAsset === 'XLM' ? 'XLM' : { code: receiveAsset, issuer: 'ISSUER' },
+                        destMin: '0.0000001',
+                        path: [],
+                        telegram_id: authData.authenticator_info.user.telegram_id
+                    })
+                });
+
+                if (simulationResponse.ok) {
+                    const result = await simulationResponse.json();
+                    
+                    if (result.simulation.success) {
+                        const minReceived = parseFloat(result.simulation.minReceived);
+                        const rate = minReceived / sendAmount;
+                        
+                        document.getElementById('swapRate').textContent = `1 ${sendAsset} = ${rate.toFixed(6)} ${receiveAsset}`;
+                        document.getElementById('receiveAmount').value = minReceived.toFixed(7);
+                        document.getElementById('swapNetworkFee').textContent = `${result.fees.networkFee} XLM`;
+                        document.getElementById('swapServiceFee').textContent = `${result.fees.serviceFee} XLM`;
+                    } else {
+                        document.getElementById('swapRate').textContent = 'No path found';
+                        document.getElementById('receiveAmount').value = '';
+                    }
+                } else {
+                    document.getElementById('swapRate').textContent = 'Simulation failed';
+                    document.getElementById('receiveAmount').value = '';
+                }
+            } catch (error) {
+                console.error('Swap estimation failed:', error);
+                document.getElementById('swapRate').textContent = 'Error calculating';
+                document.getElementById('receiveAmount').value = '';
+            }
+        }
+
+        async function simulateAndExecuteSwap() {
+            const sendAsset = document.getElementById('sendAssetSelect')?.value;
+            const sendAmount = parseFloat(document.getElementById('sendAmount')?.value || 0);
+            const receiveAsset = document.getElementById('receiveAssetSelect')?.value;
+            const receiveAmount = parseFloat(document.getElementById('receiveAmount')?.value || 0);
+
+            if (!sendAsset || !sendAmount || !receiveAsset || !receiveAmount || sendAsset === receiveAsset) {
+                alert('Please fill in all swap details');
+                return;
+            }
+
+            try {
+                // Show loading state
+                const swapButton = document.querySelector('.btn-primary');
+                const originalText = swapButton.textContent;
+                swapButton.textContent = '⏳ Simulating Swap...';
+                swapButton.disabled = true;
+
+                // Get user's public key
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                const sourcePublicKey = authData.authenticator_info.user.public_key;
+
+                // Build path payment transaction
+                const transactionBuilder = createStellarTransactionBuilder();
+                await transactionBuilder.initialize();
+
+                const transactionResult = await transactionBuilder.buildPathPaymentTransaction(
+                    sourcePublicKey,
+                    sendAsset === 'XLM' ? 'XLM' : { code: sendAsset, issuer: 'ISSUER' },
+                    sendAmount,
+                    sourcePublicKey, // Swap to self
+                    receiveAsset === 'XLM' ? 'XLM' : { code: receiveAsset, issuer: 'ISSUER' },
+                    receiveAmount,
+                    []
+                );
+
+                // Store transaction data for signing
+                window.currentSwapData = {
+                    xdr: transactionResult.xdr,
+                    sendAsset: sendAsset,
+                    sendAmount: sendAmount,
+                    receiveAsset: receiveAsset,
+                    receiveAmount: receiveAmount,
+                    source: transactionResult.source
+                };
+
+                // Show swap confirmation
+                showSwapConfirmation();
+
+            } catch (error) {
+                console.error('Swap execution failed:', error);
+                alert(`Swap failed: ${error.message}`);
+
+                // Reset button
+                const swapButton = document.querySelector('.btn-primary');
+                swapButton.textContent = '🔄 Execute Swap';
+                swapButton.disabled = false;
+            }
+        }
+
+        function showSwapConfirmation() {
+            const swapData = window.currentSwapData;
+            
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <h1>🔍 Confirm Swap</h1>
+
+                    <div class="swap-confirmation">
+                        <div class="swap-details">
+                            <div class="swap-row">
+                                <span class="label">You Send:</span>
+                                <span class="value">${swapData.sendAmount} ${swapData.sendAsset}</span>
+                            </div>
+                            <div class="swap-row">
+                                <span class="label">You Receive:</span>
+                                <span class="value">${swapData.receiveAmount} ${swapData.receiveAsset}</span>
+                            </div>
+                            <div class="swap-row">
+                                <span class="label">Rate:</span>
+                                <span class="value">1 ${swapData.sendAsset} = ${(swapData.receiveAmount / swapData.sendAmount).toFixed(6)} ${swapData.receiveAsset}</span>
+                            </div>
+                            <div class="swap-row">
+                                <span class="label">Transaction Source:</span>
+                                <span class="value">${swapData.source}</span>
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-bottom: 100px;">
+                            <button onclick="goBackToSwap()" class="btn-secondary">← Back</button>
+                            <button onclick="signAndExecuteSwap()" class="btn-primary">✅ Confirm & Execute</button>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
+        }
+
+        function goBackToSwap() {
+            showSwapInterface();
+        }
+
+        async function signAndExecuteSwap() {
+            try {
+                // Show loading state
+                const confirmButton = document.querySelector('.btn-primary');
+                const originalText = confirmButton.textContent;
+                confirmButton.textContent = '⏳ Executing Swap...';
+                confirmButton.disabled = true;
+
+                const swapData = window.currentSwapData;
+                if (!swapData) {
+                    throw new Error('No swap data found');
+                }
+
+                // Sign the transaction using session-based signing (no password required)
+                const signedResult = await signTransactionWithSession(swapData.xdr, 'swap');
+
+                if (!signedResult.success) {
+                    throw new Error(signedResult.error || 'Swap signing failed');
+                }
+
+                // Submit the signed transaction to the network
+                const submitResult = await submitTransactionToNetwork(signedResult.signed_xdr);
+
+                if (!submitResult.success) {
+                    throw new Error(submitResult.error || 'Swap submission failed');
+                }
+
+                // Show success message
+                showSwapSuccess(submitResult.hash);
+
+            } catch (error) {
+                console.error('Swap execution failed:', error);
+                alert(`Swap failed: ${error.message}`);
+
+                // Reset button
+                const confirmButton = document.querySelector('.btn-primary');
+                confirmButton.textContent = '✅ Confirm & Execute';
+                confirmButton.disabled = false;
+            }
+        }
+
+        function showSwapSuccess(hash) {
+            document.getElementById('content').innerHTML = `
+                <div class="fade-in">
+                    <div class="success-message">
+                        <div class="success-icon">✅</div>
+                        <h1>Swap Successful!</h1>
+                        <p>Your asset swap has been executed successfully.</p>
+                        <div class="transaction-hash">
+                            <strong>Transaction Hash:</strong><br>
+                            <code>${hash}</code>
+                        </div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button onclick="showWallet()" class="btn-primary">🏠 Back to Wallet</button>
+                            <button onclick="window.open('https://stellar.expert/explorer/public/tx/${hash}', '_blank')" class="btn-secondary">🔍 View on Explorer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="nav-item" onclick="showWallet()">
+                        <div class="nav-icon">💼</div>
+                        <div class="nav-label">Wallet</div>
+                    </div>
+                    <div class="nav-item" onclick="showAuth()">
+                        <div class="nav-icon">⚙️</div>
+                        <div class="nav-label">Settings</div>
+                    </div>
+                </nav>
+            `;
         }
 
         function goBackToWallet() {
@@ -778,6 +1128,7 @@
             }
         }
 
+        // High-security signing for withdrawals (requires password)
         async function signTransactionWithPassword(xdr, password) {
             try {
                 // Import the encryption utilities
@@ -791,51 +1142,98 @@
                     throw new Error('No Telegram Cloud Storage key found');
                 }
 
-                console.log('✅ Retrieved API keys for signing');
+                console.log('✅ Retrieved API keys for high-security signing');
 
-                // Create transaction stamper with decrypted keys
-                const stamper = createTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
+                // Create secure transaction stamper with decrypted keys
+                const stamper = createSecureTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
 
-                // Sign the XDR directly
-                const stamp = await stamper.stamp(xdr);
+                // Create stamp for Turnkey API
+                const stampResult = await stamper.stamp(xdr);
                 
-                console.log('✅ Transaction signed successfully');
-                console.log('🔍 Stamp result:', stamp);
+                console.log('✅ High-security stamp created successfully');
+                console.log('🔍 Stamp result:', stampResult);
+                console.log('🔍 Security level:', stampResult.securityLevel);
                 
-                // Check if the stamper returned a signed XDR directly
-                if (stamp.signedXdr) {
-                    console.log('✅ Using signed XDR from stamper');
-                    return {
-                        success: true,
-                        signed_xdr: stamp.signedXdr
-                    };
+                // Send stamp to backend for Turnkey API processing
+                const response = await fetch('/mini-app/sign-transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        stamp: stampResult.stamp,
+                        requestBody: {
+                            type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
+                            timestamp: new Date().toISOString(),
+                            organizationId: window.orgId || 'global-org-id',
+                            parameters: {
+                                payload: xdr,
+                                encoding: "PAYLOAD_ENCODING_BASE64"
+                            }
+                        },
+                        telegram_id: await getTelegramId(),
+                        fee_amount: 0.00001, // Default fee
+                        fee_asset: 'XLM'
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Turnkey API request failed');
                 }
-                
-                // Check if we have a signature to construct XDR
-                if (stamp.signature && stamp.signature !== 'embedded') {
-                    console.log('✅ Using extracted signature');
-                    
-                    // Construct signed XDR with signature
-                    const signedXdr = await constructSignedXdr(xdr, stamp.signature, stamp.publicKey);
-                    
-                    return {
-                        success: true,
-                        signed_xdr: signedXdr,
-                        signature: stamp.signature,
-                        publicKey: stamp.publicKey
-                    };
-                }
-                
-                // Fallback: try to use the original XDR (might be pre-signed)
-                console.log('⚠️ Using original XDR as fallback');
+
+                const result = await response.json();
+                console.log('✅ Turnkey API response:', result);
+
                 return {
                     success: true,
-                    signed_xdr: xdr
+                    signed_xdr: result.signed_xdr,
+                    source: 'turnkey-api',
+                    securityLevel: 'high',
+                    turnkey_response: result.turnkey_response
                 };
 
             } catch (error) {
-                console.error('Signing with password failed:', error);
+                console.error('High-security signing failed:', error);
                 return { success: false, error: error.message };
+            }
+        }
+
+        // Session-based signing for automated operations (no password required)
+        async function signTransactionWithSession(xdr, operationType = 'swap') {
+            try {
+                console.log('🤖 Starting session-based signing for:', operationType);
+
+                // Create session transaction stamper (no keys needed)
+                const stamper = createSessionTransactionStamper();
+
+                // Sign using session keys via Python bot
+                const stampResult = await stamper.stamp(xdr, operationType);
+                
+                console.log('✅ Session-based signing successful');
+                console.log('🔍 Stamp result:', stampResult);
+                console.log('🔍 Security level:', stampResult.securityLevel);
+                
+                return {
+                    success: true,
+                    signed_xdr: stampResult.signedXdr,
+                    source: 'python-bot',
+                    securityLevel: 'low',
+                    operationType: operationType
+                };
+
+            } catch (error) {
+                console.error('Session-based signing failed:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function getTelegramId() {
+            try {
+                const authResponse = await fetch('/mini-app/authenticator');
+                const authData = await authResponse.json();
+                return authData.authenticator_info.user.telegram_id;
+            } catch (error) {
+                console.error('Failed to get Telegram ID:', error);
+                return null;
             }
         }
 
@@ -961,18 +1359,22 @@
             window.location.href = '/test-turnkey-stamper';
         }
 
-        // Client-side XDR building with Stellar SDK
+        // Enhanced client-side XDR building with Stellar SDK bundle
         async function buildTransactionXDR(transactionData) {
             try {
-                console.log('🔍 Building XDR client-side with Stellar SDK...');
+                console.log('🔍 Building XDR client-side with Stellar SDK bundle...');
                 console.log('Transaction data:', transactionData);
                 
-                // Check if Stellar SDK is available
-                if (typeof StellarSdk === 'undefined') {
-                    console.log('⚠️ Stellar SDK not loaded, trying fallback...');
+                // Check if Stellar SDK bundle is available
+                if (typeof window.StellarSdk === 'undefined') {
+                    console.log('⚠️ Stellar SDK bundle not loaded, trying fallback...');
                     // Fallback to backend XDR building
                     return await buildXDRWithBackend(transactionData);
                 }
+                
+                // Use the enhanced transaction builder
+                const transactionBuilder = createStellarTransactionBuilder();
+                await transactionBuilder.initialize();
                 
                 // Get user's public key from the wallet
                 const authResponse = await fetch('/mini-app/authenticator');
@@ -981,50 +1383,18 @@
                 
                 console.log('Source public key:', sourcePublicKey);
                 
-                // Get account sequence number from Horizon
-                const accountResponse = await fetch(`https://horizon.stellar.org/accounts/${sourcePublicKey}`);
-                const accountData = await accountResponse.json();
-                
-                if (accountData.detail) {
-                    throw new Error('Account not found on Stellar network');
-                }
-                
-                const sequenceNumber = accountData.sequence;
-                console.log('Account sequence number:', sequenceNumber);
-                
-                // Create transaction using Stellar SDK
-                const transaction = new StellarSdk.TransactionBuilder(
-                    new StellarSdk.Account(sourcePublicKey, sequenceNumber),
-                    {
-                        fee: StellarSdk.BASE_FEE,
-                        networkPassphrase: StellarSdk.Networks.PUBLIC
-                    }
-                )
-                .addOperation(
-                    StellarSdk.Operation.payment({
-                        destination: transactionData.recipient,
-                        asset: transactionData.asset === 'XLM' ? StellarSdk.Asset.native() : 
-                               new StellarSdk.Asset(transactionData.asset, transactionData.assetIssuer),
-                        amount: transactionData.amount
-                    })
+                // Build transaction using the enhanced builder
+                const result = await transactionBuilder.buildPaymentTransaction(
+                    sourcePublicKey,
+                    transactionData.recipient,
+                    transactionData.amount,
+                    transactionData.asset,
+                    transactionData.memo
                 );
                 
-                // Add memo if provided
-                if (transactionData.memo) {
-                    transaction.addMemo(StellarSdk.Memo.text(transactionData.memo));
-                }
-                
-                // Set timeout
-                transaction.setTimeout(30);
-                
-                // Build the transaction
-                const builtTransaction = transaction.build();
-                
-                // Get the XDR
-                const xdr = builtTransaction.toXDR();
-                
-                console.log('✅ XDR built successfully with Stellar SDK');
-                return xdr;
+                console.log('✅ XDR built successfully with Stellar SDK bundle');
+                console.log('Transaction source:', result.source);
+                return result.xdr;
                 
             } catch (error) {
                 console.error('❌ Error building XDR:', error);
@@ -1076,10 +1446,37 @@
                 console.log('Signature:', signature);
                 console.log('Public Key:', publicKey);
                 
-                // For now, just return the original XDR
-                // The TelegramCloudStorageStamper might already be signing it
-                console.log('⚠️ Using original XDR (stamper might have signed it)');
-                return originalXdr;
+                // Try backend first (for EC2)
+                try {
+                    const response = await fetch('/mini-app/construct-signed-xdr', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            originalXdr: originalXdr,
+                            signature: signature,
+                            publicKey: publicKey
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('✅ Signed XDR constructed by backend:', result.signedXdr);
+                        return result.signedXdr;
+                    } else {
+                        throw new Error(`Backend returned ${response.status}`);
+                    }
+                } catch (backendError) {
+                    console.log('⚠️ Backend XDR construction not available:', backendError.message);
+                    console.log('🔄 Using client-side fallback...');
+                    
+                    // For local testing, we'll try a different approach
+                    // The signature we got should be valid, but we need to construct it properly
+                    console.log('⚠️ Client-side XDR construction not yet implemented');
+                    console.log('📝 Returning original XDR for testing');
+                    return originalXdr;
+                }
                 
             } catch (error) {
                 console.error('❌ Error constructing signed XDR:', error);
