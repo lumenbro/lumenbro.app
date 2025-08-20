@@ -719,6 +719,19 @@ input::placeholder {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+/* Ensure dropdown options are visible */
+.form-select option {
+  background: var(--bg-soft);
+  color: var(--text);
+  padding: 8px;
+  border: none;
+}
+
+.form-select option:hover {
+  background: var(--primary);
+  color: white;
+}
+
 .fee-info {
   background: var(--bg-soft);
   border: 1px solid rgba(255,255,255,0.1);

@@ -582,11 +582,21 @@
                 </nav>
             `;
 
-                    // Populate asset select with user's assets (with delay to ensure assets are loaded)
-                    setTimeout(() => {
-                        populateAssetSelect();
-                        console.log('🔍 Populating asset select after delay...');
-                    }, 500);
+                                // Populate asset select with user's assets (with delay to ensure assets are loaded)
+            setTimeout(() => {
+                populateAssetSelect();
+                console.log('🔍 Populating asset select after delay...');
+                
+                // Test: Add a manual option to see if dropdown works
+                const assetSelect = document.getElementById('assetSelect');
+                if (assetSelect) {
+                    const testOption = document.createElement('option');
+                    testOption.value = 'TEST';
+                    testOption.textContent = 'TEST ASSET (Manual Test)';
+                    assetSelect.appendChild(testOption);
+                    console.log('🧪 Added test option to verify dropdown functionality');
+                }
+            }, 500);
         
         // Add change handler for asset selection to update fee display
         document.getElementById('assetSelect').addEventListener('change', updateFeeDisplay);
@@ -684,6 +694,19 @@
             const assetCards = document.querySelectorAll('.asset-card');
             console.log(`🔍 Found ${assetCards.length} asset cards`);
 
+            // Debug: Log all asset cards in detail
+            assetCards.forEach((card, index) => {
+                console.log(`🔍 Asset Card ${index + 1}:`, {
+                    element: card,
+                    className: card.className,
+                    innerHTML: card.innerHTML.substring(0, 200) + '...',
+                    assetName: card.querySelector('.asset-name')?.textContent,
+                    assetCode: card.querySelector('.asset-code')?.textContent,
+                    balanceAmount: card.querySelector('.balance-amount')?.textContent,
+                    issuer: card.dataset.issuer
+                });
+            });
+
             assetCards.forEach((card, index) => {
                 const assetName = card.querySelector('.asset-name')?.textContent;
                 const assetCode = card.querySelector('.asset-code')?.textContent;
@@ -703,10 +726,27 @@
                     option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
                     assetSelect.appendChild(option);
                     console.log(`✅ Added asset option: ${assetCode}`);
+                    
+                    // Debug: Log the created option
+                    console.log(`🔍 Created option:`, {
+                        value: option.value,
+                        textContent: option.textContent,
+                        element: option
+                    });
                 }
             });
 
             console.log(`✅ Asset select populated with ${assetSelect.options.length} options`);
+            
+            // Debug: Log all options in the select
+            console.log('🔍 All options in select:');
+            for (let i = 0; i < assetSelect.options.length; i++) {
+                console.log(`  Option ${i}:`, {
+                    value: assetSelect.options[i].value,
+                    text: assetSelect.options[i].text,
+                    selected: assetSelect.options[i].selected
+                });
+            }
         }
 
         function populateSwapAssetSelects() {
