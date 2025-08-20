@@ -43,21 +43,21 @@ class SecureTransactionStamper {
       console.log('🔐 Starting high-security transaction stamping...');
       console.log('📝 XDR payload length:', xdrPayload.length);
       
-      // Initialize the TelegramCloudStorageStamper with decrypted keys
+      // Initialize a stamper. Prefer in-memory ApiKeyStamper when keys are provided
       if (!this.stamper) {
-        console.log('🔧 Initializing TelegramCloudStorageStamper with decrypted keys...');
-        
-        this.stamper = new window.Turnkey.TelegramCloudStorageStamper();
-        
-        // Pass decrypted keys directly to the stamper
-        await this.stamper.setSigningKey({
-          cloudStorageAPIKey: {
+        if (this.privateKey && this.publicKey && window.Turnkey && window.Turnkey.ApiKeyStamper) {
+          console.log('🔧 Initializing in-memory ApiKeyStamper (no persistence)...');
+          this.stamper = new window.Turnkey.ApiKeyStamper({
             apiPublicKey: this.publicKey,
             apiPrivateKey: this.privateKey
-          }
-        });
-        
-        console.log('✅ TelegramCloudStorageStamper initialized with decrypted keys');
+          });
+          console.log('✅ ApiKeyStamper ready (session keys not persisted)');
+        } else {
+          console.log('🔧 Initializing TelegramCloudStorageStamper from storage...');
+          this.stamper = new window.Turnkey.TelegramCloudStorageStamper();
+          await this.stamper.setSigningKey(); // uses existing saved key only
+          console.log('✅ TelegramCloudStorageStamper initialized from storage');
+        }
       }
       
       // Use the stamper to create a stamp for Turnkey API
