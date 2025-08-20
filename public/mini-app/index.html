@@ -582,8 +582,11 @@
                 </nav>
             `;
 
-                    // Populate asset select with user's assets
-        populateAssetSelect();
+                    // Populate asset select with user's assets (with delay to ensure assets are loaded)
+                    setTimeout(() => {
+                        populateAssetSelect();
+                        console.log('🔍 Populating asset select after delay...');
+                    }, 500);
         
         // Add change handler for asset selection to update fee display
         document.getElementById('assetSelect').addEventListener('change', updateFeeDisplay);
@@ -658,23 +661,35 @@
                 </nav>
             `;
 
-            // Populate asset selects with user's assets
-            populateSwapAssetSelects();
+            // Populate asset selects with user's assets (with delay to ensure assets are loaded)
+            setTimeout(() => {
+                populateSwapAssetSelects();
+                console.log('🔍 Populating swap asset selects after delay...');
+            }, 500);
         }
 
         function populateAssetSelect() {
             const assetSelect = document.getElementById('assetSelect');
-            if (!assetSelect) return;
+            if (!assetSelect) {
+                console.log('❌ Asset select element not found');
+                return;
+            }
+
+            console.log('🔍 Populating asset select...');
 
             // Clear existing options except XLM
             assetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
 
             // Get all asset cards and add them to select
             const assetCards = document.querySelectorAll('.asset-card');
-            assetCards.forEach(card => {
+            console.log(`🔍 Found ${assetCards.length} asset cards`);
+
+            assetCards.forEach((card, index) => {
                 const assetName = card.querySelector('.asset-name')?.textContent;
                 const assetCode = card.querySelector('.asset-code')?.textContent;
                 const balanceAmount = card.querySelector('.balance-amount')?.textContent;
+
+                console.log(`🔍 Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
 
                 if (assetCode && assetCode !== 'XLM') {
                     const option = document.createElement('option');
@@ -687,15 +702,23 @@
                     option.value = JSON.stringify(assetInfo);
                     option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
                     assetSelect.appendChild(option);
+                    console.log(`✅ Added asset option: ${assetCode}`);
                 }
             });
+
+            console.log(`✅ Asset select populated with ${assetSelect.options.length} options`);
         }
 
         function populateSwapAssetSelects() {
             const sendAssetSelect = document.getElementById('sendAssetSelect');
             const receiveAssetSelect = document.getElementById('receiveAssetSelect');
             
-            if (!sendAssetSelect || !receiveAssetSelect) return;
+            if (!sendAssetSelect || !receiveAssetSelect) {
+                console.log('❌ Swap asset select elements not found');
+                return;
+            }
+
+            console.log('🔍 Populating swap asset selects...');
 
             // Clear existing options except XLM
             sendAssetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
@@ -703,10 +726,14 @@
 
             // Get all asset cards and add them to selects
             const assetCards = document.querySelectorAll('.asset-card');
-            assetCards.forEach(card => {
+            console.log(`🔍 Found ${assetCards.length} asset cards for swap`);
+
+            assetCards.forEach((card, index) => {
                 const assetName = card.querySelector('.asset-name')?.textContent;
                 const assetCode = card.querySelector('.asset-code')?.textContent;
                 const balanceAmount = card.querySelector('.balance-amount')?.textContent;
+
+                console.log(`🔍 Swap Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
 
                 if (assetCode && assetCode !== 'XLM') {
                     // Create asset info object for non-XLM assets
@@ -727,8 +754,12 @@
                     receiveOption.value = JSON.stringify(assetInfo);
                     receiveOption.textContent = `${assetCode} (${assetName || 'Unknown'})`;
                     receiveAssetSelect.appendChild(receiveOption);
+
+                    console.log(`✅ Added swap asset options: ${assetCode}`);
                 }
             });
+
+            console.log(`✅ Swap asset selects populated with ${sendAssetSelect.options.length} options each`);
         }
 
         async function updateSwapEstimate() {
@@ -965,7 +996,7 @@
                         <p>Your asset swap has been executed successfully.</p>
                         <div class="transaction-hash">
                             <strong>Transaction Hash:</strong><br>
-                            <code>${hash}</code>
+                            <code style="word-break: break-all; font-size: 0.9em; line-height: 1.4; max-width: 100%; overflow-wrap: break-word;">${hash}</code>
                         </div>
                         <div class="form-actions" style="margin-top: 20px;">
                             <button onclick="showWallet()" class="btn-primary">🏠 Back to Wallet</button>
@@ -1397,14 +1428,14 @@
         function showTransactionSuccess(hash) {
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
-                    <div class="success-message">
-                        <div class="success-icon">✅</div>
-                        <h1>Transaction Successful!</h1>
-                        <p>Your payment has been sent successfully.</p>
-                        <div class="transaction-hash">
-                            <strong>Transaction Hash:</strong><br>
-                            <code>${hash}</code>
-                        </div>
+                                            <div class="success-message">
+                            <div class="success-icon">✅</div>
+                            <h1>Transaction Successful!</h1>
+                            <p>Your payment has been sent successfully.</p>
+                            <div class="transaction-hash">
+                                <strong>Transaction Hash:</strong><br>
+                                <code style="word-break: break-all; font-size: 0.9em; line-height: 1.4; max-width: 100%; overflow-wrap: break-word;">${hash}</code>
+                            </div>
                         <div class="form-actions" style="margin-top: 20px;">
                             <button onclick="showWallet()" class="btn-primary">🏠 Back to Wallet</button>
                             <button onclick="window.open('https://stellar.expert/explorer/public/tx/${hash}', '_blank')" class="btn-secondary">🔍 View on Explorer</button>
