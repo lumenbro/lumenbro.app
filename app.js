@@ -2,11 +2,41 @@ require('dotenv').config({ quiet: true });
 const express = require('express');
 const path = require('path');
 const http = require('http');
+const cors = require('cors');
 const app = express();
 const port = 3000;
 
 // Create HTTP server for WebSocket
 const server = http.createServer(app);
+
+// CORS configuration for Telegram Mini App
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow your domain and Telegram WebApp origins
+    const allowedOrigins = [
+      'https://web.telegram.org',
+      'https://t.me',
+      'https://telegram.org',
+      'https://lumenbro.app',
+      'https://www.lumenbro.app',
+      'http://localhost:3000',
+      'http://localhost:8080'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Temporarily allow all for testing
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 app.use(express.json());
 app.set('view engine', 'ejs');
