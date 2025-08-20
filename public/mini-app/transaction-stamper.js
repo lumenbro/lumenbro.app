@@ -780,9 +780,10 @@ class ClientSideTransactionManager {
 
   async callTurnkeyAPI(sessionKeys, xdrPayload, organizationId, stellarPublicKey) {
     try {
-      // Convert base64 payload to hex (like Python bot)
-      const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
-      const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
+      // Compute Stellar transaction hash (like Python bot) and sign that hex
+      const tx = this.stellarSdk.TransactionBuilder.fromXDR(xdrPayload, this.stellarSdk.Networks.PUBLIC);
+      const txHashBuf = tx.hash();
+      const txHashHex = Array.from(new Uint8Array(txHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
       
       console.log('🔍 Using organization ID:', organizationId);
       // Create Turnkey request (matching Python bot format)
@@ -793,7 +794,7 @@ class ClientSideTransactionManager {
         parameters: {
           // Use the Stellar wallet public key (G...) as the resource to sign with
           signWith: stellarPublicKey,
-          payload: payloadHex,
+          payload: txHashHex,
           encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
           hashFunction: "HASH_FUNCTION_NOT_APPLICABLE"
         }
