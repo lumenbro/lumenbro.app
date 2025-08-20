@@ -859,7 +859,7 @@ class ClientSideTransactionManager {
           // Submit to Stellar network directly
           const submissionResult = await this.submitToStellar(sessionSigned.signedXdr);
           if (telegram_id) {
-            const transactionData = window.currentTransactionData;
+            const transactionData = window.currentTransactionData?.transaction || null;
             await this.logTransactionToBackend(telegram_id, sessionSigned.signedXdr, submissionResult.hash, transactionData);
           }
           return {
@@ -895,7 +895,7 @@ class ClientSideTransactionManager {
       // Step 6: Log to backend (optional, for analytics)
       if (telegram_id) {
         // Get transaction data from window if available
-        const transactionData = window.currentTransactionData;
+        const transactionData = window.currentTransactionData?.transaction || null;
         await this.logTransactionToBackend(telegram_id, signedXdr, submissionResult.hash, transactionData);
       }
       
