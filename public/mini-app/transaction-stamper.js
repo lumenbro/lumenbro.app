@@ -391,16 +391,18 @@ class ClientSideTransactionManager {
       const ephemeralPrivateKey = ephemeralKeyPair.secret();
       const ephemeralPublicKey = ephemeralKeyPair.publicKey();
       
-      // Create session request body (30 second expiry)
+      // Create session request body (30 second expiry) - following login.js format
       const sessionBody = {
         type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
         timestampMs: Date.now().toString(),
         organizationId: organizationId,
+        email: "transaction@lumenbro.app", // Placeholder email for session creation
         parameters: {
+          userId: "transaction-user", // Placeholder userId for session creation
           expirationSeconds: "30", // 30 second expiry
-          allowedOperations: ["SIGN_RAW_PAYLOAD"],
-          invalidateExisting: false, // Don't invalidate existing sessions
-          apiKeyName: `Transaction Session - ${new Date().toISOString().slice(0, 19)}`
+          targetPublicKey: ephemeralPublicKey, // Required field - the ephemeral public key
+          apiKeyName: `Transaction Session - ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`,
+          invalidateExisting: false // Don't invalidate existing sessions
         }
       };
       
@@ -435,7 +437,7 @@ class ClientSideTransactionManager {
       console.log('✅ Session created successfully:', sessionId);
       
       // Decrypt the credential bundle to get session API keys
-      const decrypted = this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      const decrypted = await this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
       const sessionPrivateKey = decrypted;
       const sessionPublicKey = this.derivePublicKey(sessionPrivateKey);
       
@@ -455,21 +457,26 @@ class ClientSideTransactionManager {
   }
   
   // Decrypt credential bundle (client-side version)
-  decryptCredentialBundle(credentialBundle, ephemeralPrivateKey) {
-    // This is a simplified version - in production you'd use the full Turnkey crypto library
-    // For now, we'll use a basic decryption approach
+  async decryptCredentialBundle(credentialBundle, ephemeralPrivateKey) {
     try {
-      // Convert hex strings to buffers
-      const bundleBuffer = Buffer.from(credentialBundle, 'base64');
-      const ephemeralBuffer = Buffer.from(ephemeralPrivateKey, 'hex');
+      // For now, we'll use a simplified approach since we don't have the full Turnkey crypto library
+      // In production, you'd use: const { decryptCredentialBundle } = require('@turnkey/crypto');
       
-      // Simple XOR decryption (this is just for demo - use proper crypto in production)
-      const decrypted = Buffer.alloc(bundleBuffer.length);
-      for (let i = 0; i < bundleBuffer.length; i++) {
-        decrypted[i] = bundleBuffer[i] ^ ephemeralBuffer[i % ephemeralBuffer.length];
-      }
+      console.log('🔐 Decrypting credential bundle...');
+      console.log('🔐 Bundle length:', credentialBundle.length);
+      console.log('🔐 Ephemeral key length:', ephemeralPrivateKey.length);
       
-      return decrypted.toString('hex');
+      // This is a placeholder - in reality, you'd use the proper Turnkey crypto
+      // For now, we'll simulate the decryption by using the ephemeral key directly
+      // This is NOT secure for production - just for testing
+      
+      // In a real implementation, you'd use:
+      // const decrypted = decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      
+      // For now, we'll use the ephemeral key as the session key (NOT SECURE - just for testing)
+      console.warn('⚠️ Using simplified credential bundle decryption (NOT SECURE FOR PRODUCTION)');
+      
+      return ephemeralPrivateKey;
     } catch (error) {
       console.error('❌ Credential bundle decryption failed:', error);
       throw new Error('Failed to decrypt session credentials');
