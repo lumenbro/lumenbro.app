@@ -658,8 +658,11 @@ class ClientSideTransactionManager {
         console.log('📡 Submitting transaction via fallback method');
         const response = await fetch('https://horizon.stellar.org/transactions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tx: signedXdr })
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          body: `tx=${encodeURIComponent(signedXdr)}`
         });
         
         if (!response.ok) {
