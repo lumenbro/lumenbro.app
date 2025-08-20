@@ -69,9 +69,9 @@ class SecureTransactionStamper {
       
       // The stamper should return a stamp that we can send to Turnkey API
       // This stamp contains the signature and metadata needed for Turnkey
-      return {
-        publicKey: this.publicKey,
-        scheme: "SIGNATURE_SCHEME_TK_API_P256",
+        return {
+          publicKey: this.publicKey,
+          scheme: "SIGNATURE_SCHEME_TK_API_P256",
         stamp: stampResult,
         xdrPayload: xdrPayload,
         source: 'client-secure',
@@ -137,17 +137,38 @@ class StellarTransactionBuilder {
   constructor() {
     this.stellarSdk = null;
     this.server = null;
+    this.loadAccount = null;
   }
 
   async initialize() {
     if (typeof window.StellarSdk !== 'undefined') {
       this.stellarSdk = window.StellarSdk;
       try {
-        this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+        // Prefer Server if available; otherwise fall back to REST fetch
+        if (this.stellarSdk.Server && typeof this.stellarSdk.Server === 'function') {
+          this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+          this.loadAccount = async (publicKey) => this.server.loadAccount(publicKey);
+          console.log('✅ Stellar SDK initialized with Server');
+        } else {
+          this.loadAccount = async (publicKey) => {
+            const resp = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
+            if (!resp.ok) throw new Error(`Horizon accounts fetch failed: ${resp.status}`);
+            const data = await resp.json();
+            return new this.stellarSdk.Account(publicKey, data.sequence);
+          };
+          console.log('✅ Stellar SDK initialized with REST fallback');
+        }
         console.log('✅ Stellar SDK initialized for transaction building');
         return true;
       } catch (error) {
         console.error('❌ Failed to initialize Stellar Server:', error);
+        // As an additional fallback, try REST path even if Server constructor failed
+        this.loadAccount = async (publicKey) => {
+          const resp = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
+          if (!resp.ok) throw new Error(`Horizon accounts fetch failed: ${resp.status}`);
+          const data = await resp.json();
+          return new this.stellarSdk.Account(publicKey, data.sequence);
+        };
         return false;
       }
     } else {
@@ -158,7 +179,7 @@ class StellarTransactionBuilder {
 
   async buildPaymentTransaction(sourceAccount, destination, amount, asset = 'XLM', memo = null) {
     try {
-      if (this.stellarSdk && this.server) {
+      if (this.stellarSdk && this.loadAccount) {
         // Client-side transaction building
         console.log('🔧 Building payment transaction client-side...');
         console.log('Source account:', sourceAccount);
@@ -166,7 +187,7 @@ class StellarTransactionBuilder {
         console.log('Amount:', amount);
         console.log('Asset:', asset);
         
-        const account = await this.server.loadAccount(sourceAccount);
+        const account = await this.loadAccount(sourceAccount);
         console.log('✅ Account loaded:', account.accountId());
         
         const transaction = new this.stellarSdk.TransactionBuilder(account, {
@@ -206,7 +227,8 @@ class StellarTransactionBuilder {
               asset: asset,
               memo: memo
             },
-            operationType: 'payment'
+            operationType: 'payment',
+            telegram_id: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || undefined
           })
         });
         
@@ -236,7 +258,8 @@ class StellarTransactionBuilder {
               asset: asset,
               memo: memo
             },
-            operationType: 'payment'
+            operationType: 'payment',
+            telegram_id: (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || undefined
           })
         });
         
