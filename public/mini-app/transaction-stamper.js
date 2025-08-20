@@ -666,8 +666,24 @@ class ClientSideTransactionManager {
         });
         
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || `Horizon error: ${response.status}`);
+          let detailMsg = `Horizon error: ${response.status}`;
+          try {
+            const error = await response.json();
+            if (error?.extras?.result_codes) {
+              console.error('🔎 Horizon result_codes:', error.extras.result_codes);
+            }
+            if (error?.extras?.envelope_xdr) {
+              console.error('🔎 Horizon envelope_xdr:', error.extras.envelope_xdr);
+            }
+            if (error?.extras?.result_xdr) {
+              console.error('🔎 Horizon result_xdr:', error.extras.result_xdr);
+            }
+            detailMsg = error.detail || detailMsg;
+            if (error?.extras?.result_codes) {
+              detailMsg += ` | codes=${JSON.stringify(error.extras.result_codes)}`;
+            }
+          } catch (_) {}
+          throw new Error(detailMsg);
         }
         
         return await response.json();
