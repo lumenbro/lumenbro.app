@@ -22,6 +22,8 @@ app.use(cors({
       'https://telegram.org',
       'https://lumenbro.app',
       'https://www.lumenbro.app',
+      'https://lumenbro.com',
+      'https://www.lumenbro.com',
       'http://localhost:3000',
       'http://localhost:8080'
     ];

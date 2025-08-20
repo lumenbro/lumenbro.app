@@ -738,16 +738,6 @@ class ClientSideTransactionManager {
       
       console.log('🔍 Using organization ID:', organizationId);
       
-      // Check if we should use session keys instead of stored keys
-      // The Python bot uses session keys for signing
-      const sessionKeys = authData.authenticator_info?.authenticator?.session_keys;
-      if (sessionKeys) {
-        console.log('🔍 Found session keys in authenticator, should use those for signing');
-        console.log('🔍 Session keys:', sessionKeys);
-        // TODO: We might need to use session keys instead of stored keys
-        // This would require a different approach since session keys are server-side
-      }
-      
       // Create Turnkey request (matching Python bot format)
       const turnkeyRequest = {
         type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
