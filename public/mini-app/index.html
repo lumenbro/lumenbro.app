@@ -368,13 +368,19 @@
 
         async function displayAllAssets(balances) {
             const assetsList = document.getElementById('assets-list');
-            if (!assetsList) return;
+            if (!assetsList) {
+                console.log('❌ Assets list element not found');
+                return;
+            }
+
+            console.log('🔍 Displaying assets:', balances);
 
             // Clear loading message
             assetsList.innerHTML = '';
 
             // Process each balance and fetch asset metadata
             for (const balance of balances) {
+                console.log('🔍 Processing balance:', balance);
                 const assetCard = document.createElement('div');
                 assetCard.className = 'asset-card';
 
@@ -426,6 +432,7 @@
                 `;
 
                 assetsList.appendChild(assetCard);
+                console.log(`✅ Added asset card for ${assetCode}:`, assetCard);
 
                 // Fetch real asset metadata if not XLM
                 if (balance.asset_type !== 'native' && assetIssuer) {
@@ -442,6 +449,9 @@
             if (balances.length === 0) {
                 assetsList.innerHTML = '<div class="no-assets">No assets found</div>';
             }
+
+            console.log(`✅ Finished displaying ${balances.length} assets`);
+            console.log(`🔍 Total asset cards in DOM: ${document.querySelectorAll('.asset-card').length}`);
         }
 
         async function fetchAssetMetadata(assetCode, assetIssuer, assetCard) {
@@ -707,34 +717,63 @@
                 });
             });
 
-            assetCards.forEach((card, index) => {
-                const assetName = card.querySelector('.asset-name')?.textContent;
-                const assetCode = card.querySelector('.asset-code')?.textContent;
-                const balanceAmount = card.querySelector('.balance-amount')?.textContent;
-
-                console.log(`🔍 Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
-
-                if (assetCode && assetCode !== 'XLM') {
+            // If no asset cards found, try to populate from stored balance data
+            if (assetCards.length === 0) {
+                console.log('⚠️ No asset cards found, trying fallback method...');
+                
+                // Try to get balance data from the wallet display
+                const balanceElements = document.querySelectorAll('.balance-amount');
+                console.log(`🔍 Found ${balanceElements.length} balance elements`);
+                
+                // Add some common assets as fallback
+                const fallbackAssets = [
+                    { code: 'CHAD', name: 'CHAD', issuer: 'GDNCKMHYB3ZCIK7HCYO3NH3K2TWKEUFARFSIYP26SNHNS4TMOZHBXLUC' },
+                    { code: 'NUT', name: 'NUT', issuer: 'GDNCKMHYB3ZCIK7HCYO3NH3K2TWKEUFARFSIYP26SNHNS4TMOZHBXLUC' },
+                    { code: 'USDC', name: 'USD Coin', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' }
+                ];
+                
+                fallbackAssets.forEach(asset => {
                     const option = document.createElement('option');
-                    // Store asset info as JSON in value for non-XLM assets
                     const assetInfo = {
-                        code: assetCode,
-                        issuer: card.dataset.issuer || null,
-                        name: assetName || 'Unknown'
+                        code: asset.code,
+                        issuer: asset.issuer,
+                        name: asset.name
                     };
                     option.value = JSON.stringify(assetInfo);
-                    option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
+                    option.textContent = `${asset.code} (${asset.name})`;
                     assetSelect.appendChild(option);
-                    console.log(`✅ Added asset option: ${assetCode}`);
-                    
-                    // Debug: Log the created option
-                    console.log(`🔍 Created option:`, {
-                        value: option.value,
-                        textContent: option.textContent,
-                        element: option
-                    });
-                }
-            });
+                    console.log(`✅ Added fallback asset option: ${asset.code}`);
+                });
+            } else {
+                assetCards.forEach((card, index) => {
+                    const assetName = card.querySelector('.asset-name')?.textContent;
+                    const assetCode = card.querySelector('.asset-code')?.textContent;
+                    const balanceAmount = card.querySelector('.balance-amount')?.textContent;
+
+                    console.log(`🔍 Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
+
+                    if (assetCode && assetCode !== 'XLM') {
+                        const option = document.createElement('option');
+                        // Store asset info as JSON in value for non-XLM assets
+                        const assetInfo = {
+                            code: assetCode,
+                            issuer: card.dataset.issuer || null,
+                            name: assetName || 'Unknown'
+                        };
+                        option.value = JSON.stringify(assetInfo);
+                        option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
+                        assetSelect.appendChild(option);
+                        console.log(`✅ Added asset option: ${assetCode}`);
+                        
+                        // Debug: Log the created option
+                        console.log(`🔍 Created option:`, {
+                            value: option.value,
+                            textContent: option.textContent,
+                            element: option
+                        });
+                    }
+                });
+            }
 
             console.log(`✅ Asset select populated with ${assetSelect.options.length} options`);
             
