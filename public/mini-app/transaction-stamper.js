@@ -382,7 +382,7 @@ window.createTransactionStamper = createSecureTransactionStamper;
 class ClientSideTransactionManager {
   
   // Generate short-lived session keys for transaction signing (30 seconds)
-  async generateSessionKeys(organizationId, telegramId) {
+  async generateSessionKeys(organizationId, telegramId, password) {
     try {
       console.log('🔑 Generating short-lived session keys...');
       
@@ -404,8 +404,8 @@ class ClientSideTransactionManager {
         }
       };
       
-      // Get stored API keys for creating the session
-      const apiKeys = await this.getStoredApiKeys();
+      // Get stored API keys for creating the session (with decryption)
+      const apiKeys = await this.getStoredApiKeys(password);
       
       // Create stamp for session creation
       const sessionStamper = createSecureTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
@@ -488,23 +488,45 @@ class ClientSideTransactionManager {
     }
   }
   
-  // Get stored API keys (without decryption - just for session creation)
-  async getStoredApiKeys() {
-    // This gets the plaintext keys from storage (only for session creation)
+  // Get stored API keys (with decryption for session creation)
+  async getStoredApiKeys(password) {
+    // This gets and decrypts the encrypted keys from storage (only for session creation)
     const storedData = await new Promise((resolve) => {
       window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
         resolve(value ? JSON.parse(value) : null);
       });
     });
     
-    if (!storedData || !storedData.apiPublicKey || !storedData.apiPrivateKey) {
+    if (!storedData) {
       throw new Error('No stored API keys found for session creation');
     }
     
-    return {
-      apiPublicKey: storedData.apiPublicKey,
-      apiPrivateKey: storedData.apiPrivateKey
-    };
+    // Check if keys are encrypted or plaintext
+    if (storedData.encryptedPrivateKey && storedData.iv && storedData.salt) {
+      // Encrypted format - need to decrypt
+      console.log('🔐 Decrypting stored API keys for session creation...');
+      
+      if (!password) {
+        throw new Error('Password required to decrypt stored API keys');
+      }
+      
+      // Use the encryption utilities to decrypt
+      const decryptedPrivateKey = await window.EncryptionUtils.decryptPrivateKey(storedData, password);
+      
+      return {
+        apiPublicKey: storedData.publicKey,
+        apiPrivateKey: decryptedPrivateKey
+      };
+    } else if (storedData.apiPublicKey && storedData.apiPrivateKey) {
+      // Plaintext format - use directly
+      console.log('⚠️ Using plaintext stored API keys for session creation');
+      return {
+        apiPublicKey: storedData.apiPublicKey,
+        apiPrivateKey: storedData.apiPrivateKey
+      };
+    } else {
+      throw new Error('Invalid stored API key format');
+    }
   }
   constructor() {
     this.stellarSdk = window.StellarSdk;
@@ -547,7 +569,7 @@ class ClientSideTransactionManager {
     };
   }
 
-  async signAndSubmitTransaction(xdrPayload, telegram_id = null) {
+  async signAndSubmitTransaction(xdrPayload, telegram_id = null, password = null) {
     try {
       console.log('🚀 Starting complete client-side transaction flow...');
       console.log('📝 XDR payload length:', xdrPayload.length);
@@ -565,7 +587,7 @@ class ClientSideTransactionManager {
       
       // Step 2: Generate short-lived session keys (30 seconds)
       console.log('🔑 Generating session keys...');
-      const sessionKeys = await this.generateSessionKeys(organizationId, telegram_id);
+      const sessionKeys = await this.generateSessionKeys(organizationId, telegram_id, password);
       console.log('✅ Session keys generated:', sessionKeys);
       
       // Step 3: Create stamp using session keys

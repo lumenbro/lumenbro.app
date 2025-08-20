@@ -1149,7 +1149,8 @@
                 // This will handle everything: session creation, stamping, Turnkey API, signing, and submission
                 const result = await transactionManager.signAndSubmitTransaction(
                     xdr, 
-                    telegramId
+                    telegramId,
+                    password
                 );
                 
                 console.log('✅ Complete client-side transaction successful:', result);
