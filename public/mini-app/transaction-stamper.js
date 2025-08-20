@@ -382,7 +382,43 @@ window.createTransactionStamper = createSecureTransactionStamper;
 class ClientSideTransactionManager {
   constructor() {
     this.stellarSdk = window.StellarSdk;
-    this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+    console.log('🔍 Stellar SDK available:', !!this.stellarSdk);
+    console.log('🔍 Stellar SDK Server available:', !!(this.stellarSdk && this.stellarSdk.Server));
+    
+    // Handle different Stellar SDK bundle formats
+    if (this.stellarSdk && this.stellarSdk.Server && typeof this.stellarSdk.Server === 'function') {
+      try {
+        this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+        console.log('✅ Using Stellar SDK Server');
+      } catch (error) {
+        console.warn('⚠️ Stellar SDK Server failed, using fallback:', error);
+        this.createFallbackServer();
+      }
+    } else {
+      console.log('⚠️ Stellar SDK Server not available, using fallback');
+      this.createFallbackServer();
+    }
+  }
+
+  createFallbackServer() {
+    // Fallback for bundles that don't include Server
+    this.server = {
+      submitTransaction: async (signedXdr) => {
+        console.log('📡 Submitting transaction via fallback method');
+        const response = await fetch('https://horizon.stellar.org/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tx: signedXdr })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || `Horizon error: ${response.status}`);
+        }
+        
+        return await response.json();
+      }
+    };
   }
 
   async signAndSubmitTransaction(xdrPayload, privateKey, publicKey, telegram_id = null) {
