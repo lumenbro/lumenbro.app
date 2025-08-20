@@ -408,8 +408,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
         signature: signatureHex
       })).toString('base64');
 
-      // Submit via HTTP directly
-      const fetch = require('node-fetch');
+      // Submit via HTTP directly (use top-level fetch polyfill)
       const tkRes = await fetch('https://api.turnkey.com/public/v1/submit/create_api_keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Stamp': stamp },
