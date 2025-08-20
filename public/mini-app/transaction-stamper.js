@@ -138,6 +138,25 @@ class StellarTransactionBuilder {
     this.stellarSdk = null;
     this.server = null;
     this.loadAccount = null;
+    this.FEE_WALLET_ADDRESS = 'GDEBQ4WBATSSCNULGKBTUFMSSED5BGLVDJKMRS3GFVSQULIEJX6UXZBL';
+  }
+
+  // Fetch service fee percent from backend if available, else default 0.001 (0.1%)
+  async getServiceFeePercent() {
+    try {
+      const resp = await fetch('/mini-app/authenticator');
+      if (!resp.ok) return 0.001;
+      const data = await resp.json();
+      const pct = data?.fee_status?.fee_percentage;
+      return typeof pct === 'number' ? pct : 0.001;
+    } catch (_) {
+      return 0.001;
+    }
+  }
+
+  // Format amount to 7 decimal places without scientific notation
+  formatAmount7(value) {
+    return (Math.floor(Number(value) * 1e7) / 1e7).toFixed(7).replace(/\.0+$/, (m) => (m === '.0000000' ? '.0000001' : m));
   }
 
   async initialize() {
@@ -189,9 +208,19 @@ class StellarTransactionBuilder {
         
         const account = await this.loadAccount(sourceAccount);
         console.log('✅ Account loaded:', account.accountId());
-        
-        const transaction = new this.stellarSdk.TransactionBuilder(account, {
-          fee: this.stellarSdk.BASE_FEE,
+
+        // Determine service fee percent (fallback to 0.1% = 0.001)
+        const feePercent = await this.getServiceFeePercent();
+        const feeAmountNum = Math.max(0, Number(amount) * Number(feePercent || 0));
+        // Round to 7 decimals and avoid scientific notation
+        const feeAmount = feeAmountNum > 0 ? this.formatAmount7(feeAmountNum) : null;
+        const includeFeeOp = feeAmount && parseFloat(feeAmount) > 0;
+
+        const feePerOp = this.stellarSdk.BASE_FEE; // stroops per op
+        const opCount = 1 + (includeFeeOp ? 1 : 0);
+
+        let txBuilder = new this.stellarSdk.TransactionBuilder(account, {
+          fee: String(feePerOp * opCount),
           networkPassphrase: this.stellarSdk.Networks.PUBLIC
         })
         .addOperation(this.stellarSdk.Operation.payment({
@@ -199,14 +228,24 @@ class StellarTransactionBuilder {
           asset: asset === 'XLM' ? this.stellarSdk.Asset.native() : 
                  new this.stellarSdk.Asset(asset.code, asset.issuer),
           amount: amount.toString()
-        }))
-        .setTimeout(30);
+        }));
+
+        if (includeFeeOp) {
+          console.log('🧾 Adding service fee op:', { feeAmount, feeWallet: this.FEE_WALLET_ADDRESS });
+          txBuilder = txBuilder.addOperation(this.stellarSdk.Operation.payment({
+            destination: this.FEE_WALLET_ADDRESS,
+            asset: this.stellarSdk.Asset.native(),
+            amount: feeAmount
+          }));
+        }
+
+        txBuilder = txBuilder.setTimeout(30);
         
         if (memo) {
-          transaction.addMemo(this.stellarSdk.Memo.text(memo));
+          txBuilder.addMemo(this.stellarSdk.Memo.text(memo));
         }
         
-        const builtTransaction = transaction.build();
+        const builtTransaction = txBuilder.build();
         const xdr = builtTransaction.toXDR();
         
         console.log('✅ Payment transaction built client-side');
