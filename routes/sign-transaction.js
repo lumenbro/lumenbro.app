@@ -384,18 +384,53 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
       });
     }
     
-    // Forward to Turnkey with stamp
+    // Forward to Turnkey with stamp - using Python bot's working format
     console.log('📡 Forwarding to Turnkey API...');
     console.log('📋 Stamp:', stamp);
     console.log('📋 Request body:', JSON.stringify(requestBody, null, 2));
     
-    const turnkeyResponse = await fetch('https://api.turnkey.com/v1/activities', {
+    // Convert to Python bot's working format
+    const payload = requestBody.parameters?.payload;
+    const organizationId = requestBody.organizationId;
+    
+    // Convert base64 payload to hex (like Python bot does)
+    const payloadBuffer = Buffer.from(payload, 'base64');
+    const payloadHex = payloadBuffer.toString('hex');
+    
+    // Get user's public key for signWith parameter
+    const userQuery = await pool.query(
+      "SELECT public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
+      [telegram_id]
+    );
+    
+    if (userQuery.rows.length === 0) {
+      return res.status(400).json({ error: 'No active wallet found for user' });
+    }
+    
+    const signWith = userQuery.rows[0].public_key;
+    
+    // Use Python bot's working request format
+    const turnkeyRequest = {
+      type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+      timestampMs: Date.now().toString(),
+      organizationId: organizationId,
+      parameters: {
+        signWith: signWith,
+        payload: payloadHex,
+        encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
+        hashFunction: "HASH_FUNCTION_NOT_APPLICABLE"
+      }
+    };
+    
+    console.log('📡 Converted request:', JSON.stringify(turnkeyRequest, null, 2));
+    
+    const turnkeyResponse = await fetch('https://api.turnkey.com/public/v1/submit/sign_raw_payload', {
       method: 'POST',
       headers: {
         'X-Stamp': stamp.stampHeaderValue || stamp,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(turnkeyRequest)
     });
     
     const turnkeyResult = await turnkeyResponse.json();
@@ -416,14 +451,68 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
     // Handle referral rewards
     await handleReferralRewards(telegram_id, fee_amount || 0);
     
-    // Extract signed XDR from Turnkey response
-    const signedXdr = turnkeyResult.activity?.result?.signRawPayloadResult?.signedPayload || null;
+    // Extract signature from Turnkey response (Python bot format)
+    const r = turnkeyResult.activity?.result?.signRawPayloadResult?.r;
+    const s = turnkeyResult.activity?.result?.signRawPayloadResult?.s;
     
-    if (!signedXdr) {
-      console.error('❌ No signed XDR in Turnkey response');
+    if (!r || !s) {
+      console.error('❌ No signature in Turnkey response');
       return res.status(500).json({ 
-        error: 'No signed XDR received from Turnkey',
+        error: 'No signature received from Turnkey',
         details: turnkeyResult 
+      });
+    }
+    
+    // Combine r and s to create signature (like Python bot does)
+    const hexSignature = r + s;
+    if (hexSignature.length !== 128) {
+      console.error('❌ Invalid signature length:', hexSignature.length);
+      return res.status(500).json({ 
+        error: 'Invalid signature from Turnkey',
+        details: { hexSignature, length: hexSignature.length }
+      });
+    }
+    
+    // Get the original XDR and add the signature
+    const originalXdr = requestBody.parameters?.payload;
+    const { StellarSdk } = require('@stellar/stellar-sdk');
+    
+    try {
+      // Parse the original transaction
+      const transaction = StellarSdk.TransactionBuilder.fromXDR(originalXdr, StellarSdk.Networks.PUBLIC);
+      
+      // Create signature bytes
+      const signatureBytes = Buffer.from(hexSignature, 'hex');
+      
+      // Get the user's public key for signature hint
+      const userQuery = await pool.query(
+        "SELECT public_key FROM turnkey_wallets WHERE telegram_id = $1 AND is_active = TRUE",
+        [telegram_id]
+      );
+      const publicKey = userQuery.rows[0].public_key;
+      
+      // Create keypair for signature hint
+      const keypair = StellarSdk.Keypair.fromPublicKey(publicKey);
+      const hint = keypair.signatureHint();
+      
+      // Create decorated signature
+      const decoratedSignature = new StellarSdk.xdr.DecoratedSignature({
+        hint: hint,
+        signature: signatureBytes
+      });
+      
+      // Add signature to transaction
+      transaction.signatures.push(decoratedSignature);
+      
+      // Get signed XDR
+      const signedXdr = transaction.toXDR();
+      console.log('✅ Successfully created signed XDR');
+      
+    } catch (signatureError) {
+      console.error('❌ Error creating signed XDR:', signatureError);
+      return res.status(500).json({ 
+        error: 'Failed to create signed XDR',
+        details: signatureError.message 
       });
     }
     
