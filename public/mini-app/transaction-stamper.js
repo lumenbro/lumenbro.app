@@ -513,7 +513,7 @@ class ClientSideTransactionManager {
         decrypted = payload.privateKeyHex;
       }
       const sessionPrivateKey = decrypted; // hex string
-      const sessionPublicKey = this.derivePublicKey(sessionPrivateKey); // compressed P-256 hex for Turnkey
+      const sessionPublicKey = await this.derivePublicKey(sessionPrivateKey); // compressed P-256 hex for Turnkey
       
       console.log('🔑 Session keys generated and decrypted');
       
@@ -554,16 +554,28 @@ class ClientSideTransactionManager {
   }
   
   // Derive Turnkey API public key (compressed P-256) from private key hex
-  derivePublicKey(privateKeyHex) {
+  async derivePublicKey(privateKeyHex) {
     try {
-      if (!window.Turnkey || typeof window.Turnkey.getPublicKey !== 'function') {
-        throw new Error('Turnkey getPublicKey not available');
+      if (window.Turnkey && typeof window.Turnkey.getPublicKey === 'function') {
+        const compressedHex = window.Turnkey.getPublicKey(privateKeyHex, true);
+        if (compressedHex && typeof compressedHex === 'string') return compressedHex;
       }
-      const compressedHex = window.Turnkey.getPublicKey(privateKeyHex, true);
-      if (!compressedHex || typeof compressedHex !== 'string') {
-        throw new Error('Invalid derived public key');
+      // Fallback to backend helper for Telegram WebView
+      const resp = await fetch('/mini-app/derive-p256-public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          privateKeyHex,
+          initData: window.Telegram?.WebApp?.initData || ''
+        })
+      });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`Backend derive failed: ${errText}`);
       }
-      return compressedHex;
+      const data = await resp.json();
+      if (!data.publicKeyHex) throw new Error('Backend derive returned empty');
+      return data.publicKeyHex;
     } catch (error) {
       console.error('❌ Public key derivation failed:', error);
       throw new Error('Failed to derive public key');

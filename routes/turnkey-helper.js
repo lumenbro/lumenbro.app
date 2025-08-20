@@ -52,5 +52,29 @@ router.post('/mini-app/decrypt-credential-bundle', async (req, res) => {
 });
 
 module.exports = router;
+ 
+// POST /mini-app/derive-p256-public
+// Body: { privateKeyHex: string, initData: string }
+// Returns: { publicKeyHex }
+router.post('/mini-app/derive-p256-public', async (req, res) => {
+	try {
+		const { privateKeyHex, initData } = req.body || {};
+		if (!privateKeyHex || !initData) {
+			return res.status(400).json({ error: 'Missing privateKeyHex or initData' });
+		}
+		if (!validateInitData(initData)) {
+			return res.status(403).json({ error: 'Invalid initData' });
+		}
+		// Derive compressed P-256 public key
+		const buf = Buffer.from(privateKeyHex, 'hex');
+		const ecdh = crypto.createECDH('prime256v1');
+		ecdh.setPrivateKey(buf);
+		const publicKeyHex = ecdh.getPublicKey('hex', 'compressed');
+		return res.json({ publicKeyHex });
+	} catch (e) {
+		console.error('derive-p256-public failed:', e.message);
+		return res.status(500).json({ error: e.message });
+	}
+});
 
 
