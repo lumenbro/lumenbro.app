@@ -640,23 +640,25 @@
                 
                 console.log('🔍 Swap session check response:', data);
                 
-                if (data.success && data.authenticator?.has_active_session) {
+                // Handle the proxy response structure from Node.js to Python bot
+                if (data.success && data.authenticator_info?.authenticator?.has_active_session) {
                     console.log('✅ Active database session detected:', {
-                        type: data.authenticator.type,
-                        signingMethod: data.authenticator.signing_method,
-                        hasActiveSession: data.authenticator.has_active_session
+                        type: data.authenticator_info.authenticator.type,
+                        signingMethod: data.authenticator_info.authenticator.signing_method,
+                        hasActiveSession: data.authenticator_info.authenticator.has_active_session
                     });
                     return {
                         hasActiveSession: true,
-                        sessionType: data.authenticator.type,
-                        signingMethod: data.authenticator.signing_method
+                        sessionType: data.authenticator_info.authenticator.type,
+                        signingMethod: data.authenticator_info.authenticator.signing_method
                     };
                 } else {
                     console.log('❌ No active database session:', {
                         success: data.success,
-                        hasActiveSession: data.authenticator?.has_active_session,
-                        type: data.authenticator?.type,
-                        signingMethod: data.authenticator?.signing_method
+                        hasActiveSession: data.authenticator_info?.authenticator?.has_active_session,
+                        type: data.authenticator_info?.authenticator?.type,
+                        signingMethod: data.authenticator_info?.authenticator?.signing_method,
+                        fullResponse: data
                     });
                     return {
                         hasActiveSession: false,
