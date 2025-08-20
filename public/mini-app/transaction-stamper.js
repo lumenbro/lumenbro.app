@@ -491,8 +491,8 @@ class ClientSideTransactionManager {
       
       // Decrypt the credential bundle to get session API keys
       const decrypted = await this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
-      const sessionPrivateKey = decrypted;
-      const sessionPublicKey = this.derivePublicKey(sessionPrivateKey);
+      const sessionPrivateKey = decrypted; // hex string
+      const sessionPublicKey = this.derivePublicKey(sessionPrivateKey); // compressed P-256 hex for Turnkey
       
       console.log('🔑 Session keys generated and decrypted');
       
@@ -509,39 +509,40 @@ class ClientSideTransactionManager {
     }
   }
   
-  // Decrypt credential bundle (client-side version)
+  // Decrypt credential bundle (client-side using Turnkey crypto)
   async decryptCredentialBundle(credentialBundle, ephemeralPrivateKey) {
     try {
-      // For now, we'll use a simplified approach since we don't have the full Turnkey crypto library
-      // In production, you'd use: const { decryptCredentialBundle } = require('@turnkey/crypto');
-      
       console.log('🔐 Decrypting credential bundle...');
       console.log('🔐 Bundle length:', credentialBundle.length);
       console.log('🔐 Ephemeral key length:', ephemeralPrivateKey.length);
-      
-      // This is a placeholder - in reality, you'd use the proper Turnkey crypto
-      // For now, we'll simulate the decryption by using the ephemeral key directly
-      // This is NOT secure for production - just for testing
-      
-      // In a real implementation, you'd use:
-      // const decrypted = decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
-      
-      // For now, we'll use the ephemeral key as the session key (NOT SECURE - just for testing)
-      console.warn('⚠️ Using simplified credential bundle decryption (NOT SECURE FOR PRODUCTION)');
-      
-      return ephemeralPrivateKey;
+
+      if (!window.Turnkey || typeof window.Turnkey.decryptCredentialBundle !== 'function') {
+        throw new Error('Turnkey crypto not available in browser');
+      }
+
+      // Use Turnkey's official decryptor (expects base58check bundle and hex private key)
+      const decryptedHex = window.Turnkey.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      if (!decryptedHex || typeof decryptedHex !== 'string') {
+        throw new Error('Decryption returned invalid data');
+      }
+      return decryptedHex;
     } catch (error) {
       console.error('❌ Credential bundle decryption failed:', error);
       throw new Error('Failed to decrypt session credentials');
     }
   }
   
-  // Derive public key from private key
+  // Derive Turnkey API public key (compressed P-256) from private key hex
   derivePublicKey(privateKeyHex) {
     try {
-      // Use Stellar SDK to derive public key
-      const keypair = this.stellarSdk.Keypair.fromSecret(privateKeyHex);
-      return keypair.publicKey();
+      if (!window.Turnkey || typeof window.Turnkey.getPublicKey !== 'function') {
+        throw new Error('Turnkey getPublicKey not available');
+      }
+      const compressedHex = window.Turnkey.getPublicKey(privateKeyHex, true);
+      if (!compressedHex || typeof compressedHex !== 'string') {
+        throw new Error('Invalid derived public key');
+      }
+      return compressedHex;
     } catch (error) {
       console.error('❌ Public key derivation failed:', error);
       throw new Error('Failed to derive public key');
@@ -663,7 +664,11 @@ class ClientSideTransactionManager {
       
       // Step 4: Extract signature and create signed XDR
       console.log('🔧 Creating signed XDR...');
-      const signedXdr = await this.createSignedXDR(xdrPayload, turnkeyResponse, publicKey);
+      // We need the Stellar public key for signature hint; fetch from authenticator
+      const authResponse2 = await fetch('/mini-app/authenticator');
+      const authData2 = await authResponse2.json();
+      const stellarPublicKey = authData2?.authenticator_info?.user?.public_key;
+      const signedXdr = await this.createSignedXDR(xdrPayload, turnkeyResponse, stellarPublicKey);
       console.log('✅ Signed XDR created');
       
       // Step 5: Submit to Stellar network directly
