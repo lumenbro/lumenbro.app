@@ -389,6 +389,15 @@ class ClientSideTransactionManager {
       return v.toString(16);
     });
   }
+  
+  // Deterministic JSON stringify (sort keys recursively)
+  stringifySorted(obj) {
+    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+    if (Array.isArray(obj)) return `[${obj.map((v) => this.stringifySorted(v)).join(',')}]`;
+    const keys = Object.keys(obj).sort();
+    const entries = keys.map((k) => `${JSON.stringify(k)}:${this.stringifySorted(obj[k])}`);
+    return `{${entries.join(',')}}`;
+  }
 
   // Fetch userId from backend (like login.js does)
   async fetchUserId(organizationId) {
@@ -710,23 +719,17 @@ class ClientSideTransactionManager {
         throw e;
       }
       
-      // Step 3: Create stamp using session keys
-      console.log('🔐 Creating Turnkey stamp with session keys...');
-      const stamper = createSecureTransactionStamper(sessionKeys.apiPrivateKey, sessionKeys.apiPublicKey);
-      const stampResult = await stamper.stamp(xdrPayload);
-      console.log('✅ Stamp created:', stampResult);
-      
-      // Step 4: Call Turnkey API with session keys
+      // Step 3: Call Turnkey API using session keys (we will stamp the request body, not the XDR)
       console.log('📡 Calling Turnkey API with session keys...');
-      const turnkeyResponse = await this.callTurnkeyAPI(stampResult, xdrPayload, organizationId);
+      // We need the Stellar public key for signWith
+      const authResponse2 = await fetch('/mini-app/authenticator');
+      const authData2 = await authResponse2.json();
+      const stellarPublicKey = authData2?.authenticator_info?.user?.public_key;
+      const turnkeyResponse = await this.callTurnkeyAPI(sessionKeys, xdrPayload, organizationId, stellarPublicKey);
       console.log('✅ Turnkey API response:', turnkeyResponse);
       
       // Step 4: Extract signature and create signed XDR
       console.log('🔧 Creating signed XDR...');
-      // We need the Stellar public key for signature hint; fetch from authenticator
-      const authResponse2 = await fetch('/mini-app/authenticator');
-      const authData2 = await authResponse2.json();
-      const stellarPublicKey = authData2?.authenticator_info?.user?.public_key;
       const signedXdr = await this.createSignedXDR(xdrPayload, turnkeyResponse, stellarPublicKey);
       console.log('✅ Signed XDR created');
       
@@ -756,30 +759,33 @@ class ClientSideTransactionManager {
     }
   }
 
-  async callTurnkeyAPI(stampResult, xdrPayload, organizationId) {
+  async callTurnkeyAPI(sessionKeys, xdrPayload, organizationId, stellarPublicKey) {
     try {
       // Convert base64 payload to hex (like Python bot)
       const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
       const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
       
       console.log('🔍 Using organization ID:', organizationId);
-      
       // Create Turnkey request (matching Python bot format)
-      const turnkeyRequest = {
+      const body = {
         type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
         timestampMs: Date.now().toString(),
         organizationId: organizationId,
         parameters: {
-          signWith: stampResult.publicKey,
+          signWith: sessionKeys.apiPublicKey,
           payload: payloadHex,
           encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
           hashFunction: "HASH_FUNCTION_NOT_APPLICABLE"
         }
       };
-      
-      console.log('📡 Turnkey request:', turnkeyRequest);
+      // Deterministic stringify
+      const bodyStr = this.stringifySorted(body);
+      // Create stamp with session keys over the sorted body
+      const stamper = createSecureTransactionStamper(sessionKeys.apiPrivateKey, sessionKeys.apiPublicKey);
+      const stampResult = await stamper.stamp(bodyStr);
+      console.log('📡 Turnkey request:', body);
       console.log('📡 Using stamp:', stampResult.stamp.stampHeaderValue);
-      console.log('📡 Using public key for signWith:', stampResult.publicKey);
+      console.log('📡 Using public key for signWith:', sessionKeys.apiPublicKey);
       
       const response = await fetch('https://api.turnkey.com/public/v1/submit/sign_raw_payload', {
         method: 'POST',
@@ -787,7 +793,7 @@ class ClientSideTransactionManager {
           'X-Stamp': stampResult.stamp.stampHeaderValue,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(turnkeyRequest)
+        body: bodyStr
       });
       
       if (!response.ok) {
