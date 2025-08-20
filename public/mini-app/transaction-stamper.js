@@ -381,6 +381,35 @@ window.createTransactionStamper = createSecureTransactionStamper;
 // The server is ONLY used for optional logging after successful submission
 class ClientSideTransactionManager {
   
+  // Generate a UUID v4
+  generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  // Fetch userId from backend (like login.js does)
+  async fetchUserId(organizationId) {
+    try {
+      console.log('🔍 Fetching userId for organization:', organizationId);
+      const response = await fetch(`/get-user-id?orgId=${organizationId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch userId: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('✅ Fetched userId:', data.userId);
+      return data.userId;
+    } catch (error) {
+      console.error('❌ Failed to fetch userId:', error);
+      // Fallback to generated UUID if fetch fails
+      const fallbackUserId = this.generateUUID();
+      console.warn('⚠️ Using fallback userId:', fallbackUserId);
+      return fallbackUserId;
+    }
+  }
+  
   // Generate short-lived session keys for transaction signing (30 seconds)
   async generateSessionKeys(organizationId, telegramId, password) {
     try {
@@ -391,6 +420,9 @@ class ClientSideTransactionManager {
       const ephemeralPrivateKey = ephemeralKeyPair.secret();
       const ephemeralPublicKey = ephemeralKeyPair.publicKey();
       
+      // Fetch real userId from backend (like login.js does)
+      const userId = await this.fetchUserId(organizationId);
+      
       // Create session request body (30 second expiry) - following login.js format
       const sessionBody = {
         type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
@@ -398,7 +430,7 @@ class ClientSideTransactionManager {
         organizationId: organizationId,
         email: "transaction@lumenbro.app", // Placeholder email for session creation
         parameters: {
-          userId: "transaction-user", // Placeholder userId for session creation
+          userId: userId, // Real userId from backend
           expirationSeconds: "30", // 30 second expiry
           targetPublicKey: ephemeralPublicKey, // Required field - the ephemeral public key
           apiKeyName: `Transaction Session - ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`,
