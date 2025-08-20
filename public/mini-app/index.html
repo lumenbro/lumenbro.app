@@ -337,9 +337,7 @@
                 const totalAssets = accountData.balances.length;
                 console.log(`Account has ${totalAssets} assets (including XLM)`);
 
-                // Pre-populate asset selects for future use
-                populateAssetSelect();
-                populateSwapAssetSelects();
+                // Asset selects will be populated after assets are displayed
 
                 updateConnectionStatus('Connected', 'connected');
 
@@ -452,6 +450,10 @@
 
             console.log(`✅ Finished displaying ${balances.length} assets`);
             console.log(`🔍 Total asset cards in DOM: ${document.querySelectorAll('.asset-card').length}`);
+            
+            // Now that assets are displayed, populate any existing asset selects
+            populateAssetSelect();
+            populateSwapAssetSelects();
         }
 
         async function fetchAssetMetadata(assetCode, assetIssuer, assetCard) {
@@ -596,16 +598,6 @@
             setTimeout(() => {
                 populateAssetSelect();
                 console.log('🔍 Populating asset select after delay...');
-                
-                // Test: Add a manual option to see if dropdown works
-                const assetSelect = document.getElementById('assetSelect');
-                if (assetSelect) {
-                    const testOption = document.createElement('option');
-                    testOption.value = 'TEST';
-                    testOption.textContent = 'TEST ASSET (Manual Test)';
-                    assetSelect.appendChild(testOption);
-                    console.log('🧪 Added test option to verify dropdown functionality');
-                }
             }, 500);
         
         // Add change handler for asset selection to update fee display
@@ -717,33 +709,10 @@
                 });
             });
 
-            // If no asset cards found, try to populate from stored balance data
+            // If no asset cards found, log the issue but don't add fallbacks
             if (assetCards.length === 0) {
-                console.log('⚠️ No asset cards found, trying fallback method...');
-                
-                // Try to get balance data from the wallet display
-                const balanceElements = document.querySelectorAll('.balance-amount');
-                console.log(`🔍 Found ${balanceElements.length} balance elements`);
-                
-                // Add some common assets as fallback
-                const fallbackAssets = [
-                    { code: 'CHAD', name: 'CHAD', issuer: 'GDNCKMHYB3ZCIK7HCYO3NH3K2TWKEUFARFSIYP26SNHNS4TMOZHBXLUC' },
-                    { code: 'NUT', name: 'NUT', issuer: 'GDNCKMHYB3ZCIK7HCYO3NH3K2TWKEUFARFSIYP26SNHNS4TMOZHBXLUC' },
-                    { code: 'USDC', name: 'USD Coin', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' }
-                ];
-                
-                fallbackAssets.forEach(asset => {
-                    const option = document.createElement('option');
-                    const assetInfo = {
-                        code: asset.code,
-                        issuer: asset.issuer,
-                        name: asset.name
-                    };
-                    option.value = JSON.stringify(assetInfo);
-                    option.textContent = `${asset.code} (${asset.name})`;
-                    assetSelect.appendChild(option);
-                    console.log(`✅ Added fallback asset option: ${asset.code}`);
-                });
+                console.log('⚠️ No asset cards found - assets may not be loaded yet');
+                console.log('🔍 This is normal if called before displayAllAssets() completes');
             } else {
                 assetCards.forEach((card, index) => {
                     const assetName = card.querySelector('.asset-name')?.textContent;
