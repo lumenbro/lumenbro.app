@@ -84,6 +84,13 @@
     <script src="/mini-app/mobile-debug.js"></script>  <!-- Mobile debugging -->
     <script src="/mini-app/mobile-encryption-fix.js"></script>  <!-- Mobile encryption fixes -->
     <script src="/mini-app/transaction-stamper.js"></script>  <!-- Transaction signing stamper -->
+    
+    <!-- Load modular components -->
+    <script src="/mini-app/js/utils.js"></script>
+    <script src="/mini-app/js/wallet-core.js"></script>
+    <script src="/mini-app/js/swap-engine.js"></script>
+    <script src="/mini-app/js/ui-manager.js"></script>
+    <script src="/mini-app/js/transaction-manager.js"></script>
     <style>
         .status {
             padding: 15px;
@@ -171,6 +178,15 @@
         // Wallet interface functions
         function initializeWalletInterface() {
             console.log('Initializing wallet interface...');
+            
+            // Initialize modular components
+            console.log('🔧 Initializing modular components...');
+            if (window.Utils) window.Utils.init();
+            if (window.WalletCore) window.WalletCore.init();
+            if (window.SwapEngine) window.SwapEngine.init();
+            if (window.UIManager) window.UIManager.init();
+            if (window.TransactionManager) window.TransactionManager.init();
+            console.log('✅ All modules initialized');
 
             // Check if user is authenticated
             checkUserAuthentication().then(isAuthenticated => {
