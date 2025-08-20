@@ -58,6 +58,7 @@ const chartsRoutes = require('./routes/charts');
 const exportRoutes = require('./routes/export');
 const walletRoutes = require('./routes/wallet');
 const signTransactionRoutes = require('./routes/sign-transaction');
+const turnkeyHelperRoutes = require('./routes/turnkey-helper');
 
 // Add cache-busting for development (exclude asset metadata endpoints)
 if (process.env.NODE_ENV !== 'production') {
@@ -86,6 +87,7 @@ app.use('/api/charts', chartsRoutes);
 app.use(exportRoutes);
 app.use('/api', walletRoutes);
 app.use(signTransactionRoutes);
+app.use(turnkeyHelperRoutes);
 // Download routes removed per mobile constraints
 
 // Landing

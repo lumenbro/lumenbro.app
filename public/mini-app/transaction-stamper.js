@@ -490,7 +490,28 @@ class ClientSideTransactionManager {
       console.log('✅ Session created successfully:', sessionId);
       
       // Decrypt the credential bundle to get session API keys
-      const decrypted = await this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      let decrypted;
+      try {
+        decrypted = await this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      } catch (e) {
+        console.warn('⚠️ Browser decrypt failed; falling back to backend helper');
+        // Fallback to backend helper (Telegram WebView safe) with initData validation
+        const fallbackRes = await fetch('/mini-app/decrypt-credential-bundle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            credentialBundle,
+            ephemeralPrivateKey,
+            initData: window.Telegram?.WebApp?.initData || ''
+          })
+        });
+        if (!fallbackRes.ok) {
+          const errText = await fallbackRes.text();
+          throw new Error(`Fallback decrypt failed: ${errText}`);
+        }
+        const payload = await fallbackRes.json();
+        decrypted = payload.privateKeyHex;
+      }
       const sessionPrivateKey = decrypted; // hex string
       const sessionPublicKey = this.derivePublicKey(sessionPrivateKey); // compressed P-256 hex for Turnkey
       
