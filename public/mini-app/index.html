@@ -1154,25 +1154,34 @@
                 console.log('🔍 Stamp result:', stampResult);
                 console.log('🔍 Security level:', stampResult.securityLevel);
                 
+                // Get Telegram ID for the request
+                const telegramId = await getTelegramId();
+                console.log('🔍 Using Telegram ID for signing request:', telegramId);
+                
+                // Prepare request body
+                const requestBody = {
+                    stamp: stampResult.stamp,
+                    requestBody: {
+                        type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
+                        timestamp: new Date().toISOString(),
+                        organizationId: window.orgId || 'global-org-id',
+                        parameters: {
+                            payload: xdr,
+                            encoding: "PAYLOAD_ENCODING_BASE64"
+                        }
+                    },
+                    telegram_id: telegramId,
+                    fee_amount: 0.00001, // Default fee
+                    fee_asset: 'XLM'
+                };
+                
+                console.log('🔍 Sending signing request:', requestBody);
+                
                 // Send stamp to backend for Turnkey API processing
                 const response = await fetch('/mini-app/sign-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        stamp: stampResult.stamp,
-                        requestBody: {
-                            type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
-                            timestamp: new Date().toISOString(),
-                            organizationId: window.orgId || 'global-org-id',
-                            parameters: {
-                                payload: xdr,
-                                encoding: "PAYLOAD_ENCODING_BASE64"
-                            }
-                        },
-                        telegram_id: await getTelegramId(),
-                        fee_amount: 0.00001, // Default fee
-                        fee_asset: 'XLM'
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {
@@ -1228,11 +1237,33 @@
 
         async function getTelegramId() {
             try {
+                console.log('🔍 Getting Telegram ID from authenticator...');
                 const authResponse = await fetch('/mini-app/authenticator');
                 const authData = await authResponse.json();
-                return authData.authenticator_info.user.telegram_id;
+                console.log('🔍 Authenticator response:', authData);
+                
+                const telegramId = authData.authenticator_info?.user?.telegram_id;
+                console.log('🔍 Extracted Telegram ID:', telegramId);
+                
+                if (!telegramId) {
+                    console.error('❌ No telegram_id found in authenticator response');
+                    // Fallback: try to get from Telegram WebApp
+                    const webAppUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                    if (webAppUser?.id) {
+                        console.log('🔍 Using fallback Telegram ID from WebApp:', webAppUser.id);
+                        return webAppUser.id;
+                    }
+                }
+                
+                return telegramId;
             } catch (error) {
                 console.error('Failed to get Telegram ID:', error);
+                // Fallback: try to get from Telegram WebApp
+                const webAppUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                if (webAppUser?.id) {
+                    console.log('🔍 Using fallback Telegram ID from WebApp:', webAppUser.id);
+                    return webAppUser.id;
+                }
                 return null;
             }
         }
