@@ -331,11 +331,15 @@
                 }
 
                 // Display all assets
-                displayAllAssets(accountData.balances);
+                await displayAllAssets(accountData.balances);
 
                 // Show total assets count
                 const totalAssets = accountData.balances.length;
                 console.log(`Account has ${totalAssets} assets (including XLM)`);
+
+                // Pre-populate asset selects for future use
+                populateAssetSelect();
+                populateSwapAssetSelects();
 
                 updateConnectionStatus('Connected', 'connected');
 
@@ -398,6 +402,11 @@
 
                 // Create initial card with fallback icon
                 const balanceAmount = parseFloat(balance.balance).toFixed(7);
+
+                // Add issuer data attribute for non-native assets
+                if (assetIssuer) {
+                    assetCard.dataset.issuer = assetIssuer;
+                }
 
                 assetCard.innerHTML = `
                     <div class="asset-info">
@@ -573,8 +582,11 @@
                 </nav>
             `;
 
-            // Populate asset select with user's assets
-            populateAssetSelect();
+                    // Populate asset select with user's assets
+        populateAssetSelect();
+        
+        // Add change handler for asset selection to update fee display
+        document.getElementById('assetSelect').addEventListener('change', updateFeeDisplay);
         }
 
         function showSwapInterface() {
@@ -666,7 +678,13 @@
 
                 if (assetCode && assetCode !== 'XLM') {
                     const option = document.createElement('option');
-                    option.value = assetCode;
+                    // Store asset info as JSON in value for non-XLM assets
+                    const assetInfo = {
+                        code: assetCode,
+                        issuer: card.dataset.issuer || null,
+                        name: assetName || 'Unknown'
+                    };
+                    option.value = JSON.stringify(assetInfo);
                     option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
                     assetSelect.appendChild(option);
                 }
@@ -691,15 +709,22 @@
                 const balanceAmount = card.querySelector('.balance-amount')?.textContent;
 
                 if (assetCode && assetCode !== 'XLM') {
+                    // Create asset info object for non-XLM assets
+                    const assetInfo = {
+                        code: assetCode,
+                        issuer: card.dataset.issuer || null,
+                        name: assetName || 'Unknown'
+                    };
+
                     // Add to send select
                     const sendOption = document.createElement('option');
-                    sendOption.value = assetCode;
+                    sendOption.value = JSON.stringify(assetInfo);
                     sendOption.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
                     sendAssetSelect.appendChild(sendOption);
 
                     // Add to receive select
                     const receiveOption = document.createElement('option');
-                    receiveOption.value = assetCode;
+                    receiveOption.value = JSON.stringify(assetInfo);
                     receiveOption.textContent = `${assetCode} (${assetName || 'Unknown'})`;
                     receiveAssetSelect.appendChild(receiveOption);
                 }
@@ -707,13 +732,24 @@
         }
 
         async function updateSwapEstimate() {
-            const sendAsset = document.getElementById('sendAssetSelect')?.value;
+            const sendAssetValue = document.getElementById('sendAssetSelect')?.value;
             const sendAmount = parseFloat(document.getElementById('sendAmount')?.value || 0);
-            const receiveAsset = document.getElementById('receiveAssetSelect')?.value;
+            const receiveAssetValue = document.getElementById('receiveAssetSelect')?.value;
 
-            if (!sendAsset || !sendAmount || !receiveAsset || sendAsset === receiveAsset) {
+            if (!sendAssetValue || !sendAmount || !receiveAssetValue || sendAssetValue === receiveAssetValue) {
                 document.getElementById('swapRate').textContent = 'Select different assets';
                 document.getElementById('receiveAmount').value = '';
+                return;
+            }
+
+            // Parse asset information
+            let sendAsset, receiveAsset;
+            try {
+                sendAsset = sendAssetValue === 'XLM' ? 'XLM' : JSON.parse(sendAssetValue);
+                receiveAsset = receiveAssetValue === 'XLM' ? 'XLM' : JSON.parse(receiveAssetValue);
+            } catch (error) {
+                console.error('Failed to parse asset info:', error);
+                document.getElementById('swapRate').textContent = 'Invalid asset selection';
                 return;
             }
 
@@ -729,10 +765,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         sourcePublicKey: sourcePublicKey,
-                        sendAsset: sendAsset === 'XLM' ? 'XLM' : { code: sendAsset, issuer: 'ISSUER' }, // You'll need to get actual issuer
+                        sendAsset: sendAsset,
                         sendAmount: sendAmount,
                         destination: sourcePublicKey, // Swap to self
-                        destAsset: receiveAsset === 'XLM' ? 'XLM' : { code: receiveAsset, issuer: 'ISSUER' },
+                        destAsset: receiveAsset,
                         destMin: '0.0000001',
                         path: [],
                         telegram_id: authData.authenticator_info.user.telegram_id
@@ -745,8 +781,10 @@
                     if (result.simulation.success) {
                         const minReceived = parseFloat(result.simulation.minReceived);
                         const rate = minReceived / sendAmount;
+                        const sendAssetCode = typeof sendAsset === 'string' ? sendAsset : sendAsset.code;
+                        const receiveAssetCode = typeof receiveAsset === 'string' ? receiveAsset : receiveAsset.code;
                         
-                        document.getElementById('swapRate').textContent = `1 ${sendAsset} = ${rate.toFixed(6)} ${receiveAsset}`;
+                        document.getElementById('swapRate').textContent = `1 ${sendAssetCode} = ${rate.toFixed(6)} ${receiveAssetCode}`;
                         document.getElementById('receiveAmount').value = minReceived.toFixed(7);
                         document.getElementById('swapNetworkFee').textContent = `${result.fees.networkFee} XLM`;
                         document.getElementById('swapServiceFee').textContent = `${result.fees.serviceFee} XLM`;
@@ -953,12 +991,62 @@
             showWallet();
         }
 
+        async function updateFeeDisplay() {
+            const assetSelect = document.getElementById('assetSelect');
+            const feeAmountSpan = document.getElementById('feeAmount');
+            const serviceFeeSpan = document.getElementById('serviceFee');
+            
+            if (!assetSelect || !feeAmountSpan || !serviceFeeSpan) return;
+            
+            const assetValue = assetSelect.value;
+            
+            // Network fee is always in XLM
+            feeAmountSpan.textContent = '0.00001 XLM';
+            
+            // Service fee calculation depends on selected asset
+            if (assetValue === 'XLM') {
+                serviceFeeSpan.textContent = '0.00001 XLM';
+            } else {
+                try {
+                    const asset = JSON.parse(assetValue);
+                    // For non-XLM assets, we need to calculate XLM equivalent
+                    // This would typically involve getting current exchange rates
+                    // For now, we'll show a placeholder
+                    serviceFeeSpan.textContent = 'Calculating...';
+                    
+                    // TODO: Implement real-time XLM equivalent calculation
+                    // This would involve:
+                    // 1. Getting current exchange rate for the asset
+                    // 2. Calculating the fee amount in asset terms
+                    // 3. Converting to XLM equivalent
+                    
+                } catch (error) {
+                    console.error('Failed to parse asset info for fee calculation:', error);
+                    serviceFeeSpan.textContent = '0.00001 XLM';
+                }
+            }
+        }
+
         async function buildAndSignTransaction() {
             try {
                 const recipientAddress = document.getElementById('recipientAddress').value.trim();  
-                const assetCode = document.getElementById('assetSelect').value;
+                const assetValue = document.getElementById('assetSelect').value;
                 const amount = document.getElementById('amount').value;
                 const memo = document.getElementById('memo').value.trim();
+
+                // Parse asset information
+                let asset;
+                if (assetValue === 'XLM') {
+                    asset = 'XLM';
+                } else {
+                    try {
+                        asset = JSON.parse(assetValue);
+                    } catch (error) {
+                        console.error('Failed to parse asset info:', error);
+                        alert('Invalid asset selection');
+                        return;
+                    }
+                }
 
                 // Validation
                 if (!recipientAddress || !amount) {
@@ -985,7 +1073,7 @@
                     },
                     body: JSON.stringify({
                         recipient: recipientAddress,
-                        asset: assetCode,
+                        asset: asset,
                         amount: amount,
                         memo: memo
                     })
@@ -1037,7 +1125,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="label">Amount:</span>
-                            <span class="value">${transaction.amount} ${transaction.asset}</span>   
+                            <span class="value">${transaction.amount} ${typeof transaction.asset === 'string' ? transaction.asset : transaction.asset.code}</span>   
                         </div>
                         <div class="detail-row">
                             <span class="label">Network Fee:</span>
