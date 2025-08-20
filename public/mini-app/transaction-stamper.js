@@ -377,6 +377,8 @@ window.TransactionStamper = SecureTransactionStamper;
 window.createTransactionStamper = createSecureTransactionStamper;
 
 // Complete client-side transaction signing and submission
+// 🚀 HIGH-SECURITY FLOW: 100% CLIENT-SIDE - NO SERVER INVOLVEMENT IN SIGNING
+// The server is ONLY used for optional logging after successful submission
 class ClientSideTransactionManager {
   constructor() {
     this.stellarSdk = window.StellarSdk;
@@ -413,7 +415,9 @@ class ClientSideTransactionManager {
       
       // Step 6: Log to backend (optional, for analytics)
       if (telegram_id) {
-        await this.logTransactionToBackend(telegram_id, signedXdr, submissionResult.hash);
+        // Get transaction data from window if available
+        const transactionData = window.currentTransactionData;
+        await this.logTransactionToBackend(telegram_id, signedXdr, submissionResult.hash, transactionData);
       }
       
       return {
@@ -538,18 +542,29 @@ class ClientSideTransactionManager {
     }
   }
 
-  async logTransactionToBackend(telegram_id, signedXdr, hash) {
+  async logTransactionToBackend(telegram_id, signedXdr, hash, transactionData = null) {
     try {
       // Optional: Log transaction to backend for analytics
+      const logData = {
+        telegram_id: telegram_id,
+        xdr: signedXdr,
+        tx_hash: hash,
+        source: 'client-complete'
+      };
+      
+      // Add transaction details if available
+      if (transactionData) {
+        logData.amount = transactionData.amount;
+        logData.asset = transactionData.asset;
+        logData.recipient = transactionData.recipient;
+      }
+      
+      console.log('📊 Logging transaction to backend:', logData);
+      
       await fetch('/mini-app/log-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          telegram_id: telegram_id,
-          signed_xdr: signedXdr,
-          hash: hash,
-          source: 'client-complete'
-        })
+        body: JSON.stringify(logData)
       });
       console.log('✅ Transaction logged to backend');
     } catch (error) {
