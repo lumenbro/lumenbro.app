@@ -772,7 +772,8 @@ class ClientSideTransactionManager {
         timestampMs: Date.now().toString(),
         organizationId: organizationId,
         parameters: {
-          signWith: sessionKeys.apiPublicKey,
+          // Use the Stellar wallet public key (G...) as the resource to sign with
+          signWith: stellarPublicKey,
           payload: payloadHex,
           encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
           hashFunction: "HASH_FUNCTION_NOT_APPLICABLE"
