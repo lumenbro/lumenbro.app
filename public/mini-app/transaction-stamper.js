@@ -681,8 +681,34 @@ class ClientSideTransactionManager {
       
       // Step 2: Generate short-lived session keys (30 seconds)
       console.log('🔑 Generating session keys...');
-      const sessionKeys = await this.generateSessionKeys(organizationId, telegram_id, password);
-      console.log('✅ Session keys generated:', sessionKeys);
+      let sessionKeys;
+      try {
+        sessionKeys = await this.generateSessionKeys(organizationId, telegram_id, password);
+        console.log('✅ Session keys generated:', sessionKeys);
+      } catch (e) {
+        const msg = String(e?.message || e || '');
+        if (msg.includes('API_KEY_EXPIRED')) {
+          console.warn('⚠️ Long-term API key expired; falling back to server session signer for this tx');
+          // Use Python bot session signer as a fallback for this transaction
+          const sessionStamper = createSessionTransactionStamper();
+          const sessionSigned = await sessionStamper.stamp(xdrPayload, 'payment');
+          if (!sessionSigned?.signedXdr) throw new Error('Session signer failed to return signed XDR');
+          // Submit to Stellar network directly
+          const submissionResult = await this.submitToStellar(sessionSigned.signedXdr);
+          if (telegram_id) {
+            const transactionData = window.currentTransactionData;
+            await this.logTransactionToBackend(telegram_id, sessionSigned.signedXdr, submissionResult.hash, transactionData);
+          }
+          return {
+            success: true,
+            signed_xdr: sessionSigned.signedXdr,
+            hash: submissionResult.hash,
+            source: 'python-bot-fallback',
+            securityLevel: 'low'
+          };
+        }
+        throw e;
+      }
       
       // Step 3: Create stamp using session keys
       console.log('🔐 Creating Turnkey stamp with session keys...');
