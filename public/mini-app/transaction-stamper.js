@@ -180,11 +180,46 @@ class StellarTransactionBuilder {
           return 0.0;
         }
       } else {
-        console.warn('⚠️ Stellar SDK not available, using fallback');
-        return 0.0;
+        // Fallback: Use direct Horizon API call
+        console.log('🔄 Using direct Horizon API for XLM equivalent...');
+        return await this.getXlmEquivalentViaHorizon(asset, amount);
       }
     } catch (error) {
       console.error(`❌ Error getting XLM equivalent for ${asset.code}:`, error);
+      // Fallback: Use direct Horizon API call
+      console.log('🔄 Falling back to direct Horizon API...');
+      return await this.getXlmEquivalentViaHorizon(asset, amount);
+    }
+  }
+
+  // Fallback method using direct Horizon API calls
+  async getXlmEquivalentViaHorizon(asset, amount) {
+    try {
+      console.log(`🔍 Getting XLM equivalent via Horizon API for ${amount} ${asset.code}`);
+      
+      // Build the path payment URL
+      const sourceAsset = asset.code === 'XLM' ? 'native' : `${asset.code}:${asset.issuer}`;
+      const destinationAssets = 'native';
+      
+      const url = `https://horizon.stellar.org/paths/strict-send?source_asset_type=${asset.code === 'XLM' ? 'native' : 'credit_alphanum4'}&source_asset_code=${asset.code === 'XLM' ? '' : asset.code}&source_asset_issuer=${asset.code === 'XLM' ? '' : asset.issuer}&source_amount=${amount}&destination_assets=${destinationAssets}&limit=1`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Horizon API failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data._embedded && data._embedded.records && data._embedded.records.length > 0) {
+        const xlmAmount = parseFloat(data._embedded.records[0].destination_amount);
+        console.log(`✅ XLM equivalent via Horizon API for ${amount} ${asset.code}: ${xlmAmount} XLM`);
+        return xlmAmount;
+      } else {
+        console.warn(`⚠️ No paths found via Horizon API for ${asset.code} to XLM`);
+        return 0.0;
+      }
+    } catch (error) {
+      console.error(`❌ Error getting XLM equivalent via Horizon API for ${asset.code}:`, error);
       return 0.0;
     }
   }
@@ -198,24 +233,33 @@ class StellarTransactionBuilder {
     if (typeof window.StellarSdk !== 'undefined') {
       this.stellarSdk = window.StellarSdk;
       try {
-        // Prefer Server if available; otherwise fall back to REST fetch
+        // Always try to create a server instance for path payments
         if (this.stellarSdk.Server && typeof this.stellarSdk.Server === 'function') {
           this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
           this.loadAccount = async (publicKey) => this.server.loadAccount(publicKey);
           console.log('✅ Stellar SDK initialized with Server');
         } else {
+          // Create server instance for path payments even if account loading uses REST
+          try {
+            this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+            console.log('✅ Stellar SDK Server created for path payments');
+          } catch (serverError) {
+            console.warn('⚠️ Failed to create Stellar Server for path payments:', serverError);
+            this.server = null;
+          }
+          
           this.loadAccount = async (publicKey) => {
             const resp = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
             if (!resp.ok) throw new Error(`Horizon accounts fetch failed: ${resp.status}`);
             const data = await resp.json();
             return new this.stellarSdk.Account(publicKey, data.sequence);
           };
-          console.log('✅ Stellar SDK initialized with REST fallback');
+          console.log('✅ Stellar SDK initialized with REST fallback for account loading');
         }
         console.log('✅ Stellar SDK initialized for transaction building');
         return true;
       } catch (error) {
-        console.error('❌ Failed to initialize Stellar Server:', error);
+        console.error('❌ Failed to initialize Stellar SDK:', error);
         // As an additional fallback, try REST path even if Server constructor failed
         this.loadAccount = async (publicKey) => {
           const resp = await fetch(`https://horizon.stellar.org/accounts/${publicKey}`);
