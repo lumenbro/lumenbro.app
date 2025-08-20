@@ -1100,22 +1100,15 @@
                 console.log('🔍 Transaction data for signing:', transactionData);
                 console.log('🔍 XDR to sign:', transactionData.xdr);
 
-                // Sign the transaction using the custom stamper
-                const signedResult = await signTransactionWithPassword(transactionData.xdr, password);
+                // Sign and submit the transaction using the client-side manager (handles everything)
+                const result = await signTransactionWithPassword(transactionData.xdr, password);
 
-                if (!signedResult.success) {
-                    throw new Error(signedResult.error || 'Transaction signing failed');
+                if (!result.success) {
+                    throw new Error(result.error || 'Transaction failed');
                 }
 
-                // Submit the signed transaction to the network
-                const submitResult = await submitTransactionToNetwork(signedResult.signed_xdr);
-
-                if (!submitResult.success) {
-                    throw new Error(submitResult.error || 'Transaction submission failed');
-                }
-
-                // Show success message
-                showTransactionSuccess(submitResult.hash);
+                // Show success message (result already contains the hash)
+                showTransactionSuccess(result.hash);
 
             } catch (error) {
                 console.error('Transaction signing failed:', error);
@@ -1128,7 +1121,7 @@
             }
         }
 
-        // High-security signing for withdrawals (requires password)
+        // High-security signing for withdrawals (requires password) - FULLY CLIENT-SIDE
         async function signTransactionWithPassword(xdr, password) {
             try {
                 // Import the encryption utilities
@@ -1144,60 +1137,30 @@
 
                 console.log('✅ Retrieved API keys for high-security signing');
 
-                // Create secure transaction stamper with decrypted keys
-                const stamper = createSecureTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
-
-                // Create stamp for Turnkey API
-                const stampResult = await stamper.stamp(xdr);
-                
-                console.log('✅ High-security stamp created successfully');
-                console.log('🔍 Stamp result:', stampResult);
-                console.log('🔍 Security level:', stampResult.securityLevel);
-                
-                // Get Telegram ID for the request
+                // Get Telegram ID for logging
                 const telegramId = await getTelegramId();
-                console.log('🔍 Using Telegram ID for signing request:', telegramId);
-                
-                // Prepare request body
-                const requestBody = {
-                    stamp: stampResult.stamp.stampHeaderValue, // Send just the stamp value, not the object
-                    requestBody: {
-                        type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
-                        timestamp: new Date().toISOString(),
-                        organizationId: window.orgId || 'global-org-id',
-                        parameters: {
-                            payload: xdr,
-                            encoding: "PAYLOAD_ENCODING_BASE64"
-                        }
-                    },
-                    telegram_id: telegramId,
-                    fee_amount: 0.00001, // Default fee
-                    fee_asset: 'XLM'
-                };
-                
-                console.log('🔍 Sending signing request:', requestBody);
-                
-                // Send stamp to backend for Turnkey API processing
-                const response = await fetch('/mini-app/sign-transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
+                console.log('🔍 Using Telegram ID for logging:', telegramId);
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Turnkey API request failed');
-                }
-
-                const result = await response.json();
-                console.log('✅ Turnkey API response:', result);
-
+                // Use the new client-side transaction manager for complete flow
+                const transactionManager = createClientSideTransactionManager();
+                
+                console.log('🚀 Starting complete client-side transaction flow...');
+                
+                // This will handle everything: stamping, Turnkey API, signing, and submission
+                const result = await transactionManager.signAndSubmitTransaction(
+                    xdr, 
+                    apiKeys.apiPrivateKey, 
+                    apiKeys.apiPublicKey, 
+                    telegramId
+                );
+                
+                console.log('✅ Complete client-side transaction successful:', result);
+                
                 return {
                     success: true,
                     signed_xdr: result.signed_xdr,
-                    source: 'turnkey-api',
-                    securityLevel: 'high',
-                    turnkey_response: result.turnkey_response
+                    hash: result.hash,
+                    source: 'client-complete'
                 };
 
             } catch (error) {

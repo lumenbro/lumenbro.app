@@ -375,3 +375,190 @@ window.createStellarTransactionBuilder = createStellarTransactionBuilder;
 window.StellarTransactionStamper = SecureTransactionStamper;
 window.TransactionStamper = SecureTransactionStamper;
 window.createTransactionStamper = createSecureTransactionStamper;
+
+// Complete client-side transaction signing and submission
+class ClientSideTransactionManager {
+  constructor() {
+    this.stellarSdk = window.StellarSdk;
+    this.server = new this.stellarSdk.Server('https://horizon.stellar.org');
+  }
+
+  async signAndSubmitTransaction(xdrPayload, privateKey, publicKey, telegram_id = null) {
+    try {
+      console.log('🚀 Starting complete client-side transaction flow...');
+      console.log('📝 XDR payload length:', xdrPayload.length);
+      
+      // Step 1: Create the secure stamper
+      const stamper = createSecureTransactionStamper(privateKey, publicKey);
+      
+      // Step 2: Create stamp for Turnkey API
+      console.log('🔐 Creating Turnkey stamp...');
+      const stampResult = await stamper.stamp(xdrPayload);
+      console.log('✅ Stamp created:', stampResult);
+      
+      // Step 3: Call Turnkey API directly from client
+      console.log('📡 Calling Turnkey API directly...');
+      const turnkeyResponse = await this.callTurnkeyAPI(stampResult, xdrPayload);
+      console.log('✅ Turnkey API response:', turnkeyResponse);
+      
+      // Step 4: Extract signature and create signed XDR
+      console.log('🔧 Creating signed XDR...');
+      const signedXdr = await this.createSignedXDR(xdrPayload, turnkeyResponse, publicKey);
+      console.log('✅ Signed XDR created');
+      
+      // Step 5: Submit to Stellar network directly
+      console.log('🌐 Submitting to Stellar network...');
+      const submissionResult = await this.submitToStellar(signedXdr);
+      console.log('✅ Transaction submitted successfully');
+      
+      // Step 6: Log to backend (optional, for analytics)
+      if (telegram_id) {
+        await this.logTransactionToBackend(telegram_id, signedXdr, submissionResult.hash);
+      }
+      
+      return {
+        success: true,
+        signed_xdr: signedXdr,
+        hash: submissionResult.hash,
+        source: 'client-complete',
+        securityLevel: 'high'
+      };
+      
+    } catch (error) {
+      console.error('❌ Client-side transaction failed:', error);
+      throw error;
+    }
+  }
+
+  async callTurnkeyAPI(stampResult, xdrPayload) {
+    try {
+      // Convert base64 payload to hex (like Python bot)
+      const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
+      const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // Get organization ID from the stamp
+      const stampData = JSON.parse(atob(stampResult.stamp.stampHeaderValue));
+      const organizationId = stampData.organizationId || 'global-org-id';
+      
+      // Create Turnkey request (matching Python bot format)
+      const turnkeyRequest = {
+        type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+        timestampMs: Date.now().toString(),
+        organizationId: organizationId,
+        parameters: {
+          signWith: stampResult.publicKey,
+          payload: payloadHex,
+          encoding: "PAYLOAD_ENCODING_HEXADECIMAL",
+          hashFunction: "HASH_FUNCTION_NOT_APPLICABLE"
+        }
+      };
+      
+      console.log('📡 Turnkey request:', turnkeyRequest);
+      
+      const response = await fetch('https://api.turnkey.com/public/v1/submit/sign_raw_payload', {
+        method: 'POST',
+        headers: {
+          'X-Stamp': stampResult.stamp.stampHeaderValue,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(turnkeyRequest)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Turnkey API failed: ${response.status} - ${JSON.stringify(errorData)}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Turnkey API success:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Turnkey API call failed:', error);
+      throw error;
+    }
+  }
+
+  async createSignedXDR(originalXdr, turnkeyResponse, publicKey) {
+    try {
+      // Extract r and s from Turnkey response
+      const r = turnkeyResponse.activity?.result?.signRawPayloadResult?.r;
+      const s = turnkeyResponse.activity?.result?.signRawPayloadResult?.s;
+      
+      if (!r || !s) {
+        throw new Error('No signature received from Turnkey');
+      }
+      
+      // Combine r and s
+      const hexSignature = r + s;
+      if (hexSignature.length !== 128) {
+        throw new Error(`Invalid signature length: ${hexSignature.length}`);
+      }
+      
+      // Parse original transaction
+      const transaction = this.stellarSdk.TransactionBuilder.fromXDR(originalXdr, this.stellarSdk.Networks.PUBLIC);
+      
+      // Create signature bytes
+      const signatureBytes = new Uint8Array(hexSignature.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      
+      // Create keypair for signature hint
+      const keypair = this.stellarSdk.Keypair.fromPublicKey(publicKey);
+      const hint = keypair.signatureHint();
+      
+      // Create decorated signature
+      const decoratedSignature = new this.stellarSdk.xdr.DecoratedSignature({
+        hint: hint,
+        signature: signatureBytes
+      });
+      
+      // Add signature to transaction
+      transaction.signatures.push(decoratedSignature);
+      
+      // Get signed XDR
+      const signedXdr = transaction.toXDR();
+      console.log('✅ Signed XDR created successfully');
+      return signedXdr;
+      
+    } catch (error) {
+      console.error('❌ Error creating signed XDR:', error);
+      throw error;
+    }
+  }
+
+  async submitToStellar(signedXdr) {
+    try {
+      // Submit directly to Stellar network
+      const result = await this.server.submitTransaction(signedXdr);
+      console.log('✅ Transaction submitted to Stellar network');
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Stellar submission failed:', error);
+      throw error;
+    }
+  }
+
+  async logTransactionToBackend(telegram_id, signedXdr, hash) {
+    try {
+      // Optional: Log transaction to backend for analytics
+      await fetch('/mini-app/log-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_id: telegram_id,
+          signed_xdr: signedXdr,
+          hash: hash,
+          source: 'client-complete'
+        })
+      });
+      console.log('✅ Transaction logged to backend');
+    } catch (error) {
+      console.warn('⚠️ Failed to log transaction to backend:', error);
+      // Don't fail the transaction if logging fails
+    }
+  }
+}
+
+// Export the new client-side manager
+window.ClientSideTransactionManager = ClientSideTransactionManager;
+window.createClientSideTransactionManager = () => new ClientSideTransactionManager();
