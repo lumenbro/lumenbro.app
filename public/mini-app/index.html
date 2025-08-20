@@ -633,59 +633,122 @@
         document.getElementById('assetSelect').addEventListener('change', updateFeeDisplay);
         }
 
-        function showSwapInterface() {
-            // Show swap interface with path payments
+        async function checkSwapSessionStatus() {
+            try {
+                const response = await fetch('/mini-app/authenticator');
+                const data = await response.json();
+                
+                if (data.success && data.authenticator_info?.authenticator?.has_active_session) {
+                    return {
+                        hasActiveSession: true,
+                        sessionType: data.authenticator_info.authenticator.authenticator_type,
+                        signingMethod: data.authenticator_info.authenticator.signing_method
+                    };
+                } else {
+                    return {
+                        hasActiveSession: false,
+                        sessionType: null,
+                        signingMethod: null
+                    };
+                }
+            } catch (error) {
+                console.error('Error checking swap session status:', error);
+                return {
+                    hasActiveSession: false,
+                    sessionType: null,
+                    signingMethod: null
+                };
+            }
+        }
+
+        async function showSwapInterface() {
+            const sessionStatus = await checkSwapSessionStatus();
+            
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>🔄 Swap Assets</h1>
-
-                    <div class="swap-form">
-                        <div class="swap-section">
-                            <h3>You Send</h3>
-                            <div class="form-group">
-                                <label for="sendAssetSelect">Asset</label>
-                                <select id="sendAssetSelect" class="form-select" onchange="updateSwapEstimate()">
-                                    <option value="XLM">XLM (Native)</option>
-                                    <!-- Other assets will be populated dynamically -->
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="sendAmount">Amount</label>
-                                <input type="number" id="sendAmount" placeholder="0.0000000" step="0.0000001" class="form-input" onchange="updateSwapEstimate()">
-                            </div>
-                        </div>
-
-                        <div class="swap-arrow">↓</div>
-
-                        <div class="swap-section">
-                            <h3>You Receive</h3>
-                            <div class="form-group">
-                                <label for="receiveAssetSelect">Asset</label>
-                                <select id="receiveAssetSelect" class="form-select" onchange="updateSwapEstimate()">
-                                    <option value="XLM">XLM (Native)</option>
-                                    <!-- Other assets will be populated dynamically -->
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="receiveAmount">Min Amount</label>
-                                <input type="number" id="receiveAmount" placeholder="0.0000000" step="0.0000001" class="form-input" readonly>
-                            </div>
-                        </div>
-
-                        <div class="swap-info">
-                            <div class="swap-rate">
-                                <span>Rate: <span id="swapRate">Calculating...</span></span>
-                            </div>
-                            <div class="swap-fees">
-                                <p>💰 Network Fee: <span id="swapNetworkFee">0.00001 XLM</span></p>
-                                <p>📊 Service Fee: <span id="swapServiceFee">0.00001 XLM</span></p>
-                                <p>🔄 Slippage: <span id="swapSlippage">0.5%</span></p>
+                    
+                    <div class="swap-mode-selection">
+                        <h3>Choose Swap Mode:</h3>
+                        <div class="swap-mode-options">
+                            ${sessionStatus.hasActiveSession ? `
+                                <div class="swap-mode-option active" onclick="selectSwapMode('instant')">
+                                    <div class="mode-icon">⚡</div>
+                                    <div class="mode-info">
+                                        <div class="mode-title">Instant Swap</div>
+                                        <div class="mode-description">Use your active session (${sessionStatus.sessionType})</div>
+                                    </div>
+                                    <div class="mode-status">✅ Available</div>
+                                </div>
+                            ` : `
+                                <div class="swap-mode-option disabled">
+                                    <div class="mode-icon">⚡</div>
+                                    <div class="mode-info">
+                                        <div class="mode-title">Instant Swap</div>
+                                        <div class="mode-description">Requires active session</div>
+                                    </div>
+                                    <div class="mode-status">❌ Not Available</div>
+                                </div>
+                            `}
+                            
+                            <div class="swap-mode-option ${!sessionStatus.hasActiveSession ? 'active' : ''}" onclick="selectSwapMode('password')">
+                                <div class="mode-icon">🔐</div>
+                                <div class="mode-info">
+                                    <div class="mode-title">Password Swap</div>
+                                    <div class="mode-description">Sign each swap with password</div>
+                                </div>
+                                <div class="mode-status">✅ Always Available</div>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="swap-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="sendAssetSelect">Send Asset:</label>
+                            <select id="sendAssetSelect" class="form-select" onchange="updateSwapEstimate()">
+                                <option value="XLM">XLM (Native)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sendAmount">Send Amount:</label>
+                            <input type="number" id="sendAmount" class="form-control" placeholder="0.0000000" step="0.0000001" onchange="updateSwapEstimate()">
+                        </div>
+                        
+                        <div class="swap-direction">
+                            <div class="swap-arrow">↓</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="receiveAssetSelect">Receive Asset:</label>
+                            <select id="receiveAssetSelect" class="form-select" onchange="updateSwapEstimate()">
+                                <option value="XLM">XLM (Native)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="receiveAmount">Receive Amount (Estimate):</label>
+                            <input type="number" id="receiveAmount" class="form-control" placeholder="0.0000000" step="0.0000001" readonly>
+                        </div>
+                        
+                        <div class="swap-details">
+                            <div class="detail-row">
+                                <span class="label">Network Fee:</span>
+                                <span class="value" id="swapNetworkFee">0.00001 XLM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Service Fee:</span>
+                                <span class="value" id="swapServiceFee">0.00001 XLM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Slippage:</span>
+                                <span class="value" id="swapSlippage">0.5%</span>
+                            </div>
+                        </div>
+                        
                         <div class="form-actions">
                             <button onclick="goBackToWallet()" class="btn-secondary">← Back</button>
-                            <button onclick="simulateAndExecuteSwap()" class="btn-primary">🔄 Execute Swap</button>
+                            <button onclick="executeSwap()" class="btn-primary">🔄 Execute Swap</button>
                         </div>
                     </div>
                 </div>
@@ -701,12 +764,87 @@
                     </div>
                 </nav>
             `;
+            
+            // Populate asset selects
+            await populateSwapAssetSelects();
+        }
 
-            // Populate asset selects with user's assets (with delay to ensure assets are loaded)
-            setTimeout(() => {
-                populateSwapAssetSelects();
-                console.log('🔍 Populating swap asset selects after delay...');
-            }, 500);
+        function selectSwapMode(mode) {
+            const swapForm = document.querySelector('.swap-form');
+            const modeOptions = document.querySelectorAll('.swap-mode-option');
+            
+            // Update active states
+            modeOptions.forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            // Find and activate the selected mode
+            const selectedOption = Array.from(modeOptions).find(option => 
+                option.querySelector('.mode-title').textContent.toLowerCase().includes(mode)
+            );
+            if (selectedOption && !selectedOption.classList.contains('disabled')) {
+                selectedOption.classList.add('active');
+            }
+            
+            // Show swap form
+            swapForm.style.display = 'block';
+            
+            // Store the selected mode
+            window.selectedSwapMode = mode;
+            
+            console.log(`Selected swap mode: ${mode}`);
+        }
+
+        async function executeSwap() {
+            const sendAssetSelect = document.getElementById('sendAssetSelect');
+            const receiveAssetSelect = document.getElementById('receiveAssetSelect');
+            const sendAmount = document.getElementById('sendAmount').value;
+            
+            if (!sendAmount || parseFloat(sendAmount) <= 0) {
+                alert('Please enter a valid send amount');
+                return;
+            }
+            
+            // Parse asset information
+            let sendAsset, receiveAsset;
+            if (sendAssetSelect.value === 'XLM') {
+                sendAsset = 'XLM';
+            } else {
+                try {
+                    sendAsset = JSON.parse(sendAssetSelect.value);
+                } catch (error) {
+                    alert('Invalid send asset selection');
+                    return;
+                }
+            }
+            
+            if (receiveAssetSelect.value === 'XLM') {
+                receiveAsset = 'XLM';
+            } else {
+                try {
+                    receiveAsset = JSON.parse(receiveAssetSelect.value);
+                } catch (error) {
+                    alert('Invalid receive asset selection');
+                    return;
+                }
+            }
+            
+            if (sendAsset === receiveAsset) {
+                alert('Send and receive assets must be different');
+                return;
+            }
+            
+            console.log('🔄 Starting swap execution...');
+            console.log('Send Asset:', sendAsset);
+            console.log('Receive Asset:', receiveAsset);
+            console.log('Send Amount:', sendAmount);
+            console.log('Swap Mode:', window.selectedSwapMode);
+            
+            // TODO: Phase 2 - Implement quote fetching
+            // TODO: Phase 3 - Implement transaction building
+            // TODO: Phase 4 - Implement execution
+            
+            alert('Swap functionality coming soon! This will be implemented in the next phase.');
         }
 
         function populateAssetSelect() {
