@@ -386,16 +386,22 @@ router.post('/mini-app/sign-transaction', async (req, res) => {
     
     // Forward to Turnkey with stamp
     console.log('📡 Forwarding to Turnkey API...');
+    console.log('📋 Stamp:', stamp);
+    console.log('📋 Request body:', JSON.stringify(requestBody, null, 2));
+    
     const turnkeyResponse = await fetch('https://api.turnkey.com/v1/activities', {
       method: 'POST',
       headers: {
-        'X-Stamp': JSON.stringify(stamp),
+        'X-Stamp': stamp.stampHeaderValue || stamp,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
     });
     
     const turnkeyResult = await turnkeyResponse.json();
+    
+    console.log('📡 Turnkey response status:', turnkeyResponse.status);
+    console.log('📡 Turnkey response:', JSON.stringify(turnkeyResult, null, 2));
     
     if (!turnkeyResponse.ok) {
       console.error('❌ Turnkey API error:', turnkeyResult);
