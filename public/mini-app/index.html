@@ -1160,7 +1160,7 @@
                 
                 // Prepare request body
                 const requestBody = {
-                    stamp: stampResult.stamp,
+                    stamp: stampResult.stamp.stampHeaderValue, // Send just the stamp value, not the object
                     requestBody: {
                         type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
                         timestamp: new Date().toISOString(),
