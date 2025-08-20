@@ -451,6 +451,35 @@
             console.log(`✅ Finished displaying ${balances.length} assets`);
             console.log(`🔍 Total asset cards in DOM: ${document.querySelectorAll('.asset-card').length}`);
             
+            // Store asset data globally for use in dropdowns
+            window.walletAssets = balances.map(balance => {
+                let assetName, assetCode, assetIssuer;
+                
+                if (balance.asset_type === 'native') {
+                    assetName = 'Stellar Lumens';
+                    assetCode = 'XLM';
+                    assetIssuer = null;
+                } else if (balance.asset_type === 'credit_alphanum4' || balance.asset_type === 'credit_alphanum12') {
+                    assetName = balance.asset_code || 'Unknown Asset';
+                    assetCode = balance.asset_code;
+                    assetIssuer = balance.asset_issuer;
+                } else {
+                    assetName = 'Smart Contract Asset';
+                    assetCode = 'SOROBAN';
+                    assetIssuer = null;
+                }
+                
+                return {
+                    code: assetCode,
+                    name: assetName,
+                    issuer: assetIssuer,
+                    balance: balance.balance,
+                    asset_type: balance.asset_type
+                };
+            });
+            
+            console.log('💾 Stored wallet assets globally:', window.walletAssets);
+            
             // Now that assets are displayed, populate any existing asset selects
             populateAssetSelect();
             populateSwapAssetSelects();
@@ -692,28 +721,29 @@
             // Clear existing options except XLM
             assetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
 
-            // Get all asset cards and add them to select
-            const assetCards = document.querySelectorAll('.asset-card');
-            console.log(`🔍 Found ${assetCards.length} asset cards`);
-
-            // Debug: Log all asset cards in detail
-            assetCards.forEach((card, index) => {
-                console.log(`🔍 Asset Card ${index + 1}:`, {
-                    element: card,
-                    className: card.className,
-                    innerHTML: card.innerHTML.substring(0, 200) + '...',
-                    assetName: card.querySelector('.asset-name')?.textContent,
-                    assetCode: card.querySelector('.asset-code')?.textContent,
-                    balanceAmount: card.querySelector('.balance-amount')?.textContent,
-                    issuer: card.dataset.issuer
+            // Use global wallet assets if available
+            if (window.walletAssets && window.walletAssets.length > 0) {
+                console.log('💾 Using global wallet assets:', window.walletAssets);
+                
+                window.walletAssets.forEach(asset => {
+                    if (asset.code !== 'XLM') {
+                        const option = document.createElement('option');
+                        const assetInfo = {
+                            code: asset.code,
+                            issuer: asset.issuer,
+                            name: asset.name
+                        };
+                        option.value = JSON.stringify(assetInfo);
+                        option.textContent = `${asset.code} (${asset.name}) - Balance: ${parseFloat(asset.balance).toFixed(7)}`;
+                        assetSelect.appendChild(option);
+                        console.log(`✅ Added asset option from global data: ${asset.code}`);
+                    }
                 });
-            });
-
-            // If no asset cards found, log the issue but don't add fallbacks
-            if (assetCards.length === 0) {
-                console.log('⚠️ No asset cards found - assets may not be loaded yet');
-                console.log('🔍 This is normal if called before displayAllAssets() completes');
             } else {
+                // Fallback to asset cards if global data not available
+                const assetCards = document.querySelectorAll('.asset-card');
+                console.log(`🔍 Fallback: Found ${assetCards.length} asset cards`);
+
                 assetCards.forEach((card, index) => {
                     const assetName = card.querySelector('.asset-name')?.textContent;
                     const assetCode = card.querySelector('.asset-code')?.textContent;
@@ -723,7 +753,6 @@
 
                     if (assetCode && assetCode !== 'XLM') {
                         const option = document.createElement('option');
-                        // Store asset info as JSON in value for non-XLM assets
                         const assetInfo = {
                             code: assetCode,
                             issuer: card.dataset.issuer || null,
@@ -732,14 +761,7 @@
                         option.value = JSON.stringify(assetInfo);
                         option.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
                         assetSelect.appendChild(option);
-                        console.log(`✅ Added asset option: ${assetCode}`);
-                        
-                        // Debug: Log the created option
-                        console.log(`🔍 Created option:`, {
-                            value: option.value,
-                            textContent: option.textContent,
-                            element: option
-                        });
+                        console.log(`✅ Added asset option from card: ${assetCode}`);
                     }
                 });
             }
@@ -772,40 +794,68 @@
             sendAssetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
             receiveAssetSelect.innerHTML = '<option value="XLM">XLM (Native)</option>';
 
-            // Get all asset cards and add them to selects
-            const assetCards = document.querySelectorAll('.asset-card');
-            console.log(`🔍 Found ${assetCards.length} asset cards for swap`);
+            // Use global wallet assets if available
+            if (window.walletAssets && window.walletAssets.length > 0) {
+                console.log('💾 Using global wallet assets for swap:', window.walletAssets);
+                
+                window.walletAssets.forEach(asset => {
+                    if (asset.code !== 'XLM') {
+                        const assetInfo = {
+                            code: asset.code,
+                            issuer: asset.issuer,
+                            name: asset.name
+                        };
 
-            assetCards.forEach((card, index) => {
-                const assetName = card.querySelector('.asset-name')?.textContent;
-                const assetCode = card.querySelector('.asset-code')?.textContent;
-                const balanceAmount = card.querySelector('.balance-amount')?.textContent;
+                        // Add to send select
+                        const sendOption = document.createElement('option');
+                        sendOption.value = JSON.stringify(assetInfo);
+                        sendOption.textContent = `${asset.code} (${asset.name}) - Balance: ${parseFloat(asset.balance).toFixed(7)}`;
+                        sendAssetSelect.appendChild(sendOption);
 
-                console.log(`🔍 Swap Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
+                        // Add to receive select
+                        const receiveOption = document.createElement('option');
+                        receiveOption.value = JSON.stringify(assetInfo);
+                        receiveOption.textContent = `${asset.code} (${asset.name})`;
+                        receiveAssetSelect.appendChild(receiveOption);
 
-                if (assetCode && assetCode !== 'XLM') {
-                    // Create asset info object for non-XLM assets
-                    const assetInfo = {
-                        code: assetCode,
-                        issuer: card.dataset.issuer || null,
-                        name: assetName || 'Unknown'
-                    };
+                        console.log(`✅ Added swap asset options from global data: ${asset.code}`);
+                    }
+                });
+            } else {
+                // Fallback to asset cards if global data not available
+                const assetCards = document.querySelectorAll('.asset-card');
+                console.log(`🔍 Fallback: Found ${assetCards.length} asset cards for swap`);
 
-                    // Add to send select
-                    const sendOption = document.createElement('option');
-                    sendOption.value = JSON.stringify(assetInfo);
-                    sendOption.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
-                    sendAssetSelect.appendChild(sendOption);
+                assetCards.forEach((card, index) => {
+                    const assetName = card.querySelector('.asset-name')?.textContent;
+                    const assetCode = card.querySelector('.asset-code')?.textContent;
+                    const balanceAmount = card.querySelector('.balance-amount')?.textContent;
 
-                    // Add to receive select
-                    const receiveOption = document.createElement('option');
-                    receiveOption.value = JSON.stringify(assetInfo);
-                    receiveOption.textContent = `${assetCode} (${assetName || 'Unknown'})`;
-                    receiveAssetSelect.appendChild(receiveOption);
+                    console.log(`🔍 Swap Asset ${index + 1}:`, { assetName, assetCode, balanceAmount, issuer: card.dataset.issuer });
 
-                    console.log(`✅ Added swap asset options: ${assetCode}`);
-                }
-            });
+                    if (assetCode && assetCode !== 'XLM') {
+                        const assetInfo = {
+                            code: assetCode,
+                            issuer: card.dataset.issuer || null,
+                            name: assetName || 'Unknown'
+                        };
+
+                        // Add to send select
+                        const sendOption = document.createElement('option');
+                        sendOption.value = JSON.stringify(assetInfo);
+                        sendOption.textContent = `${assetCode} (${assetName || 'Unknown'}) - Balance: ${balanceAmount}`;
+                        sendAssetSelect.appendChild(sendOption);
+
+                        // Add to receive select
+                        const receiveOption = document.createElement('option');
+                        receiveOption.value = JSON.stringify(assetInfo);
+                        receiveOption.textContent = `${assetCode} (${assetName || 'Unknown'})`;
+                        receiveAssetSelect.appendChild(receiveOption);
+
+                        console.log(`✅ Added swap asset options from card: ${assetCode}`);
+                    }
+                });
+            }
 
             console.log(`✅ Swap asset selects populated with ${sendAssetSelect.options.length} options each`);
         }
