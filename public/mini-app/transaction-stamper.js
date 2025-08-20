@@ -154,6 +154,41 @@ class StellarTransactionBuilder {
     }
   }
 
+  // Get XLM equivalent for non-XLM assets using Stellar path payments
+  async getXlmEquivalent(asset, amount) {
+    try {
+      console.log(`🔍 Getting XLM equivalent for ${amount} ${asset.code}`);
+      
+      // Use Stellar SDK to find path payment
+      if (this.stellarSdk && this.server) {
+        // Create asset object
+        const stellarAsset = asset.code === 'XLM' ? 
+          this.stellarSdk.Asset.native() : 
+          new this.stellarSdk.Asset(asset.code, asset.issuer);
+        
+        // Find strict send paths to XLM
+        const pathsResponse = await this.server.strictSendPaths(stellarAsset, amount.toString(), [this.stellarSdk.Asset.native()])
+          .limit(1)
+          .call();
+        
+        if (pathsResponse.records && pathsResponse.records.length > 0) {
+          const xlmAmount = parseFloat(pathsResponse.records[0].destination_amount);
+          console.log(`✅ XLM equivalent for ${amount} ${asset.code}: ${xlmAmount} XLM`);
+          return xlmAmount;
+        } else {
+          console.warn(`⚠️ No paths found for ${asset.code} to XLM, using fallback`);
+          return 0.0;
+        }
+      } else {
+        console.warn('⚠️ Stellar SDK not available, using fallback');
+        return 0.0;
+      }
+    } catch (error) {
+      console.error(`❌ Error getting XLM equivalent for ${asset.code}:`, error);
+      return 0.0;
+    }
+  }
+
   // Format amount to 7 decimal places without scientific notation
   formatAmount7(value) {
     return (Math.floor(Number(value) * 1e7) / 1e7).toFixed(7).replace(/\.0+$/, (m) => (m === '.0000000' ? '.0000001' : m));
@@ -211,7 +246,23 @@ class StellarTransactionBuilder {
 
         // Determine service fee percent (fallback to 0.1% = 0.001)
         const feePercent = await this.getServiceFeePercent();
-        const feeAmountNum = Math.max(0, Number(amount) * Number(feePercent || 0));
+        
+        // Calculate fee based on XLM equivalent for non-XLM assets
+        let feeAmountNum = 0;
+        if (asset === 'XLM') {
+          feeAmountNum = Math.max(0, Number(amount) * Number(feePercent || 0));
+        } else {
+          // For non-XLM assets, get XLM equivalent first
+          try {
+            const xlmEquivalent = await this.getXlmEquivalent(asset, amount);
+            feeAmountNum = Math.max(0, xlmEquivalent * Number(feePercent || 0));
+            console.log(`💰 Fee calculation: ${amount} ${asset.code} = ${xlmEquivalent} XLM, fee = ${feeAmountNum} XLM`);
+          } catch (error) {
+            console.error('Failed to get XLM equivalent for fee calculation:', error);
+            feeAmountNum = 0;
+          }
+        }
+        
         // Round to 7 decimals and avoid scientific notation
         const feeAmount = feeAmountNum > 0 ? this.formatAmount7(feeAmountNum) : null;
         const includeFeeOp = feeAmount && parseFloat(feeAmount) > 0;

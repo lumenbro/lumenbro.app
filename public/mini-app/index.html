@@ -1124,35 +1124,71 @@
             const assetSelect = document.getElementById('assetSelect');
             const feeAmountSpan = document.getElementById('feeAmount');
             const serviceFeeSpan = document.getElementById('serviceFee');
+            const amountInput = document.getElementById('amount');
             
             if (!assetSelect || !feeAmountSpan || !serviceFeeSpan) return;
             
             const assetValue = assetSelect.value;
+            const amount = parseFloat(amountInput?.value || 0);
             
             // Network fee is always in XLM
             feeAmountSpan.textContent = '0.00001 XLM';
             
             // Service fee calculation depends on selected asset
             if (assetValue === 'XLM') {
-                serviceFeeSpan.textContent = '0.00001 XLM';
+                const feeAmount = Math.max(0.00001, amount * 0.001);
+                serviceFeeSpan.textContent = `${feeAmount.toFixed(5)} XLM`;
             } else {
                 try {
                     const asset = JSON.parse(assetValue);
-                    // For non-XLM assets, we need to calculate XLM equivalent
-                    // This would typically involve getting current exchange rates
-                    // For now, we'll show a placeholder
-                    serviceFeeSpan.textContent = 'Calculating...';
-                    
-                    // TODO: Implement real-time XLM equivalent calculation
-                    // This would involve:
-                    // 1. Getting current exchange rate for the asset
-                    // 2. Calculating the fee amount in asset terms
-                    // 3. Converting to XLM equivalent
-                    
+                    if (amount > 0) {
+                        // Calculate XLM equivalent for non-XLM assets
+                        const xlmEquivalent = await getXlmEquivalent(asset, amount);
+                        const feeAmount = Math.max(0.00001, xlmEquivalent * 0.001);
+                        serviceFeeSpan.textContent = `${feeAmount.toFixed(5)} XLM`;
+                    } else {
+                        serviceFeeSpan.textContent = '0.00001 XLM';
+                    }
                 } catch (error) {
-                    console.error('Failed to parse asset info for fee calculation:', error);
+                    console.error('Failed to calculate fee for non-XLM asset:', error);
                     serviceFeeSpan.textContent = '0.00001 XLM';
                 }
+            }
+        }
+
+        async function getXlmEquivalent(asset, amount) {
+            try {
+                console.log(`🔍 Getting XLM equivalent for ${amount} ${asset.code}`);
+                
+                // Use Stellar SDK to find path payment
+                if (window.StellarSdk) {
+                    const server = new window.StellarSdk.Server('https://horizon.stellar.org');
+                    
+                    // Create asset object
+                    const stellarAsset = asset.code === 'XLM' ? 
+                        window.StellarSdk.Asset.native() : 
+                        new window.StellarSdk.Asset(asset.code, asset.issuer);
+                    
+                    // Find strict send paths to XLM
+                    const pathsResponse = await server.strictSendPaths(stellarAsset, amount.toString(), [window.StellarSdk.Asset.native()])
+                        .limit(1)
+                        .call();
+                    
+                    if (pathsResponse.records && pathsResponse.records.length > 0) {
+                        const xlmAmount = parseFloat(pathsResponse.records[0].destination_amount);
+                        console.log(`✅ XLM equivalent for ${amount} ${asset.code}: ${xlmAmount} XLM`);
+                        return xlmAmount;
+                    } else {
+                        console.warn(`⚠️ No paths found for ${asset.code} to XLM, using fallback`);
+                        return 0.0;
+                    }
+                } else {
+                    console.warn('⚠️ Stellar SDK not available, using fallback');
+                    return 0.0;
+                }
+            } catch (error) {
+                console.error(`❌ Error getting XLM equivalent for ${asset.code}:`, error);
+                return 0.0;
             }
         }
 
