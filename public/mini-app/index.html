@@ -1192,6 +1192,50 @@
             }
         }
 
+        async function calculateProperFees(transaction) {
+            try {
+                const amount = parseFloat(transaction.amount);
+                const asset = transaction.asset;
+                
+                // Network fee is always 0.00001 XLM
+                const networkFee = 0.00001;
+                
+                // Calculate service fee based on XLM equivalent
+                let serviceFee = 0.00001; // Default minimum
+                
+                if (asset === 'XLM') {
+                    // For XLM, calculate fee directly
+                    serviceFee = Math.max(0.00001, amount * 0.001);
+                } else {
+                    // For non-XLM assets, get XLM equivalent first
+                    const xlmEquivalent = await getXlmEquivalent(asset, amount);
+                    serviceFee = Math.max(0.00001, xlmEquivalent * 0.001);
+                }
+                
+                // Calculate total (amount sent + fees)
+                let total;
+                if (asset === 'XLM') {
+                    total = amount + networkFee + serviceFee;
+                } else {
+                    // For non-XLM assets, total is just the fees (amount is in the asset)
+                    total = networkFee + serviceFee;
+                }
+                
+                return {
+                    networkFee: networkFee.toFixed(5),
+                    serviceFee: serviceFee.toFixed(5),
+                    total: total.toFixed(5)
+                };
+            } catch (error) {
+                console.error('Error calculating proper fees:', error);
+                return {
+                    networkFee: '0.00001',
+                    serviceFee: '0.00001',
+                    total: '0.00002'
+                };
+            }
+        }
+
         async function buildAndSignTransaction() {
             try {
                 const recipientAddress = document.getElementById('recipientAddress').value.trim();  
@@ -1254,18 +1298,21 @@
                     throw new Error(result.error || 'Transaction build failed');
                 }
 
-                // Build XDR using Stellar SDK
-                const xdr = await buildTransactionXDR(result.transaction);
+                // Build XDR using Stellar SDK (this also calculates proper fees)
+                const xdrResult = await buildTransactionXDR(result.transaction);
+                
+                // Calculate proper fees based on XLM equivalent
+                const properFees = await calculateProperFees(result.transaction);
                 
                 // Store transaction data for signing
                 window.currentTransactionData = {
-                    xdr: xdr,
+                    xdr: xdrResult,
                     transaction: result.transaction,
-                    fees: result.fees
+                    fees: properFees
                 };
 
                 // Show transaction details for confirmation
-                showTransactionConfirmation(result.transaction, result.fees);
+                showTransactionConfirmation(result.transaction, properFees);
 
             } catch (error) {
                 console.error('Transaction build failed:', error);
@@ -1279,6 +1326,15 @@
         }
 
         function showTransactionConfirmation(transaction, fees) {
+            const isXLM = transaction.asset === 'XLM';
+            const assetCode = typeof transaction.asset === 'string' ? transaction.asset : transaction.asset.code;
+            
+            // Format recipient address for better display
+            const recipient = transaction.recipient;
+            const formattedRecipient = recipient.length > 20 ? 
+                recipient.substring(0, 20) + '\n' + recipient.substring(20, 40) + '\n' + recipient.substring(40) : 
+                recipient;
+            
             document.getElementById('content').innerHTML = `
                 <div class="fade-in">
                     <h1>🔍 Confirm Transaction</h1>
@@ -1286,11 +1342,11 @@
                     <div class="transaction-details">
                         <div class="detail-row">
                             <span class="label">Recipient:</span>
-                            <span class="value">${transaction.recipient}</span>
+                            <span class="value">${formattedRecipient}</span>
                         </div>
                         <div class="detail-row">
                             <span class="label">Amount:</span>
-                            <span class="value">${transaction.amount} ${typeof transaction.asset === 'string' ? transaction.asset : transaction.asset.code}</span>   
+                            <span class="value">${transaction.amount} ${assetCode}</span>   
                         </div>
                         <div class="detail-row">
                             <span class="label">Network Fee:</span>
@@ -1302,8 +1358,12 @@
                         </div>
                         <div class="detail-row total">
                             <span class="label">Total:</span>
-                            <span class="value">${fees.total} XLM</span>
+                            <span class="value">${isXLM ? `${fees.total} XLM` : `${fees.total} XLM (fees only)`}</span>
                         </div>
+                        ${!isXLM ? `<div class="detail-row note">
+                            <span class="label">Note:</span>
+                            <span class="value">Sending ${transaction.amount} ${assetCode} + ${fees.total} XLM in fees</span>
+                        </div>` : ''}
                     </div>
 
                     <div class="form-actions" style="margin-bottom: 100px;">
