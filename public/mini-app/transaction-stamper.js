@@ -476,9 +476,16 @@ class ClientSideTransactionManager {
       const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
       const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
       
-      // Get organization ID from the stamp
-      const stampData = JSON.parse(atob(stampResult.stamp.stampHeaderValue));
-      const organizationId = stampData.organizationId || 'global-org-id';
+      // Get the real organization ID from the authenticator response
+      const authResponse = await fetch('/mini-app/authenticator');
+      const authData = await authResponse.json();
+      const organizationId = authData.authenticator_info?.authenticator?.turnkey_sub_org_id;
+      
+      if (!organizationId) {
+        throw new Error('No organization ID found in authenticator response');
+      }
+      
+      console.log('🔍 Using organization ID from authenticator:', organizationId);
       
       // Create Turnkey request (matching Python bot format)
       const turnkeyRequest = {
