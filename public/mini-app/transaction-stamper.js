@@ -398,7 +398,9 @@ class ClientSideTransactionManager {
         organizationId: organizationId,
         parameters: {
           expirationSeconds: "30", // 30 second expiry
-          allowedOperations: ["SIGN_RAW_PAYLOAD"]
+          allowedOperations: ["SIGN_RAW_PAYLOAD"],
+          invalidateExisting: false, // Don't invalidate existing sessions
+          apiKeyName: `Transaction Session - ${new Date().toISOString().slice(0, 19)}`
         }
       };
       
