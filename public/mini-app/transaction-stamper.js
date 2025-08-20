@@ -409,28 +409,49 @@ class ClientSideTransactionManager {
       return fallbackUserId;
     }
   }
+
+  // Fetch user email from backend (like login.js does)
+  async fetchUserEmail(organizationId) {
+    try {
+      console.log('🔍 Fetching userEmail for organization:', organizationId);
+      const response = await fetch(`/get-user-email?orgId=${organizationId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch userEmail: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('✅ Fetched userEmail:', data.email);
+      return data.email;
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch userEmail, using fallback:', error);
+      return 'transaction@lumenbro.app';
+    }
+  }
   
   // Generate short-lived session keys for transaction signing (30 seconds)
   async generateSessionKeys(organizationId, telegramId, password) {
     try {
       console.log('🔑 Generating short-lived session keys...');
       
-      // Create ephemeral key pair for session
-      const ephemeralKeyPair = this.stellarSdk.Keypair.random();
-      const ephemeralPrivateKey = ephemeralKeyPair.secret();
-      const ephemeralPublicKey = ephemeralKeyPair.publicKey();
+      // Create ephemeral P-256 key pair for session (Turnkey format)
+      const ephemeralKeyPair = await window.Turnkey.generateP256EphemeralKeyPair();
+      const ephemeralPrivateKey = ephemeralKeyPair.privateKey; // hex string
+      const ephemeralPublicKey = ephemeralKeyPair.uncompressedPublic; // uncompressed hex string (04 + x + y)
       
       // Fetch real userId from backend (like login.js does)
       const userId = await this.fetchUserId(organizationId);
       
+      // Fetch user email (like login.js)
+      const userEmail = await this.fetchUserEmail(organizationId);
+
       // Create session request body (30 second expiry) - following login.js format
       const sessionBody = {
         type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
         timestampMs: Date.now().toString(),
         organizationId: organizationId,
-        email: "transaction@lumenbro.app", // Placeholder email for session creation
+        email: userEmail,
         parameters: {
-          userId: userId, // Real userId from backend
+          // Only include userId if available (else Turnkey may reject null)
+          ...(userId ? { userId } : {}),
           expirationSeconds: "30", // 30 second expiry
           targetPublicKey: ephemeralPublicKey, // Required field - the ephemeral public key
           apiKeyName: `Transaction Session - ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`,
