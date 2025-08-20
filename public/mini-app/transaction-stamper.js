@@ -239,7 +239,8 @@ class StellarTransactionBuilder {
           }));
         }
 
-        txBuilder = txBuilder.setTimeout(30);
+        // Allow extra time for session creation + signing in WebView (5 minutes)
+        txBuilder = txBuilder.setTimeout(300);
         
         if (memo) {
           txBuilder.addMemo(this.stellarSdk.Memo.text(memo));
@@ -341,7 +342,7 @@ class StellarTransactionBuilder {
             new this.stellarSdk.Asset(asset.code, asset.issuer)
           )
         }))
-        .setTimeout(30);
+        .setTimeout(300);
         
         const builtTransaction = transaction.build();
         const xdr = builtTransaction.toXDR();
