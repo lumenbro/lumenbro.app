@@ -476,7 +476,7 @@ class ClientSideTransactionManager {
       const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
       const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
       
-      // Get the real organization ID from the authenticator response
+      // Get the real organization ID and API keys from the authenticator response
       const authResponse = await fetch('/mini-app/authenticator');
       const authData = await authResponse.json();
       const organizationId = authData.authenticator_info?.authenticator?.turnkey_sub_org_id;
@@ -486,6 +486,17 @@ class ClientSideTransactionManager {
       }
       
       console.log('🔍 Using organization ID from authenticator:', organizationId);
+      console.log('🔍 Authenticator data:', authData);
+      
+      // Check if we should use session keys instead of stored keys
+      // The Python bot uses session keys for signing
+      const sessionKeys = authData.authenticator_info?.authenticator?.session_keys;
+      if (sessionKeys) {
+        console.log('🔍 Found session keys in authenticator, should use those for signing');
+        console.log('🔍 Session keys:', sessionKeys);
+        // TODO: We might need to use session keys instead of stored keys
+        // This would require a different approach since session keys are server-side
+      }
       
       // Create Turnkey request (matching Python bot format)
       const turnkeyRequest = {
@@ -501,6 +512,8 @@ class ClientSideTransactionManager {
       };
       
       console.log('📡 Turnkey request:', turnkeyRequest);
+      console.log('📡 Using stamp:', stampResult.stamp.stampHeaderValue);
+      console.log('📡 Using public key for signWith:', stampResult.publicKey);
       
       const response = await fetch('https://api.turnkey.com/public/v1/submit/sign_raw_payload', {
         method: 'POST',
