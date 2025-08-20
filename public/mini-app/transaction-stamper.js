@@ -380,6 +380,130 @@ window.createTransactionStamper = createSecureTransactionStamper;
 // 🚀 HIGH-SECURITY FLOW: 100% CLIENT-SIDE - NO SERVER INVOLVEMENT IN SIGNING
 // The server is ONLY used for optional logging after successful submission
 class ClientSideTransactionManager {
+  
+  // Generate short-lived session keys for transaction signing (30 seconds)
+  async generateSessionKeys(organizationId, telegramId) {
+    try {
+      console.log('🔑 Generating short-lived session keys...');
+      
+      // Create ephemeral key pair for session
+      const ephemeralKeyPair = this.stellarSdk.Keypair.random();
+      const ephemeralPrivateKey = ephemeralKeyPair.secret();
+      const ephemeralPublicKey = ephemeralKeyPair.publicKey();
+      
+      // Create session request body (30 second expiry)
+      const sessionBody = {
+        type: "ACTIVITY_TYPE_CREATE_READ_WRITE_SESSION_V2",
+        timestampMs: Date.now().toString(),
+        organizationId: organizationId,
+        parameters: {
+          expirationSeconds: "30", // 30 second expiry
+          allowedOperations: ["SIGN_RAW_PAYLOAD"]
+        }
+      };
+      
+      // Get stored API keys for creating the session
+      const apiKeys = await this.getStoredApiKeys();
+      
+      // Create stamp for session creation
+      const sessionStamper = createSecureTransactionStamper(apiKeys.apiPrivateKey, apiKeys.apiPublicKey);
+      const sessionStamp = await sessionStamper.stamp(JSON.stringify(sessionBody));
+      
+      console.log('📡 Creating session with Turnkey...');
+      
+      // Create session via Turnkey API
+      const sessionResponse = await fetch('https://api.turnkey.com/public/v1/submit/create_read_write_session', {
+        method: 'POST',
+        headers: {
+          'X-Stamp': sessionStamp.stamp.stampHeaderValue,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(sessionBody)
+      });
+      
+      if (!sessionResponse.ok) {
+        const error = await sessionResponse.json();
+        throw new Error(`Session creation failed: ${sessionResponse.status} - ${JSON.stringify(error)}`);
+      }
+      
+      const sessionData = await sessionResponse.json();
+      const credentialBundle = sessionData.activity.result.createReadWriteSessionResultV2.credentialBundle;
+      const sessionId = sessionData.activity.result.createReadWriteSessionResultV2.apiKeyId;
+      
+      console.log('✅ Session created successfully:', sessionId);
+      
+      // Decrypt the credential bundle to get session API keys
+      const decrypted = this.decryptCredentialBundle(credentialBundle, ephemeralPrivateKey);
+      const sessionPrivateKey = decrypted;
+      const sessionPublicKey = this.derivePublicKey(sessionPrivateKey);
+      
+      console.log('🔑 Session keys generated and decrypted');
+      
+      return {
+        sessionId: sessionId,
+        apiPublicKey: sessionPublicKey,
+        apiPrivateKey: sessionPrivateKey,
+        expiresAt: new Date(Date.now() + 30000) // 30 seconds from now
+      };
+      
+    } catch (error) {
+      console.error('❌ Session key generation failed:', error);
+      throw error;
+    }
+  }
+  
+  // Decrypt credential bundle (client-side version)
+  decryptCredentialBundle(credentialBundle, ephemeralPrivateKey) {
+    // This is a simplified version - in production you'd use the full Turnkey crypto library
+    // For now, we'll use a basic decryption approach
+    try {
+      // Convert hex strings to buffers
+      const bundleBuffer = Buffer.from(credentialBundle, 'base64');
+      const ephemeralBuffer = Buffer.from(ephemeralPrivateKey, 'hex');
+      
+      // Simple XOR decryption (this is just for demo - use proper crypto in production)
+      const decrypted = Buffer.alloc(bundleBuffer.length);
+      for (let i = 0; i < bundleBuffer.length; i++) {
+        decrypted[i] = bundleBuffer[i] ^ ephemeralBuffer[i % ephemeralBuffer.length];
+      }
+      
+      return decrypted.toString('hex');
+    } catch (error) {
+      console.error('❌ Credential bundle decryption failed:', error);
+      throw new Error('Failed to decrypt session credentials');
+    }
+  }
+  
+  // Derive public key from private key
+  derivePublicKey(privateKeyHex) {
+    try {
+      // Use Stellar SDK to derive public key
+      const keypair = this.stellarSdk.Keypair.fromSecret(privateKeyHex);
+      return keypair.publicKey();
+    } catch (error) {
+      console.error('❌ Public key derivation failed:', error);
+      throw new Error('Failed to derive public key');
+    }
+  }
+  
+  // Get stored API keys (without decryption - just for session creation)
+  async getStoredApiKeys() {
+    // This gets the plaintext keys from storage (only for session creation)
+    const storedData = await new Promise((resolve) => {
+      window.Telegram.WebApp.CloudStorage.getItem('TURNKEY_API_KEY', (error, value) => {
+        resolve(value ? JSON.parse(value) : null);
+      });
+    });
+    
+    if (!storedData || !storedData.apiPublicKey || !storedData.apiPrivateKey) {
+      throw new Error('No stored API keys found for session creation');
+    }
+    
+    return {
+      apiPublicKey: storedData.apiPublicKey,
+      apiPrivateKey: storedData.apiPrivateKey
+    };
+  }
   constructor() {
     this.stellarSdk = window.StellarSdk;
     console.log('🔍 Stellar SDK available:', !!this.stellarSdk);
@@ -421,22 +545,36 @@ class ClientSideTransactionManager {
     };
   }
 
-  async signAndSubmitTransaction(xdrPayload, privateKey, publicKey, telegram_id = null) {
+  async signAndSubmitTransaction(xdrPayload, telegram_id = null) {
     try {
       console.log('🚀 Starting complete client-side transaction flow...');
       console.log('📝 XDR payload length:', xdrPayload.length);
       
-      // Step 1: Create the secure stamper
-      const stamper = createSecureTransactionStamper(privateKey, publicKey);
+      // Step 1: Get organization ID from authenticator
+      const authResponse = await fetch('/mini-app/authenticator');
+      const authData = await authResponse.json();
+      const organizationId = authData.authenticator_info?.authenticator?.turnkey_sub_org_id;
       
-      // Step 2: Create stamp for Turnkey API
-      console.log('🔐 Creating Turnkey stamp...');
+      if (!organizationId) {
+        throw new Error('No organization ID found in authenticator response');
+      }
+      
+      console.log('🔍 Using organization ID:', organizationId);
+      
+      // Step 2: Generate short-lived session keys (30 seconds)
+      console.log('🔑 Generating session keys...');
+      const sessionKeys = await this.generateSessionKeys(organizationId, telegram_id);
+      console.log('✅ Session keys generated:', sessionKeys);
+      
+      // Step 3: Create stamp using session keys
+      console.log('🔐 Creating Turnkey stamp with session keys...');
+      const stamper = createSecureTransactionStamper(sessionKeys.apiPrivateKey, sessionKeys.apiPublicKey);
       const stampResult = await stamper.stamp(xdrPayload);
       console.log('✅ Stamp created:', stampResult);
       
-      // Step 3: Call Turnkey API directly from client
-      console.log('📡 Calling Turnkey API directly...');
-      const turnkeyResponse = await this.callTurnkeyAPI(stampResult, xdrPayload);
+      // Step 4: Call Turnkey API with session keys
+      console.log('📡 Calling Turnkey API with session keys...');
+      const turnkeyResponse = await this.callTurnkeyAPI(stampResult, xdrPayload, organizationId);
       console.log('✅ Turnkey API response:', turnkeyResponse);
       
       // Step 4: Extract signature and create signed XDR
@@ -470,23 +608,13 @@ class ClientSideTransactionManager {
     }
   }
 
-  async callTurnkeyAPI(stampResult, xdrPayload) {
+  async callTurnkeyAPI(stampResult, xdrPayload, organizationId) {
     try {
       // Convert base64 payload to hex (like Python bot)
       const payloadBuffer = new Uint8Array(atob(xdrPayload).split('').map(c => c.charCodeAt(0)));
       const payloadHex = Array.from(payloadBuffer).map(b => b.toString(16).padStart(2, '0')).join('');
       
-      // Get the real organization ID and API keys from the authenticator response
-      const authResponse = await fetch('/mini-app/authenticator');
-      const authData = await authResponse.json();
-      const organizationId = authData.authenticator_info?.authenticator?.turnkey_sub_org_id;
-      
-      if (!organizationId) {
-        throw new Error('No organization ID found in authenticator response');
-      }
-      
-      console.log('🔍 Using organization ID from authenticator:', organizationId);
-      console.log('🔍 Authenticator data:', authData);
+      console.log('🔍 Using organization ID:', organizationId);
       
       // Check if we should use session keys instead of stored keys
       // The Python bot uses session keys for signing

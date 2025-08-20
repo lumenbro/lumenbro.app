@@ -1146,11 +1146,9 @@
                 
                 console.log('🚀 Starting complete client-side transaction flow...');
                 
-                // This will handle everything: stamping, Turnkey API, signing, and submission
+                // This will handle everything: session creation, stamping, Turnkey API, signing, and submission
                 const result = await transactionManager.signAndSubmitTransaction(
                     xdr, 
-                    apiKeys.apiPrivateKey, 
-                    apiKeys.apiPublicKey, 
                     telegramId
                 );
                 
