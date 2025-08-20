@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const turnkeyRequest = require('../turnkeyClient'); // This is the object with methods
+// Prefer native fetch (Node 18+) with fallback to node-fetch dynamic import
+const fetch = global.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 const pool = require('../db');
 const { Telegraf } = require('telegraf');
 const { v4: uuidv4 } = require('uuid');
@@ -388,7 +390,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
           apiKeys: [{
             apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
             publicKey: publicKey,
-            curveType: 'API_KEY_CURVE_SECP256K1'
+            curveType: 'API_KEY_CURVE_P256'
           }]
         },
         timestampMs: Date.now().toString()
@@ -435,7 +437,7 @@ router.post('/create-recovery-api-key', async (req, res) => {
         apiKeys: [{
           apiKeyName: apiKeyName || `Recovery Telegram Key - ${email}`,
           publicKey: publicKey,
-          curveType: 'API_KEY_CURVE_SECP256K1'
+          curveType: 'API_KEY_CURVE_P256'
         }]
       });
     }
