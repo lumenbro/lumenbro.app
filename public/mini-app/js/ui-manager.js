@@ -12,6 +12,7 @@ window.UIManager = {
   showSwapInterface,
   showSettings,
   showAuth,
+  showNearTest,
   showTransactionConfirmation,
   showTransactionSuccess,
   showSwapSuccess,
@@ -42,6 +43,7 @@ window.UIManager = {
       showWallet: typeof this.showWallet,
       showSendPayment: typeof this.showSendPayment,
       showAuth: typeof this.showAuth,
+      showNearTest: typeof this.showNearTest,
       showTransactionConfirmation: typeof this.showTransactionConfirmation,
       showTransactionSuccess: typeof this.showTransactionSuccess,
       updateConnectionStatus: typeof this.updateConnectionStatus,
@@ -82,6 +84,7 @@ function showWallet() {
           <button onclick="showSwapInterface()" class="btn-success">🔄 Swap Assets</button>
           <button onclick="window.UIManager.showAssetManagement()" class="btn-warning">⚙️ Manage Assets</button>
           <button onclick="window.UIManager.showTransactionHistory()" class="btn-info">📊 History</button>
+          <button onclick="window.UIManager.showNearTest()" class="btn-secondary">🔗 NEAR Test</button>
         </div>
 
         <div class="wallet-status">
@@ -202,7 +205,7 @@ function showAuth() {
         <button onclick="window.recover()" class="btn-warning">🔑 Recovery</button> 
         <button onclick="window.export()" class="btn-info">📤 Export Keys</button>  
         <button onclick="testTurnkeyStamper()" class="btn-secondary">🧪 Test Turnkey</button>
-        <button onclick="window.UIManager.showWallet()" class="btn-warning">🔧 Force Show Wallet</button>  
+        <button onclick="window.UIManager.showNearTest()" class="btn-warning">🔗 NEAR Test Page</button>  
       </div>
 
       <!-- Quick access to wallet (if authenticated) -->
@@ -223,6 +226,11 @@ function showAuth() {
       </div>
     </nav>
   `;
+}
+
+function showNearTest() {
+  // Redirect to the NEAR compatibility test page
+  window.location.href = '/test-near-compatibility';
 }
 
 function showTransactionConfirmation(transaction, fees) {
