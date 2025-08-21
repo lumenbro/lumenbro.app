@@ -9,6 +9,7 @@ window.SwapEngine = {
   // Core functions
   showSwapInterface,
   selectSwapMode,
+  toggleSwapMode,
   executeSwap,
   updateSwapEstimate,
   checkSwapSessionStatus,
@@ -122,6 +123,22 @@ async function showSwapInterface() {
       </div>
 
       <div class="swap-form" style="display: none;">
+        <div class="swap-mode-toggle">
+          <h4>Swap Mode:</h4>
+          <div class="toggle-buttons">
+            <button id="ppssToggle" class="toggle-btn active" onclick="window.SwapEngine.toggleSwapMode('ppss')">
+              <span class="toggle-icon">📤</span>
+              <span class="toggle-label">Strict Send</span>
+              <span class="toggle-desc">Fixed amount sent</span>
+            </button>
+            <button id="ppsrToggle" class="toggle-btn" onclick="window.SwapEngine.toggleSwapMode('ppsr')">
+              <span class="toggle-icon">📥</span>
+              <span class="toggle-label">Strict Receive</span>
+              <span class="toggle-desc">Fixed amount received</span>
+            </button>
+          </div>
+        </div>
+
         <div class="form-group">
           <label for="sendAssetSelect">Send Asset:</label>
           <select id="sendAssetSelect" class="form-select" onchange="window.SwapEngine.updateSwapEstimate()">
@@ -149,6 +166,16 @@ async function showSwapInterface() {
           <label for="receiveAmount">Receive Amount (Estimate):</label>
           <input type="number" id="receiveAmount" class="form-control" placeholder="0.0000000" step="0.0000001" readonly>
         </div>
+
+        <div class="swap-rate-display">
+          <div class="rate-info">
+            <span class="rate-label">Exchange Rate:</span>
+            <span class="rate-value" id="swapRate">Select assets to see rate</span>
+          </div>
+          <div class="rate-update">
+            <button onclick="window.SwapEngine.updateSwapEstimate()" class="refresh-btn">🔄 Refresh</button>
+          </div>
+        </div>
         
         <div class="swap-details">
           <div class="detail-row">
@@ -162,6 +189,10 @@ async function showSwapInterface() {
           <div class="detail-row">
             <span class="label">Slippage:</span>
             <span class="value" id="swapSlippage">0.5%</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Price Impact:</span>
+            <span class="value" id="swapPriceImpact">0.0%</span>
           </div>
         </div>
         
@@ -212,6 +243,38 @@ function selectSwapMode(mode) {
   window.selectedSwapMode = mode;
   
   console.log(`Selected swap mode: ${mode}`);
+}
+
+function toggleSwapMode(mode) {
+  const ppssToggle = document.getElementById('ppssToggle');
+  const ppsrToggle = document.getElementById('ppsrToggle');
+  const sendAmountLabel = document.querySelector('label[for="sendAmount"]');
+  const receiveAmountLabel = document.querySelector('label[for="receiveAmount"]');
+  
+  // Update toggle button states
+  if (mode === 'ppss') {
+    ppssToggle.classList.add('active');
+    ppsrToggle.classList.remove('active');
+    sendAmountLabel.textContent = 'Send Amount (Fixed):';
+    receiveAmountLabel.textContent = 'Receive Amount (Estimate):';
+    document.getElementById('sendAmount').readOnly = false;
+    document.getElementById('receiveAmount').readOnly = true;
+  } else {
+    ppssToggle.classList.remove('active');
+    ppsrToggle.classList.add('active');
+    sendAmountLabel.textContent = 'Send Amount (Estimate):';
+    receiveAmountLabel.textContent = 'Receive Amount (Fixed):';
+    document.getElementById('sendAmount').readOnly = true;
+    document.getElementById('receiveAmount').readOnly = false;
+  }
+  
+  // Store the swap mode
+  window.currentSwapMode = mode;
+  
+  // Update the estimate
+  updateSwapEstimate();
+  
+  console.log(`Swap mode toggled to: ${mode}`);
 }
 
 async function executeSwap() {
@@ -269,11 +332,25 @@ async function executeSwap() {
 async function updateSwapEstimate() {
   const sendAssetValue = document.getElementById('sendAssetSelect')?.value;
   const sendAmount = parseFloat(document.getElementById('sendAmount')?.value || 0);
+  const receiveAmount = parseFloat(document.getElementById('receiveAmount')?.value || 0);
   const receiveAssetValue = document.getElementById('receiveAssetSelect')?.value;
+  const swapMode = window.currentSwapMode || 'ppss';
 
-  if (!sendAssetValue || !sendAmount || !receiveAssetValue || sendAssetValue === receiveAssetValue) {
+  // Validate inputs based on swap mode
+  if (!sendAssetValue || !receiveAssetValue || sendAssetValue === receiveAssetValue) {
     document.getElementById('swapRate').textContent = 'Select different assets';
+    return;
+  }
+
+  if (swapMode === 'ppss' && (!sendAmount || sendAmount <= 0)) {
+    document.getElementById('swapRate').textContent = 'Enter send amount';
     document.getElementById('receiveAmount').value = '';
+    return;
+  }
+
+  if (swapMode === 'ppsr' && (!receiveAmount || receiveAmount <= 0)) {
+    document.getElementById('swapRate').textContent = 'Enter receive amount';
+    document.getElementById('sendAmount').value = '';
     return;
   }
 
@@ -294,38 +371,72 @@ async function updateSwapEstimate() {
     const authData = await authResponse.json();
     const sourcePublicKey = authData.authenticator_info.user.public_key;
 
+    // Prepare simulation parameters based on swap mode
+    let simulationParams = {
+      sourcePublicKey: sourcePublicKey,
+      sendAsset: sendAsset,
+      destination: sourcePublicKey, // Swap to self
+      destAsset: receiveAsset,
+      path: [],
+      telegram_id: authData.authenticator_info.user.telegram_id
+    };
+
+    if (swapMode === 'ppss') {
+      // Path Payment Strict Send - fixed send amount
+      simulationParams.sendAmount = sendAmount.toString();
+      simulationParams.destMin = '0.0000001';
+    } else {
+      // Path Payment Strict Receive - fixed receive amount
+      simulationParams.sendMax = '999999999.0000000'; // High max to allow calculation
+      simulationParams.destAmount = receiveAmount.toString();
+    }
+
     // Simulate path payment
     const simulationResponse = await fetch('/mini-app/simulate-path-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sourcePublicKey: sourcePublicKey,
-        sendAsset: sendAsset,
-        sendAmount: sendAmount,
-        destination: sourcePublicKey, // Swap to self
-        destAsset: receiveAsset,
-        destMin: '0.0000001',
-        path: [],
-        telegram_id: authData.authenticator_info.user.telegram_id
-      })
+      body: JSON.stringify(simulationParams)
     });
 
     if (simulationResponse.ok) {
       const result = await simulationResponse.json();
       
       if (result.simulation.success) {
-        const minReceived = parseFloat(result.simulation.minReceived);
-        const rate = minReceived / sendAmount;
         const sendAssetCode = typeof sendAsset === 'string' ? sendAsset : sendAsset.code;
         const receiveAssetCode = typeof receiveAsset === 'string' ? receiveAsset : receiveAsset.code;
         
+        let rate, actualSend, actualReceive;
+        
+        if (swapMode === 'ppss') {
+          // Strict Send - we know send amount, calculate receive
+          actualSend = sendAmount;
+          actualReceive = parseFloat(result.simulation.minReceived);
+          rate = actualReceive / actualSend;
+          document.getElementById('receiveAmount').value = actualReceive.toFixed(7);
+        } else {
+          // Strict Receive - we know receive amount, calculate send
+          actualReceive = receiveAmount;
+          actualSend = parseFloat(result.simulation.sendAmount || sendAmount);
+          rate = actualReceive / actualSend;
+          document.getElementById('sendAmount').value = actualSend.toFixed(7);
+        }
+        
+        // Calculate price impact (simplified)
+        const priceImpact = Math.abs((rate - 1) * 100).toFixed(2);
+        
         document.getElementById('swapRate').textContent = `1 ${sendAssetCode} = ${rate.toFixed(6)} ${receiveAssetCode}`;
-        document.getElementById('receiveAmount').value = minReceived.toFixed(7);
         document.getElementById('swapNetworkFee').textContent = `${result.fees.networkFee} XLM`;
         document.getElementById('swapServiceFee').textContent = `${result.fees.serviceFee} XLM`;
+        document.getElementById('swapPriceImpact').textContent = `${priceImpact}%`;
+        
+        console.log(`✅ Swap quote calculated: ${actualSend} ${sendAssetCode} → ${actualReceive} ${receiveAssetCode} (Rate: ${rate.toFixed(6)})`);
       } else {
         document.getElementById('swapRate').textContent = 'No path found';
-        document.getElementById('receiveAmount').value = '';
+        if (swapMode === 'ppss') {
+          document.getElementById('receiveAmount').value = '';
+        } else {
+          document.getElementById('sendAmount').value = '';
+        }
       }
     } else {
       document.getElementById('swapRate').textContent = 'Simulation failed';
