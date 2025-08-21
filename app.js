@@ -164,11 +164,12 @@ server.listen(port, host, () => {
     console.log(`Server running on http://0.0.0.0:${port}`);
   }
   
-  // Start sync service
-  if (process.env.NODE_ENV === 'production') {
-    syncService.start();
-    console.log('Sync service started');
-  }
+  // Start sync service (DISABLED for modularization testing)
+  // if (process.env.NODE_ENV === 'production') {
+  //   syncService.start();
+  //   console.log('Sync service started');
+  // }
+  console.log('📊 Chart sync service disabled for modularization testing');
 });
 
 // Graceful shutdown
