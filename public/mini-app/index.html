@@ -1312,7 +1312,7 @@
                     const asset = JSON.parse(assetValue);
                     if (amount > 0) {
                         // Calculate XLM equivalent for non-XLM assets
-                        const xlmEquivalent = await getXlmEquivalent(asset, amount);
+                        const xlmEquivalent = await window.Utils.getXlmEquivalent(asset, amount);
                         const feeAmount = Math.max(0.00001, xlmEquivalent * 0.001);
                         serviceFeeSpan.textContent = `${feeAmount.toFixed(5)} XLM`;
                     } else {
@@ -1325,85 +1325,7 @@
             }
         }
 
-        async function getXlmEquivalent(asset, amount) {
-            try {
-                console.log(`🔍 Getting XLM equivalent for ${amount} ${asset.code}`);
-                
-                // Use Stellar SDK to find path payment
-                if (window.StellarSdk) {
-                    const server = new window.StellarSdk.Server('https://horizon.stellar.org');
-                    
-                    // Create asset object
-                    const stellarAsset = asset.code === 'XLM' ? 
-                        window.StellarSdk.Asset.native() : 
-                        new window.StellarSdk.Asset(asset.code, asset.issuer);
-                    
-                    // Find strict send paths to XLM
-                    const pathsResponse = await server.strictSendPaths(stellarAsset, amount.toString(), [window.StellarSdk.Asset.native()])
-                        .limit(1)
-                        .call();
-                    
-                    if (pathsResponse.records && pathsResponse.records.length > 0) {
-                        const xlmAmount = parseFloat(pathsResponse.records[0].destination_amount);
-                        console.log(`✅ XLM equivalent for ${amount} ${asset.code}: ${xlmAmount} XLM`);
-                        return xlmAmount;
-                    } else {
-                        console.warn(`⚠️ No paths found for ${asset.code} to XLM, using fallback`);
-                        return 0.0;
-                    }
-                } else {
-                    console.warn('⚠️ Stellar SDK not available, using fallback');
-                    return 0.0;
-                }
-            } catch (error) {
-                console.error(`❌ Error getting XLM equivalent for ${asset.code}:`, error);
-                return 0.0;
-            }
-        }
-
-        async function calculateProperFees(transaction) {
-            try {
-                const amount = parseFloat(transaction.amount);
-                const asset = transaction.asset;
-                
-                // Network fee is always 0.00001 XLM
-                const networkFee = 0.00001;
-                
-                // Calculate service fee based on XLM equivalent
-                let serviceFee = 0.00001; // Default minimum
-                
-                if (asset === 'XLM') {
-                    // For XLM, calculate fee directly
-                    serviceFee = Math.max(0.00001, amount * 0.001);
-                } else {
-                    // For non-XLM assets, get XLM equivalent first
-                    const xlmEquivalent = await getXlmEquivalent(asset, amount);
-                    serviceFee = Math.max(0.00001, xlmEquivalent * 0.001);
-                }
-                
-                // Calculate total (amount sent + fees)
-                let total;
-                if (asset === 'XLM') {
-                    total = amount + networkFee + serviceFee;
-                } else {
-                    // For non-XLM assets, total is just the fees (amount is in the asset)
-                    total = networkFee + serviceFee;
-                }
-                
-                return {
-                    networkFee: networkFee.toFixed(5),
-                    serviceFee: serviceFee.toFixed(5),
-                    total: total.toFixed(5)
-                };
-            } catch (error) {
-                console.error('Error calculating proper fees:', error);
-                return {
-                    networkFee: '0.00001',
-                    serviceFee: '0.00001',
-                    total: '0.00002'
-                };
-            }
-        }
+        // getXlmEquivalent and calculateProperFees moved to Utils module
 
         async function buildAndSignTransaction() {
             try {
@@ -1471,7 +1393,7 @@
                 const xdrResult = await buildTransactionXDR(result.transaction);
                 
                 // Calculate proper fees based on XLM equivalent
-                const properFees = await calculateProperFees(result.transaction);
+                const properFees = await window.Utils.calculateProperFees(result.transaction);
                 
                 // Store transaction data for signing
                 window.currentTransactionData = {
