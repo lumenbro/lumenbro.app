@@ -107,7 +107,7 @@ function showWallet() {
   `;
 
   // Load wallet data
-  loadWalletData();
+  window.WalletCore.loadWalletData();
 }
 
 function showSendPayment() {
@@ -166,7 +166,7 @@ function showSendPayment() {
 
   // Populate asset select with user's assets (with delay to ensure assets are loaded)
   setTimeout(() => {
-    populateAssetSelect();
+    window.WalletCore.populateAssetSelect();
     console.log('🔍 Populating asset select after delay...');
   }, 500);
 
