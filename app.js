@@ -61,6 +61,7 @@ const exportRoutes = require('./routes/export');
 const walletRoutes = require('./routes/wallet');
 const signTransactionRoutes = require('./routes/sign-transaction');
 const turnkeyHelperRoutes = require('./routes/turnkey-helper');
+const nearTestRoutes = require('./routes/near-test');
 
 // Add cache-busting for development (exclude asset metadata endpoints)
 if (process.env.NODE_ENV !== 'production') {
@@ -90,11 +91,17 @@ app.use(exportRoutes);
 app.use('/api', walletRoutes);
 app.use(signTransactionRoutes);
 app.use(turnkeyHelperRoutes);
+app.use('/api/near-test', nearTestRoutes);
 // Download routes removed per mobile constraints
 
 // Landing
 app.get('/', (req, res) => {
   res.render('landing');
+});
+
+// NEAR Protocol compatibility test page
+app.get('/test-near-compatibility', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'test-near-compatibility.html'));
 });
 
 // Optional callback from app.py (if needed)

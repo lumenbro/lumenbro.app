@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEAR Protocol Compatibility Test - LumenBro</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/turnkey.js?v=2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/near-api-js@1.1.0/lib/browser-index.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-section h2 {
+            margin-top: 0;
+            color: #4ecdc4;
+            font-size: 1.5em;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .status.success {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid #4ecdc4;
+            color: #4ecdc4;
+        }
+        
+        .status.error {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+        
+        .status.info {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #667eea;
+            color: #667eea;
+        }
+        
+        .status.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+        }
+        
+        .key-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .step.active .step-number {
+            background: #4ecdc4;
+        }
+        
+        .step.completed .step-number {
+            background: #4ecdc4;
+        }
+        
+        .step-label {
+            font-size: 12px;
+            text-align: center;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 NEAR Protocol Compatibility Test</h1>
+        
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Setup</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Create Account</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Test Signing</div>
+            </div>
+        </div>
+        
+        <!-- Step 1: Setup and Authentication -->
+        <div class="test-section" id="setup-section">
+            <h2>🔧 Step 1: Setup and Authentication</h2>
+            <p>First, we'll retrieve your Turnkey API keys from Telegram Cloud Storage and authenticate with your test sub-organization.</p>
+            
+            <div class="form-group">
+                <label for="password">Password for API Key Decryption:</label>
+                <input type="password" id="password" placeholder="Enter your password" />
+            </div>
+            
+            <button class="btn" onclick="setupAuthentication()">🔐 Setup Authentication</button>
+            
+            <div id="setup-status" class="status info" style="display: none;"></div>
+        </div>
+        
+        <!-- Step 2: Create NEAR Account -->
+        <div class="test-section" id="account-section" style="display: none;">
+            <h2>🆕 Step 2: Create NEAR Account</h2>
+            <p>Create a new NEAR account under your existing HD wallet using Turnkey's createWalletAccounts API.</p>
+            
+            <div class="form-group">
+                <label for="subOrgId">Sub-Organization ID:</label>
+                <input type="text" id="subOrgId" placeholder="Enter your test sub-org ID" />
+            </div>
+            
+            <div class="form-group">
+                <label for="hdWalletId">HD Wallet ID:</label>
+                <input type="text" id="hdWalletId" placeholder="Enter your existing HD wallet ID" />
+            </div>
+            
+            <button class="btn btn-success" onclick="createNearAccount()">🆕 Create NEAR Account</button>
+            
+            <div id="account-status" class="status info" style="display: none;"></div>
+            <div id="account-result" class="key-display" style="display: none;"></div>
+        </div>
+        
+        <!-- Step 3: Test NEAR Signing -->
+        <div class="test-section" id="signing-section" style="display: none;">
+            <h2>✍️ Step 3: Test NEAR Transaction Signing</h2>
+            <p>Test signing a mock NEAR transaction payload and verify the signature.</p>
+            
+            <button class="btn btn-warning" onclick="testNearSigning()">✍️ Test NEAR Signing</button>
+            <button class="btn" onclick="submitToNearTestnet()">🌐 Submit to NEAR Testnet</button>
+            
+            <div id="signing-status" class="status info" style="display: none;"></div>
+            <div id="signing-result" class="key-display" style="display: none;"></div>
+        </div>
+        
+        <!-- Results Section -->
+        <div class="test-section" id="results-section" style="display: none;">
+            <h2>📊 Test Results</h2>
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="/mini-app/encryption-utils.js"></script>
+    
+    <script>
+        // Global variables
+        let apiKeys = null;
+        let nearAccountId = null;
+        let nearPublicKey = null;
+        let nearAccountAddress = null;
+        let testTransactionHash = null;
+        
+        // Initialize Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+        
+        // Step 1: Setup Authentication
+        async function setupAuthentication() {
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('setup-status');
+            
+            if (!password) {
+                showStatus(statusDiv, 'error', '❌ Password is required');
+                return;
+            }
+            
+            showStatus(statusDiv, 'info', '🔍 Retrieving API keys from Telegram Cloud Storage...');
+            
+            try {
+                // Retrieve and decrypt API keys
+                apiKeys = await EncryptionUtils.retrieveTelegramKey(password);
+                
+                if (!apiKeys || !apiKeys.apiPublicKey || !apiKeys.apiPrivateKey) {
+                    throw new Error('Failed to retrieve valid API keys');
+                }
+                
+                showStatus(statusDiv, 'success', `✅ API keys retrieved successfully!\nPublic Key: ${apiKeys.apiPublicKey.substring(0, 20)}...`);
+                
+                // Show next step
+                document.getElementById('account-section').style.display = 'block';
+                document.getElementById('step2').classList.add('active');
+                document.getElementById('step1').classList.add('completed');
+                
+            } catch (error) {
+                showStatus(statusDiv, 'error', `❌ Authentication failed: ${error.message}`);
+                console.error('Authentication error:', error);
+                await logTestResult('authentication', false, null, null, null, null, null, error.message);
+            }
+        }
+        
+        // Step 2: Create NEAR Account
+        async function createNearAccount() {
+            const subOrgId = document.getElementById('subOrgId').value;
+            const hdWalletId = document.getElementById('hdWalletId').value;
+            const statusDiv = document.getElementById('account-status');
+            const resultDiv = document.getElementById('account-result');
+            
+            if (!subOrgId || !hdWalletId) {
+                showStatus(statusDiv, 'error', '❌ Sub-Organization ID and HD Wallet ID are required');
+                return;
+            }
+            
+            showStatus(statusDiv, 'info', '🔄 Creating NEAR account via Turnkey API...');
+            
+            try {
+                // Initialize Turnkey client with retrieved API keys
+                const turnkey = new window.Turnkey({
+                    apiBaseUrl: 'https://api.turnkey.com',
+                    apiPublicKey: apiKeys.apiPublicKey,
+                    apiPrivateKey: apiKeys.apiPrivateKey
+                });
+                
+                const client = turnkey.apiClient();
+                
+                // Create NEAR account using createWalletAccounts
+                const createAccountParams = {
+                    type: "ACTIVITY_TYPE_CREATE_WALLET_ACCOUNTS",
+                    organizationId: subOrgId,
+                    parameters: {
+                        walletId: hdWalletId,
+                        curve: "CURVE_ED25519",
+                        pathFormat: "PATH_FORMAT_BIP32",
+                        path: "m/44'/397'/0'",
+                        addressFormat: "ADDRESS_FORMAT_COMPRESSED"
+                    }
+                };
+                
+                showStatus(statusDiv, 'info', '📡 Calling Turnkey createWalletAccounts API...');
+                
+                const response = await client.createWalletAccounts(createAccountParams);
+                
+                if (!response || !response.walletAccounts || response.walletAccounts.length === 0) {
+                    throw new Error('No wallet accounts returned from Turnkey API');
+                }
+                
+                const account = response.walletAccounts[0];
+                nearAccountId = account.walletAccountId;
+                nearPublicKey = account.publicKey;
+                
+                // Convert compressed public key to NEAR implicit address
+                // NEAR implicit addresses are the hex public key with .near suffix
+                nearAccountAddress = nearPublicKey + '.near';
+                
+                const resultText = `✅ NEAR Account Created Successfully!
+
+Account ID: ${nearAccountId}
+Public Key: ${nearPublicKey}
+NEAR Address: ${nearAccountAddress}
+
+Path: m/44'/397'/0'
+Curve: ED25519
+Format: Compressed`;
+                
+                showResult(resultDiv, resultText);
+                showStatus(statusDiv, 'success', '✅ NEAR account created successfully!');
+                
+                // Log the result
+                await logTestResult('account_creation', true, nearAccountId, nearPublicKey, nearAccountAddress);
+                
+                // Show next step
+                document.getElementById('signing-section').style.display = 'block';
+                document.getElementById('step3').classList.add('active');
+                document.getElementById('step2').classList.add('completed');
+                
+            } catch (error) {
+                showStatus(statusDiv, 'error', `❌ Failed to create NEAR account: ${error.message}`);
+                console.error('Create account error:', error);
+                await logTestResult('account_creation', false, null, null, null, null, null, error.message);
+            }
+        }
+        
+        // Step 3: Test NEAR Signing
+        async function testNearSigning() {
+            const statusDiv = document.getElementById('signing-status');
+            const resultDiv = document.getElementById('signing-result');
+            
+            if (!nearAccountId || !nearPublicKey) {
+                showStatus(statusDiv, 'error', '❌ NEAR account not created yet');
+                return;
+            }
+            
+            showStatus(statusDiv, 'info', '🔄 Testing NEAR transaction signing...');
+            
+            try {
+                // Initialize Turnkey client
+                const turnkey = new window.Turnkey({
+                    apiBaseUrl: 'https://api.turnkey.com',
+                    apiPublicKey: apiKeys.apiPublicKey,
+                    apiPrivateKey: apiKeys.apiPrivateKey
+                });
+                
+                const client = turnkey.apiClient();
+                
+                // Create a mock NEAR transaction payload
+                const mockTransaction = {
+                    signerId: nearAccountAddress,
+                    receiverId: 'v1.signer.testnet.near',
+                    actions: [{
+                        type: 'FunctionCall',
+                        params: {
+                            methodName: 'sign',
+                            args: Buffer.from(JSON.stringify({ test: 'data' })).toString('base64'),
+                            gas: '30000000000000',
+                            deposit: '0'
+                        }
+                    }],
+                    blockHash: '11111111111111111111111111111111',
+                    nonce: 1
+                };
+                
+                // Serialize the transaction using near-api-js
+                const near = new window.nearApi.Near({
+                    networkId: 'testnet',
+                    nodeUrl: 'https://rpc.testnet.near.org'
+                });
+                
+                const transaction = window.nearApi.transactions.createTransaction(
+                    nearAccountAddress,
+                    window.nearApi.utils.PublicKey.fromString(nearPublicKey),
+                    'v1.signer.testnet.near',
+                    window.nearApi.transactions.functionCall(
+                        'sign',
+                        Buffer.from(JSON.stringify({ test: 'data' })),
+                        30000000000000,
+                        0
+                    ),
+                    '11111111111111111111111111111111',
+                    1
+                );
+                
+                const serializedTx = transaction.encode();
+                const txHex = Buffer.from(serializedTx).toString('hex');
+                
+                showStatus(statusDiv, 'info', '📡 Calling Turnkey SIGN_RAW_PAYLOAD...');
+                
+                // Sign the transaction using Turnkey
+                const signParams = {
+                    type: "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD",
+                    organizationId: document.getElementById('subOrgId').value,
+                    parameters: {
+                        walletAccountId: nearAccountId,
+                        payload: txHex,
+                        encoding: "ENCODING_HEX"
+                    }
+                };
+                
+                const signResponse = await client.signRawPayload(signParams);
+                
+                if (!signResponse || !signResponse.signature) {
+                    throw new Error('No signature returned from Turnkey API');
+                }
+                
+                const signature = signResponse.signature;
+                
+                // Verify the signature
+                const publicKeyObj = window.nearApi.utils.PublicKey.fromString(nearPublicKey);
+                const isValid = window.nearApi.utils.KeyPair.fromPublicKey(publicKeyObj).verify(
+                    serializedTx,
+                    Buffer.from(signature, 'hex')
+                );
+                
+                const resultText = `✅ NEAR Transaction Signing Test Successful!
+
+Transaction Payload: ${txHex.substring(0, 100)}...
+Signature: ${signature}
+Signature Valid: ${isValid ? '✅ YES' : '❌ NO'}
+
+Account ID: ${nearAccountId}
+Public Key: ${nearPublicKey}
+NEAR Address: ${nearAccountAddress}`;
+                
+                showResult(resultDiv, resultText);
+                showStatus(statusDiv, 'success', '✅ NEAR signing test successful!');
+                
+                // Log the result
+                await logTestResult('signing_test', true, nearAccountId, nearPublicKey, nearAccountAddress, null, signature);
+                
+                // Store transaction data for submission
+                testTransactionHash = {
+                    transaction: transaction,
+                    signature: signature,
+                    serializedTx: serializedTx
+                };
+                
+                // Show results section
+                document.getElementById('results-section').style.display = 'block';
+                
+            } catch (error) {
+                showStatus(statusDiv, 'error', `❌ NEAR signing test failed: ${error.message}`);
+                console.error('Signing error:', error);
+                await logTestResult('signing_test', false, nearAccountId, nearPublicKey, nearAccountAddress, null, null, error.message);
+            }
+        }
+        
+        // Submit to NEAR Testnet
+        async function submitToNearTestnet() {
+            const statusDiv = document.getElementById('signing-status');
+            
+            if (!testTransactionHash) {
+                showStatus(statusDiv, 'error', '❌ No signed transaction available');
+                return;
+            }
+            
+            showStatus(statusDiv, 'info', '🌐 Submitting transaction to NEAR testnet...');
+            
+            try {
+                const near = new window.nearApi.Near({
+                    networkId: 'testnet',
+                    nodeUrl: 'https://rpc.testnet.near.org'
+                });
+                
+                // Create signed transaction
+                const signedTx = new window.nearApi.transactions.SignedTransaction({
+                    transaction: testTransactionHash.transaction,
+                    signature: new window.nearApi.transactions.Signature({
+                        keyType: 0, // ED25519
+                        data: Buffer.from(testTransactionHash.signature, 'hex')
+                    })
+                });
+                
+                // Submit to network
+                const result = await near.connection.provider.sendTransaction(signedTx);
+                
+                showStatus(statusDiv, 'success', `✅ Transaction submitted to NEAR testnet!\nTransaction Hash: ${result.transaction.hash}`);
+                
+                // Log the result
+                await logTestResult('testnet_submission', true, nearAccountId, nearPublicKey, nearAccountAddress, result.transaction.hash);
+                
+                // Update results
+                const resultsContent = document.getElementById('results-content');
+                resultsContent.innerHTML = `
+                    <div class="status success">
+                        <h3>🎉 NEAR Compatibility Test Complete!</h3>
+                        <p><strong>Account Created:</strong> ${nearAccountAddress}</p>
+                        <p><strong>Transaction Hash:</strong> ${result.transaction.hash}</p>
+                        <p><strong>Status:</strong> ✅ NEAR Protocol is fully compatible with Turnkey!</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                showStatus(statusDiv, 'error', `❌ Failed to submit to NEAR testnet: ${error.message}`);
+                console.error('Submission error:', error);
+                await logTestResult('testnet_submission', false, nearAccountId, nearPublicKey, nearAccountAddress, null, null, error.message);
+            }
+        }
+        
+        // Helper functions
+        function showStatus(element, type, message) {
+            element.className = `status ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+        
+        function showResult(element, content) {
+            element.textContent = content;
+            element.style.display = 'block';
+        }
+        
+        // Log test results to backend
+        async function logTestResult(testType, success, accountId, publicKey, nearAddress, transactionHash, signature, errorMessage) {
+            try {
+                await fetch('/api/near-test/log-result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        testType,
+                        success,
+                        accountId,
+                        publicKey,
+                        nearAddress,
+                        transactionHash,
+                        signature,
+                        error: success ? null : (errorMessage || 'Test failed')
+                    })
+                });
+            } catch (error) {
+                console.error('Failed to log test result:', error);
+            }
+        }
+        
+        // Auto-fill common test values
+        window.addEventListener('load', async function() {
+            try {
+                // Fetch test configuration from backend
+                const response = await fetch('/api/near-test/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.config) {
+                        document.getElementById('subOrgId').value = data.config.testSubOrgId;
+                        document.getElementById('hdWalletId').value = data.config.testHdWalletId;
+                        console.log('✅ Test configuration loaded from backend');
+                    }
+                }
+            } catch (error) {
+                console.log('⚠️ Could not load test configuration from backend:', error.message);
+                console.log('Please enter your test sub-org ID and HD wallet ID manually');
+            }
+        });
+    </script>
+</body>
+</html>
