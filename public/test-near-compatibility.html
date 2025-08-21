@@ -6,7 +6,37 @@
     <title>NEAR Protocol Compatibility Test - LumenBro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/turnkey.js?v=2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/near-api-js@1.1.0/lib/browser-index.min.js"></script>
+    <!-- Load NEAR API with proper error handling to avoid conflicts -->
+    <script>
+        // Load NEAR API dynamically to avoid conflicts with Turnkey
+        function loadNearApi() {
+            return new Promise((resolve, reject) => {
+                // Try to use a different CDN or approach to avoid conflicts
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/near-api-js@1.1.0/lib/browser-index.min.js';
+                script.onload = () => {
+                    console.log('✅ NEAR API loaded successfully from unpkg');
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.warn('⚠️ Failed to load NEAR API from unpkg, trying jsdelivr');
+                    // Fallback to jsdelivr
+                    const fallbackScript = document.createElement('script');
+                    fallbackScript.src = 'https://cdn.jsdelivr.net/npm/near-api-js@1.1.0/lib/browser-index.min.js';
+                    fallbackScript.onload = () => {
+                        console.log('✅ NEAR API loaded successfully from jsdelivr');
+                        resolve();
+                    };
+                    fallbackScript.onerror = () => {
+                        console.warn('⚠️ Failed to load NEAR API from all CDNs');
+                        reject(new Error('NEAR API load failed from all sources'));
+                    };
+                    document.head.appendChild(fallbackScript);
+                };
+                document.head.appendChild(script);
+            });
+        }
+    </script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -234,13 +264,18 @@
         <div class="test-section" id="setup-section">
             <h2>🔧 Step 1: Setup and Authentication</h2>
             <p>First, we'll retrieve your Turnkey API keys from Telegram Cloud Storage and authenticate with your test sub-organization.</p>
+            <p style="font-size: 0.9em; opacity: 0.8; margin-top: 10px;">
+                <strong>🔒 Security Note:</strong> Your API keys are stored securely in Telegram Cloud Storage and will not be overwritten or modified during this test.
+            </p>
             
             <div class="form-group">
                 <label for="password">Password for API Key Decryption:</label>
                 <input type="password" id="password" placeholder="Enter your password" />
             </div>
             
+            <button class="btn" onclick="testTurnkeySDK()">🧪 Test Turnkey SDK</button>
             <button class="btn" onclick="setupAuthentication()">🔐 Setup Authentication</button>
+            <button class="btn" onclick="testSessionManager()">🔑 Test Session Manager</button>
             
             <div id="setup-status" class="status info" style="display: none;"></div>
         </div>
@@ -287,6 +322,7 @@
 
     <!-- Load required scripts -->
     <script src="/mini-app/encryption-utils.js"></script>
+    <script src="/mini-app/session-manager.js"></script>
     
     <script>
         // Global variables
@@ -302,6 +338,90 @@
             window.Telegram.WebApp.expand();
         }
         
+        // Function to get API keys (from session or direct)
+        async function getApiKeys() {
+            if (window.currentSessionId && SessionManager.isAvailable()) {
+                try {
+                    // Try to get from session first
+                    const sessionKeys = await SessionManager.getSessionKeys(window.currentSessionId);
+                    return {
+                        apiPublicKey: sessionKeys.apiPublicKey,
+                        apiPrivateKey: sessionKeys.apiPrivateKey
+                    };
+                } catch (error) {
+                    console.warn('⚠️ Session expired or not found, falling back to direct keys');
+                    return apiKeys; // Fallback to direct keys
+                }
+            }
+            return apiKeys; // Direct keys
+        }
+        
+        // Debug function to test Turnkey SDK
+        async function testTurnkeySDK() {
+            const statusDiv = document.getElementById('setup-status');
+            
+            showStatus(statusDiv, 'info', '🔍 Testing Turnkey SDK availability...');
+            
+            try {
+                if (typeof window.Turnkey === 'undefined') {
+                    throw new Error('Turnkey SDK not loaded');
+                }
+                
+                console.log('🔍 Turnkey SDK type:', typeof window.Turnkey);
+                console.log('🔍 Turnkey constructor:', window.Turnkey);
+                
+                // Try to create a simple Turnkey instance (without API keys for testing)
+                const testTurnkey = new window.Turnkey({
+                    apiBaseUrl: 'https://api.turnkey.com'
+                });
+                
+                console.log('✅ Turnkey SDK test successful:', testTurnkey);
+                showStatus(statusDiv, 'success', '✅ Turnkey SDK is working properly!');
+                
+            } catch (error) {
+                console.error('❌ Turnkey SDK test failed:', error);
+                showStatus(statusDiv, 'error', `❌ Turnkey SDK test failed: ${error.message}`);
+            }
+        }
+        
+        // Debug function to test Session Manager
+        async function testSessionManager() {
+            const statusDiv = document.getElementById('setup-status');
+            
+            showStatus(statusDiv, 'info', '🔍 Testing Session Manager...');
+            
+            try {
+                if (!SessionManager.isAvailable()) {
+                    throw new Error('IndexedDB not available');
+                }
+                
+                console.log('🔍 IndexedDB available:', SessionManager.isAvailable());
+                
+                // Test session creation with dummy data
+                const testKeys = {
+                    apiPublicKey: 'test_public_key_' + Date.now(),
+                    apiPrivateKey: 'test_private_key_' + Date.now()
+                };
+                
+                const sessionId = await SessionManager.storeSessionKeys(testKeys);
+                console.log('✅ Test session created:', sessionId);
+                
+                // Test session retrieval
+                const retrievedKeys = await SessionManager.getSessionKeys(sessionId);
+                console.log('✅ Test session retrieved:', retrievedKeys);
+                
+                // Test session cleanup
+                await SessionManager.deleteSessionKeys(sessionId);
+                console.log('✅ Test session cleaned up');
+                
+                showStatus(statusDiv, 'success', '✅ Session Manager is working properly!');
+                
+            } catch (error) {
+                console.error('❌ Session Manager test failed:', error);
+                showStatus(statusDiv, 'error', `❌ Session Manager test failed: ${error.message}`);
+            }
+        }
+        
         // Step 1: Setup Authentication
         async function setupAuthentication() {
             const password = document.getElementById('password').value;
@@ -315,14 +435,33 @@
             showStatus(statusDiv, 'info', '🔍 Retrieving API keys from Telegram Cloud Storage...');
             
             try {
-                // Retrieve and decrypt API keys
-                apiKeys = await EncryptionUtils.retrieveTelegramKey(password);
-                
-                if (!apiKeys || !apiKeys.apiPublicKey || !apiKeys.apiPrivateKey) {
-                    throw new Error('Failed to retrieve valid API keys');
+                // Check if IndexedDB is available for session storage
+                if (!SessionManager.isAvailable()) {
+                    showStatus(statusDiv, 'warning', '⚠️ IndexedDB not available, using direct decryption (less secure)');
+                    // Fallback to direct decryption
+                    apiKeys = await EncryptionUtils.retrieveTelegramKey(password);
+                } else {
+                    showStatus(statusDiv, 'info', '🔐 Using secure session storage (IndexedDB)...');
+                    
+                    // Retrieve and decrypt API keys
+                    const decryptedKeys = await EncryptionUtils.retrieveTelegramKey(password);
+                    
+                    if (!decryptedKeys || !decryptedKeys.apiPublicKey || !decryptedKeys.apiPrivateKey) {
+                        throw new Error('Failed to retrieve valid API keys');
+                    }
+                    
+                    // Store in secure session (24-hour expiry)
+                    const sessionId = await SessionManager.storeSessionKeys(decryptedKeys);
+                    console.log('🔐 Session created with ID:', sessionId);
+                    
+                    // Store session ID for later use
+                    window.currentSessionId = sessionId;
+                    
+                    // Set apiKeys to the decrypted keys for immediate use
+                    apiKeys = decryptedKeys;
+                    
+                    showStatus(statusDiv, 'success', `✅ API keys stored in secure session!\nSession ID: ${sessionId.substring(0, 20)}...\nPublic Key: ${apiKeys.apiPublicKey.substring(0, 20)}...`);
                 }
-                
-                showStatus(statusDiv, 'success', `✅ API keys retrieved successfully!\nPublic Key: ${apiKeys.apiPublicKey.substring(0, 20)}...`);
                 
                 // Show next step
                 document.getElementById('account-section').style.display = 'block';
@@ -351,11 +490,22 @@
             showStatus(statusDiv, 'info', '🔄 Creating NEAR account via Turnkey API...');
             
             try {
+                // Check if Turnkey is available
+                if (typeof window.Turnkey === 'undefined') {
+                    throw new Error('Turnkey SDK not loaded. Please refresh the page and try again.');
+                }
+                
+                console.log('🔍 Turnkey SDK available:', typeof window.Turnkey);
+                console.log('🔍 Turnkey constructor:', window.Turnkey);
+                
+                // Get API keys (from session or direct)
+                const currentApiKeys = await getApiKeys();
+                
                 // Initialize Turnkey client with retrieved API keys
                 const turnkey = new window.Turnkey({
                     apiBaseUrl: 'https://api.turnkey.com',
-                    apiPublicKey: apiKeys.apiPublicKey,
-                    apiPrivateKey: apiKeys.apiPrivateKey
+                    apiPublicKey: currentApiKeys.apiPublicKey,
+                    apiPrivateKey: currentApiKeys.apiPrivateKey
                 });
                 
                 const client = turnkey.apiClient();
@@ -430,11 +580,30 @@ Format: Compressed`;
             showStatus(statusDiv, 'info', '🔄 Testing NEAR transaction signing...');
             
             try {
+                // Check if Turnkey is available
+                if (typeof window.Turnkey === 'undefined') {
+                    throw new Error('Turnkey SDK not loaded. Please refresh the page and try again.');
+                }
+                
+                // Load NEAR API if not already loaded
+                if (typeof window.nearApi === 'undefined') {
+                    showStatus(statusDiv, 'info', '📦 Loading NEAR API...');
+                    try {
+                        await loadNearApi();
+                    } catch (error) {
+                        console.warn('⚠️ NEAR API load failed, will proceed with basic signing test only');
+                        showStatus(statusDiv, 'warning', '⚠️ NEAR API not available, will test basic signing only');
+                    }
+                }
+                
+                // Get API keys (from session or direct)
+                const currentApiKeys = await getApiKeys();
+                
                 // Initialize Turnkey client
                 const turnkey = new window.Turnkey({
                     apiBaseUrl: 'https://api.turnkey.com',
-                    apiPublicKey: apiKeys.apiPublicKey,
-                    apiPrivateKey: apiKeys.apiPrivateKey
+                    apiPublicKey: currentApiKeys.apiPublicKey,
+                    apiPrivateKey: currentApiKeys.apiPrivateKey
                 });
                 
                 const client = turnkey.apiClient();
@@ -628,8 +797,21 @@ NEAR Address: ${nearAccountAddress}`;
             }
         }
         
-        // Auto-fill common test values
+        // Auto-fill common test values and check dependencies
         window.addEventListener('load', async function() {
+            // Check Turnkey SDK availability
+            setTimeout(() => {
+                if (typeof window.Turnkey === 'undefined') {
+                    console.error('❌ Turnkey SDK not loaded after page load');
+                    const setupStatus = document.getElementById('setup-status');
+                    if (setupStatus) {
+                        showStatus(setupStatus, 'error', '❌ Turnkey SDK not loaded. Please refresh the page and try again.');
+                    }
+                } else {
+                    console.log('✅ Turnkey SDK loaded successfully');
+                }
+            }, 2000); // Give it 2 seconds to load
+            
             try {
                 // Fetch test configuration from backend
                 const response = await fetch('/api/near-test/config');
